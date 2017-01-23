@@ -1,0 +1,80 @@
+<?php
+/**
+* Implement hook_help() to display a small help message if somebody clicks the "Help" link on the modules list.
+*/
+function extauth_help( $path, $arg )
+{
+    switch ( $path )
+    {
+        case 'admin/help#extauth':
+        {
+            return( '<p>' . t('This module allows users who login with e-mail addresses and username using old password.') . '</p>' );
+        }
+    }
+}
+
+/**
+   * Implement hook_form_alter() to change the behaviour of the login form.
+   *
+   * Login validators are set in the user_login_default_validators() function in user.module.
+   * They are normally set to array('user_login_name_validate',
+   * 'user_login_authenticate_validate', 'user_login_final_validate').
+   * We simply replace 'user_login_authenticate_validate' with 'extauth_login_validate'.
+   */
+function extauth_authenticate($form_values = array(),&$form_uid) {
+  global $user;
+
+  /* if (!empty($user->uid) || $form_uid) {
+    // User has already sucessfully authenticated
+    return;
+  }
+
+  if (form_get_errors() || empty($form_values['name']) || empty($form_values['pass'])) {
+    return;
+  }
+  
+  //d7 user_load requires $uid as parameter
+  $form_user = db_query("SELECT uid FROM {users} WHERE name = :name", array('name'=>$form_values['name']))->fetch();
+  $account = user_load($form_user->uid);
+
+  // The user doesn't exist
+  if (!$account) {
+    return;
+  }
+
+  // See if the user has a password record from gmc import
+  $gmc_user = db_query('SELECT * FROM {gmc_users} WHERE uid = :uid',array(':uid' => $account->uid))->fetch();
+  if (!$gmc_user) {
+    return;
+  }
+*/
+  /**
+   * If the password doesn't contain a colon, it is an unsalted password.
+   * It will have been inserted into the drupal users table during the
+   * import, and to get here the Drupal login must have already failed
+   * against it, so nothing left to do
+   */
+ /* if(strpos($gmc_user->password,':')) {
+    list($password, $salt) = explode(':', $gmc_user->password, 2);
+  }
+  else {
+    $password = $gmc_user->password;
+    $salt='';
+  }
+  
+  // Check the supplied password against the md5sum
+  if (md5($form_values['pass'] . $salt) == $password || (!$salt && md5($form_values['pass']) == $password)) {
+    $user = $account;
+    watchdog('gmc', 'Converting password for user @name (gmc id @juid)', array('@name' => $user->name, '@juid' => $gmc_user->juid));
+
+    // Update the users Drupal password
+    user_save($user, array('pass' => $form_values['pass']));
+
+    $gmc_user->converted = 1;
+    drupal_write_record('gmc_users', $gmc_user, array('uid'));
+    
+    $form_uid=$user->uid;
+    user_login_finalize($form_values);
+    return $user;
+  }*/
+}
