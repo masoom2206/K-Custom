@@ -1,0 +1,47 @@
+[Elance Id: E51371058 Drupal 7 guitar website for student and instructors]
+
+To: E51371058-WR@workroom.elance.com
+Cc: kristofer@guitarmasterclass.net
+ 
+Hi Kristofer/Bogdan,
+
+To keep you updated about the project progress, please find my inline response to your points:
+
+ 1) BUG: user closing the pop-up, logging out of the site and logging back in gets to see the same pop-up again, even though he already closed the new messages pop-up window acknowledging that he has seen the notification once.
+ 
+ Masoom >> Done, I have used Drupal "variable_set" and "variable_get" functionality at the place of "SESSION" to saved message id of last notification, now if user has received any new message and he/she has not notified for that message then all new message will display in popup otherwise popup will not display at any condition.
+ 
+ 2) BUG: clicking on the view of this message ("testaccount" used for testing) leads to 404 broken page : http://screencast.com/t/InLCCPQJ ("view" button appears to be broken when it comes to reading "reply" private messages)
+
+ Masoom >> Done, I have linked "View" with thread number at the place of message number, kindly review the same and share you valuable feedback.
+ 
+ 3) Users "Headbanger" and "taka perry" have non standard signatures
+ 
+ Masoom >> Done.
+ 
+ 4) User "verciazghra" has a signature which fits our standards (only 227 characters) but it is not displayed in the forum. It is important that we do not disable existing (migrated) signatures which do fit the new standards.
+ More examples of non standard signatures shown : http://admin.prod.gmc.my/guitar_forum_topic/111203
+
+ Masoom >> Done, I have displayed "verciazghra" signature, here '"' saved in database as entity(&quot;), that's why the signature count not fit to 255 character.
+ In the given URL(http://admin.prod.gmc.my/guitar_forum_topic/111203), 
+ -"Cosmin Lupu" signature is more than 255 character.
+ -"vonhotch" has Image in signature.
+ -"Gabriel Leopardi" signature is more than 255 character.
+ -"AK Rich" has Image in signature.
+ -"Dieterle" signature field is empty.
+ -"jstcrsn" signature field is empty.
+ 
+ 
+Further, I am working for migrate user profile data and will keep you posted with progress.
+
+I look forward to your feedback.
+ 
+Regards,
+Masoom
+
+PS: Our office will remain closed this Saturday, 15 Feb on account of our organization's foundation day celebration.
+__________________________
+
+SynapseIndia
+http://www.synapse.in
+I.T. Outsourcing @ Peace of Mind

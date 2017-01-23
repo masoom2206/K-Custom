@@ -1,0 +1,2522 @@
+<?php
+/* Implement hook_block_info()
+ * for creating custom block for wiki and responce videos.
+ */
+function forum_support_permission() {
+  return array(
+    'access forum data' => array(
+      'title' => t('access forum data'),
+      'description' => t('Perform administration tasks for forum.'),
+    ),
+  );
+}
+
+function forum_support_block_info() {
+  $blocks['vidio_res_block'] = array(
+    'info' => t('Lesson Video Responses'),
+    'cache' => DRUPAL_CACHE_PER_PAGE,
+  );
+  $blocks['latest_forum_block'] = array(
+    'info' => t('News'),
+    'cache' => DRUPAL_CACHE_PER_PAGE,
+  );
+  $blocks['forum_news_data'] = array(
+    'info' => t('News'),
+    'cache' => DRUPAL_CACHE_PER_PAGE,
+  );
+  $blocks['forum_sort_jump_data'] = array(
+    'info' => t('Forum Sort Jump Data'),
+    'cache' => DRUPAL_CACHE_PER_PAGE,
+  );
+  $blocks['gmc_online_browsing_user'] = array(
+    'info' => t('Current user of forum browsing'),
+    'cache' => DRUPAL_CACHE_PER_PAGE,
+  );
+  
+  return $blocks;
+}
+
+// call hook_block_view for display content.
+
+function forum_support_block_view($delta) {
+  $block = array();
+  switch ($delta) {
+    case 'vidio_res_block':
+      //use helper functions to set the blocks. Cleaner.
+      $block['content'] = support_vidio_res_block();
+    break;
+    case 'latest_forum_block':
+       $block['content'] = latest_forum_block(); 
+    break;
+    case 'forum_news_data':
+       $block['content'] = forum_news_data_block(); 
+    break;
+    case 'forum_sort_jump_data':
+       $block['content'] = forum_sort_jump_data_block(); 
+    break;
+    case 'gmc_online_browsing_user':
+       $block['content'] = gmc_online_browsing_forum(); 
+    break;
+  }
+  return $block;
+}
+
+/*
+ *call backfunction for video block.
+*/
+function support_vidio_res_block() {
+  $html = array();
+  $nids = array();
+  $nids = db_select('lesson_rec', 'lr')
+            ->fields('lr')
+            ->orderBy('timestamp', 'DESC')
+            ->extend('PagerDefault')
+            ->limit(5)
+            ->execute()->fetchAll(); 
+
+  // this is where the $items get sent to your default MYMODULE_BLOCK.tpl.php that gets 
+  // registered below
+  return theme('support_vidio_res_block', array('nids' => $nids, 'html' => $html)); 
+}
+
+/**
+ * Callback function latest_forum_block()
+ * to display latest forum post list at home page
+ */
+function latest_forum_block() {
+  $nodes = array();
+  $html =  array();
+  $var = array();
+  $x = 0;
+  global $user;
+  $nids = db_query('SELECT nid FROM drupal_mysql_views.forms_7')->fetchCol();
+  $nodes = node_load_multiple((array)$nids);
+  foreach($nodes as $nid => $node) {
+    $terms = taxonomy_term_load($node->forum_tid);
+    $var[$x]['nid'] = $node->nid;
+    $var[$x]['title'] = $node->title;
+    $var[$x]['terms']= $terms->name;
+    if ($user->uid != 0) {
+      $uid = $user->uid;
+      $last_visit = db_query("SELECT timestamp FROM {history} WHERE nid = :nid AND uid = :uid", array(':nid' => $nid, ':uid' => $uid))->fetchField();
+      if (empty($last_visit)) {
+        $last_visit = time();
+        $new_topic = 1;
+        $cid = db_query("SELECT cid FROM {comment} WHERE nid = :nid AND changed < :time ORDER BY changed ASC LIMIT 0 , 1", array(':nid' => $nid, ':time' => $last_visit))->fetchField();
+      }
+      else {
+        $cid = db_query("SELECT cid FROM {comment} WHERE nid = :nid AND changed > :time ORDER BY changed ASC LIMIT 0 , 1", array(':nid' => $nid, ':time' => $last_visit))->fetchField();
+      }
+    }
+    else {
+      if (isset($_COOKIE['gmc_guest'])) {
+        $user_visit = unserialize($_COOKIE['gmc_guest']);
+        if (isset($user_visit['gmc_guest'][$nid])) {
+          $last_visit = $user_visit['gmc_guest'][$nid];
+          $cid = db_query("SELECT cid FROM {comment} WHERE nid = :nid AND changed > :time ORDER BY changed ASC LIMIT 0 , 1", array(':nid' => $nid, ':time' => $last_visit))->fetchField();
+        } else {
+          $new_topic = 1;
+        }
+      }
+    }
+    if(empty($cid)) {
+      $cid = db_query("SELECT c.cid FROM {comment} c WHERE c.nid = :nid ORDER BY c.created DESC", array(':nid' => $nid))->fetchField();
+    }
+    $total_post = '';
+    $total_post = db_query("SELECT c.cid FROM {comment} c WHERE c.nid = :nid", array(':nid' => $nid))->fetchAll();
+    $total_pages = 0;
+    if (!empty($total_post)) {
+      foreach($total_post as $key => $post_cid) {
+        if($post_cid->cid == $cid){
+          break;
+        }
+      }
+      $total_list = 20;
+      if($key > $total_list) {
+        $total_pages = (int) ($key / $total_list);
+        $rest = $key % $total_list;
+        if($rest = 0) {
+          $total_pages = $total_pages - 1;
+        }
+      }
+    }
+    $var[$x]['cid']= $cid;
+    $var[$x]['total_pages']= $total_pages;
+    $x++;
+  }
+  return theme('support_latest_forum_block', array('var' => $var, 'html' => $html)); 
+}
+
+//here you are registering your default tpl for the above block 
+function forum_support_theme() {   
+  return array(
+    'support_vidio_res_block' => array(
+      'template' => 'template/vidio_res_block',  //leave off .tpl.php
+      'variables' => array('items' => NULL,),
+    ), 
+    'support_latest_forum_block' => array(
+      'template' => 'template/latest_forum_block',  //leave off .tpl.php
+      'variables' => array('items' => NULL,),
+    ),  
+    'guitar_forums' => array(
+      'template' => 'guitar-forums',
+      'variables' => array('forums' => NULL, 'topics' => NULL, 'parents' => NULL, 'tid' => NULL, 'sortby' => NULL, 'forum_per_page' => NULL),
+    ),
+    'guitar_forum_list' => array(
+      'template' => 'guitar-forum-list',
+      'variables' => array('forums' => NULL, 'parents' => NULL, 'tid' => NULL),
+    ),
+    'guitar_forum_topic_list' => array(
+      'template' => 'guitar-forum-topic-list',
+      'variables' => array('tid' => NULL, 'topics' => NULL, 'sortby' => NULL, 'forum_per_page' => NULL),
+    ),
+    'guitar_forum_icon' => array(
+      'template' => 'guitar-forum-icon',
+      'variables' => array('new_posts' => NULL, 'num_posts' => 0, 'comment_mode' => 0, 'sticky' => 0, 'first_new' => FALSE),
+    ),
+    'guitar_forum_submitted' => array(
+      'template' => 'guitar-forum-submitted',
+      'variables' => array('topic' => NULL),
+    ),   
+  ); 
+}
+
+function forum_support_node_view($node, $view_mode, $langcode) {
+  global $user;
+    if ($node->type=="forum"){
+        
+        if ($view_mode == 'full'){
+              if (!in_array('administrator', $user->roles)) {
+               //   drupal_access_denied();
+              }
+           }
+         return $node;
+    }   
+}
+// Set access control for froum data display;
+function forum_support_menu_alter(&$items){
+  $items['forum/%forum_forum']['access arguments'][0] = 'access forum data';
+} 
+
+/**
+* Implementation of hook_menu
+*/
+function forum_support_menu() {
+  $items = array();
+  $items['admin/config/system/import/forum'] = array(
+    'title' => 'forum import settings',
+    'page callback' => 'forum_news_data_block',
+    'type' => MENU_NORMAL_ITEM,
+    // Page callback, etc. need to be added here.
+  );
+  $items['guitar_forum'] = array(
+    'title' => 'Forums',
+    'page callback' => 'guitar_forum_page',
+    'access arguments' => array('access content'),
+    'file' => 'guitar.forum.pages.inc',
+  );
+  $items['guitar_forum/%forum_forum'] = array(
+    'title' => 'Forums',
+    'page callback' => 'guitar_forum_page',
+    'page arguments' => array(1),
+    'access arguments' => array('access content'),
+    'file' => 'guitar.forum.pages.inc',
+  );
+  
+  //Menu for test site jump form at guitar forum.
+  $items['guitar-forum-site-jump'] = array(
+    'title' => '',
+    'description' => 'jump form at guitar forum',
+    'page callback' => 'guitar_forum_site_jump',
+    'access callback' => TRUE,
+  );
+
+  //Menu for test site jump form at guitar forum.
+  $items['gmc-multi-page-jump'] = array(
+    'title' => '',
+    'description' => 'Update comment body link',
+    'page callback' => 'gmc_multi_page_jump',
+    'access callback' => TRUE,
+  );
+  //Menu for gmc-comment-check to check
+  //that comment has visible or not.
+  $items['gmc-comment-check'] = array(
+    'title' => '',
+    'description' => 'gmc comment check',
+    'page callback' => 'gmc_comment_check',
+    'access callback' => TRUE,
+    'type' => MENU_LOCAL_TASK,
+  );
+  //Menu for Student Videos list
+  $items['student-videos'] = array(
+    'title' => '',
+    'description' => 'gmc Student Videos',
+    'page callback' => 'gmc_student_videos',
+    'access callback' => TRUE,
+    'type' => MENU_LOCAL_TASK,
+  );
+      //Menu for Student Videos list
+  $items['guitar_forum2'] = array(
+    'title' => '',
+    'description' => 'gmc Student Videos',
+    'page callback' => 'guitar_forum2_callback',
+    'page arguments' => array(1),
+    'access callback' => TRUE,
+    'type' => MENU_LOCAL_TASK,
+  );
+    //Menu for Student Videos list
+  $items['guitar_forum2/%'] = array(
+    'title' => '',
+    'description' => 'gmc Student Videos',
+    'page callback' => 'guitar_forum2_callback',
+    'page arguments' => array(1),
+    'access callback' => TRUE,
+    'type' => MENU_LOCAL_TASK,
+  );
+  return $items;
+}
+
+/**
+* Implementation of hook_admin_paths_alter
+*/
+/*function forum_support_admin_paths_alter(&$paths) {
+  $paths['node/add/forum'] = false;
+  return $paths;
+}*/
+/**
+* Implementation of hook_js_alter
+*/
+function forum_support_js_alter(&$js) {
+  if((arg(0) == 'node' && arg(1) == 'add') || (arg(0) == 'cart') || (arg(0) == 'comment' && arg(1) == 'reply')) {
+    unset(
+      $js['sites/all/themes/gmc_v2/js/jquery.bpopup.min.js'],
+      $js['sites/all/themes/gmc_v2/js/jquery.countdown.js'],
+      $js['sites/all/themes/gmc_v2/js/jquery.hoverIntent.js'],
+      $js['sites/all/themes/gmc_v2/js/mootools.js'],
+      $js['sites/all/themes/gmc_v2/js/jquery.js']
+    );
+  }
+  //print "<pre>";print_r($js);exit;
+}
+/*
+ *  Get News data from wiki
+ */
+function forum_news_data_block() {
+ error_reporting(E_ALL);
+ ini_set("display_errors", 1);
+  $url = 'http://' . $_SERVER['HTTP_HOST'] . '/wiki/index.php?title=Main_Page';
+  $wikiContent = fetchWikiArticle($url);
+  $ex = explode('<div class="thumb tright">',strip_tags($wikiContent,'<a><p><img><div>'));
+    $wiki = '<ul>';
+    foreach($ex as $key => $ex) {
+      
+      if (empty($ex) || $ex == '</div>' || $ex == NULL || $ex == " " || $key == 0) continue;
+      $wiki .= '<li class="wiki"><div class="thumb tright">'.$ex.'</li>';
+    }
+    $wiki .= '</ul>';
+  return $wiki;
+}
+
+function fetchWikiArticle($url) {
+    $result = fetchUrl($url);
+    //first we find '<span class="mw-headline">GMC Community</span>'
+    $pos = strpos($result, '<span class="mw-headline" id="GMC_Community">GMC Community</span>');
+    /*'<span class="mw-headline">GMC Community</span>'*/
+    //then we find the next new <tr> after it
+    //then we find the next </tr> after it
+    return fetchString($result, '<tr>', '</tr>', $pos);
+
+}
+
+function fetchUrl($url) {
+    $userAgent = (isset($_SERVER) && isset($_SERVER['HTTP_USER_AGENT'])) ? $_SERVER['HTTP_USER_AGENT'] : null;
+    $ch = curl_init();
+    //return result instead of writing it
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    //The number of seconds to wait while trying to connect. Use 0 to wait indefinitely. 
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 30);
+    //The maximum number of seconds to allow cURL functions to execute. 
+    curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+    if ($userAgent != null) {
+      curl_setopt($ch, CURLOPT_USERAGENT, $userAgent);
+    }
+    //The URL to fetch. This can also be set when initializing a session with curl_init(). 
+    curl_setopt($ch, CURLOPT_URL, $url);
+
+    $result = curl_exec($ch);
+    curl_close($ch);
+
+    return $result;
+
+}
+function fetchString($rawhtml, $startString, $endString, $rootpos) {
+
+    $start = strpos($rawhtml, $startString, (int)$rootpos);
+    if($start !== FALSE) {
+      $end = strpos($rawhtml, $endString, $start);
+    } else {
+      return FALSE;
+    }
+    if($start !== FALSE && $end !== FALSE && $start < $end) {
+      return substr($rawhtml, $start, $end - $start + strlen($endString));
+    } else {
+      return FALSE;
+    }
+}
+
+
+/**
+ * Implements hook_form_alter()
+ */
+function forum_support_form_alter(&$form, &$form_state, $form_id){
+  global $user;
+  if ($form_id == 'views_exposed_form' && ($form['#id'] == 'views-exposed-form-user-forum-post-page' || $form['#id'] == 'views-exposed-form-user-personal-board-page')) {
+    array_push($form['#submit'], 'forum_support_exposed_form_submit');
+  }
+  else if ($form_id == 'forum_node_form') {
+    //print "<pre>";print_r($form['field_upload_files']);exit;
+    if(!in_array('administrator', $user->roles)) {
+      $form['body']['und']['0']['#format'] = 'general_full_html_admin';
+    }
+    if(arg(0) == 'node' && arg(2) == 'edit') {
+      $form['actions']['submit']['#value'] = 'Update Topic';
+      $form['actions']['delete']['#value'] = 'Delete Topic';
+    }
+    else {
+      $form['actions']['submit']['#value'] = 'Post New Topic';
+    }
+    $form['actions']['preview']['#value'] = 'Preview Post';
+    if(isset($_GET['forum']) && $_GET['forum'] != '') {
+      $form['taxonomy_forums']['und']['#default_value'] = $_GET['forum'];
+    }
+    if (isset($form_state['node_preview'])) {
+      $body = $form['body']['und']['0']['#default_value'];
+      $pattern = array(
+        '/<iframe allowscriptaccess=\"always\" frameborder=\"0\" height=\"81\" src=\"(.*?)\" type=\"application\/x\-shockwave\-flash\" width=\"745\"><\/iframe>/',
+        '/<iframe frameborder=\"0\" height=\"81\" src=\"(.*?)\" width=\"745\"><\/iframe>/',
+        '/<iframe frameborder=\"0\" height=\"268\" src=\"https?\:\/\/(www\.)?youtube\.com\/embed\/(.*?)\?autoplay\=0\" type=\"text\/html\" width=\"427\"><\/iframe>/',
+        '/<iframe frameborder=\"0\" height=\"268\" src=\"https?\:\/\/(www\.)?youtube\.com\/embed\/(.*?)\?autoplay\=0\" width=\"427\"><\/iframe>/',
+      );
+      $replacement = array(
+        '<object height="81" width="100%"><param name="movie" value="$1"/><param name="allowscriptaccess" value="always"/><embed allowscriptaccess="always" height="81" src="$1" type="application/x-shockwave-flash" width="100%"/></object>',
+        '<object height="81" width="100%"><param name="movie" value="$1"/><param name="allowscriptaccess" value="always"/><embed allowscriptaccess="always" height="81" src="$1" type="application/x-shockwave-flash" width="100%"/></object>',
+        '<embed width="427" height="268" src="http://www.youtube.com/v/$2" type="application/x-shockwave-flash"></embed>',
+        '<embed width="427" height="268" src="http://www.youtube.com/v/$2" type="application/x-shockwave-flash"></embed>',
+      );
+      //Now Replace the tag data
+      $body = preg_replace($pattern, $replacement, $body);
+      $form['#prefix'] = '<div class="borderwrap" style=" margin-bottom: 25px; ">
+                  <div class="formsubtitle">Post Preview</div>
+                  <div class="row1" style="padding-bottom:1px;">
+                    <div class="postcolor" style="padding:4px;">'.$body.'</div>
+                  </div>
+                </div>';
+    }
+  }
+  else if ($form_id == 'comment_form') {
+    $form['comment_body']['und']['0']['#format'] = 'forum_fast_reply';
+    $form['actions']['submit']['#value'] = 'Add Reply';
+    $form['actions']['preview']['#value'] = 'Preview Post';
+    if(arg(0) == 'guitar_forum_topic' && is_numeric(arg(1))) {
+      //print "<pre>";print_r($form['actions']);exit;
+      $form['actions']['submit']['#weight'] = 1;
+      $form['actions']['preview']['#value'] = 'More Options';
+      $form['comment_body']['und']['0']['#default_value'] = '&nbsp;&nbsp;';
+      $form['#validate'][] = 'fast_reply_comment_form_validate';
+    }
+  }
+  else if($form_id == 'comment_node_forum_form'){
+    if(arg(0) == 'comment' && arg(1) == 'reply' && is_numeric(arg(2))) {
+      //print "<pre>";print_r($_SESSION);exit;
+      if(!in_array('administrator', $user->roles)) {
+        $form['comment_body']['und']['0']['#format'] = 'general_full_html_admin';
+      }
+      if(isset($_SESSION['fast_reply_body'])) {
+        if($_SESSION['fast_reply_body'] != '<p>&nbsp;&nbsp;</p>') {
+          $form['comment_body']['und']['0']['#default_value'] = $_SESSION['fast_reply_body'];
+          $form_state['comment_preview'] = array('comment_preview');
+          unset($_SESSION['fast_reply_body']);
+        }
+      }
+      $form['actions']['submit']['#value'] = 'Add Reply';
+      $form['actions']['preview']['#value'] = 'Preview Post';
+      //adding html tag in comment form
+      $node_data = node_load(arg(2));
+      //Comment preview
+      if(isset($form_state['comment_preview'])) {
+      //print "<pre>";print_r($form);exit;
+        $body = $form['comment_body']['und']['0']['#default_value'];
+        $pattern = array(
+          '/<iframe allowscriptaccess=\"always\" frameborder=\"0\" height=\"81\" src=\"(.*?)\" type=\"application\/x\-shockwave\-flash\" width=\"745\"><\/iframe>/',
+          '/<iframe frameborder=\"0\" height=\"81\" src=\"(.*?)\" width=\"745\"><\/iframe>/',
+          '/<iframe frameborder=\"0\" height=\"268\" src=\"https?\:\/\/(www\.)?youtube\.com\/embed\/(.*?)\?autoplay\=0\" type=\"text\/html\" width=\"427\"><\/iframe>/',
+          '/<iframe frameborder=\"0\" height=\"268\" src=\"https?\:\/\/(www\.)?youtube\.com\/embed\/(.*?)\?autoplay\=0\" width=\"427\"><\/iframe>/',
+        );
+        $replacement = array(
+          '<object height="81" width="100%"><param name="movie" value="$1"/><param name="allowscriptaccess" value="always"/><embed allowscriptaccess="always" height="81" src="$1" type="application/x-shockwave-flash" width="100%"/></object>',
+          '<object height="81" width="100%"><param name="movie" value="$1"/><param name="allowscriptaccess" value="always"/><embed allowscriptaccess="always" height="81" src="$1" type="application/x-shockwave-flash" width="100%"/></object>',
+          '<embed width="427" height="268" src="http://www.youtube.com/v/$2" type="application/x-shockwave-flash"></embed>',
+          '<embed width="427" height="268" src="http://www.youtube.com/v/$2" type="application/x-shockwave-flash"></embed>',
+        );
+        //Now Replace the tag data
+        $body = preg_replace($pattern, $replacement, $body);
+        $form['#prefix'] = '<div class="borderwrap forum-comment-preview" style=" margin-bottom: 25px; ">
+                  <div class="formsubtitle">Post Preview</div>
+                  <div class="row1" style="padding-bottom:1px;">
+                    <div class="postcolor" style="padding:4px;">'.$body.'</div>
+                  </div>
+                </div>
+                <div class="borderwrap forum-comment-reply-form">
+                  <table cellspacing="0" class="ipbtable">
+                    <tbody>
+                      <tr>
+                        <td class="maintitle" colspan="2">&nbsp;&nbsp;Replying to '.$node_data->title.'</td>
+                      </tr>
+                    </tbody>
+                  </table>';
+      }
+      else {
+      $form['#prefix'] = '<div class="borderwrap forum-comment-reply-form">
+                  <table cellspacing="0" class="ipbtable">
+                    <tbody>
+                      <tr>
+                        <td class="maintitle" colspan="2">&nbsp;&nbsp;Replying to '.$node_data->title.'</td>
+                      </tr>
+                    </tbody>
+                  </table>';
+      }
+      $form['#suffix'] = '</div>';
+      $form['comment_body']['#prefix'] = '<div style="padding:0px 1px 0px 1px" class="bg1">
+                    <div class="darkrow3">';
+      //adding html tag in upload file field
+      /*$form['field_upload_files']['und']['#file_upload_title'] = '';
+      $form['field_upload_files']['und']['#file_upload_description'] = 'Max. single upload size: 302.68MB';
+      $form['field_upload_files']['#prefix'] = '<div id="ips-attach-div-parent" class="attach-parentdiv" style="clear: both; display:none;">
+          <table style=" width: 100%; ">
+            <tr>
+              <td align="left"><b>Select a file</b></td>
+              <td align="right">';
+      $form['field_upload_files']['#suffix'] = '</td></tr></table></div></div></div>';*/
+      $form['comment_body']['#suffix'] = '</div></div>';
+      unset($form['field_upload_files']);
+      //Adding HTML tag for replies checkbox
+      $form['field_forum_replies']['#prefix'] = '  <table cellspacing="0" class="ipbtable">
+          <tbody>
+            <tr>
+              <td colspan="2" align="center" class="bg1">
+                <div style="width:100%;" align="center" class="borderwrap">
+                  <table cellpadding="0" cellspacing="0" width="100%" class="darkrow3">
+                    <tbody>
+                      <tr>
+                        <td align="right" width="20%">
+                          <strong>Post Options</strong>
+                        </td>
+                        <td align="left" width="80%">';
+      $form['field_forum_replies']['#suffix'] = '</td></tr></tbody></table></div></td></tr>';
+      //Adding HTML tag for submit button
+      $block = module_invoke('views', 'block_view', '162f3bb04202d5bc3aa54b699ef235b3', arg(2));
+      $topic_replies = drupal_render($block['content']);
+      $form['actions']['#prefix'] = '<tr>
+          <td class="formbuttonrow" colspan="2">';
+      $form['actions']['#suffix'] = '</td></tr></tbody></table></div>'.$topic_replies;
+    }
+    else if(arg(0) == 'comment' && is_numeric(arg(1)) && arg(2) == 'edit') {
+      if(!in_array('administrator', $user->roles)) {
+        $form['comment_body']['und']['0']['#format'] = 'general_full_html_admin';
+      }
+      $form['actions']['submit']['#value'] = 'Update Reply';
+      $form['actions']['preview']['#value'] = 'Preview Post';
+      //adding html tag in comment form
+      $comment_nid = db_query("SELECT nid FROM comment WHERE cid = :cid", array(':cid' => arg(1)))->fetchField();
+      $node_data = node_load($comment_nid);
+      //Comment preview
+      if(isset($form_state['comment_preview'])) {
+        $body = $form['comment_body']['und']['0']['#default_value'];
+        $pattern = array(
+          '/<iframe allowscriptaccess=\"always\" frameborder=\"0\" height=\"81\" src=\"(.*?)\" type=\"application\/x\-shockwave\-flash\" width=\"745\"><\/iframe>/',
+          '/<iframe frameborder=\"0\" height=\"81\" src=\"(.*?)\" width=\"745\"><\/iframe>/',
+          '/<iframe frameborder=\"0\" height=\"268\" src=\"https?\:\/\/(www\.)?youtube\.com\/embed\/(.*?)\?autoplay\=0\" type=\"text\/html\" width=\"427\"><\/iframe>/',
+          '/<iframe frameborder=\"0\" height=\"268\" src=\"https?\:\/\/(www\.)?youtube\.com\/embed\/(.*?)\?autoplay\=0\" width=\"427\"><\/iframe>/',
+        );
+        $replacement = array(
+          '<object height="81" width="100%"><param name="movie" value="$1"/><param name="allowscriptaccess" value="always"/><embed allowscriptaccess="always" height="81" src="$1" type="application/x-shockwave-flash" width="100%"/></object>',
+          '<object height="81" width="100%"><param name="movie" value="$1"/><param name="allowscriptaccess" value="always"/><embed allowscriptaccess="always" height="81" src="$1" type="application/x-shockwave-flash" width="100%"/></object>',
+          '<embed width="427" height="268" src="http://www.youtube.com/v/$2" type="application/x-shockwave-flash"></embed>',
+          '<embed width="427" height="268" src="http://www.youtube.com/v/$2" type="application/x-shockwave-flash"></embed>',
+        );
+        //Now Replace the tag data
+        $body = preg_replace($pattern, $replacement, $body);
+        $form['#prefix'] = '<div class="borderwrap forum-comment-preview" style=" margin-bottom: 25px; ">
+                  <div class="formsubtitle">Post Preview</div>
+                  <div class="row1" style="padding-bottom:1px;">
+                    <div class="postcolor" style="padding:4px;">'.$body.'</div>
+                  </div>
+                </div>
+                <div class="borderwrap forum-comment-reply-form">
+                  <table cellspacing="0" class="ipbtable">
+                    <tbody>
+                      <tr>
+                        <td class="maintitle" colspan="2">&nbsp;&nbsp;Update reply '.$node_data->title.'</td>
+                      </tr>
+                    </tbody>
+                  </table>';
+      }
+      else {
+      $form['#prefix'] = '<div class="borderwrap forum-comment-reply-form">
+                  <table cellspacing="0" class="ipbtable">
+                    <tbody>
+                      <tr>
+                        <td class="maintitle" colspan="2">&nbsp;&nbsp;Update reply '.$node_data->title.'</td>
+                      </tr>
+                    </tbody>
+                  </table>';
+      }
+      $form['#suffix'] = '</div>';
+      $form['comment_body']['#prefix'] = '<div style="padding:0px 1px 0px 1px" class="bg1">
+                    <div class="darkrow3">';
+      $form['comment_body']['#suffix'] = '</div></div>';
+      $form['field_forum_replies']['#prefix'] = '  <table cellspacing="0" class="ipbtable">
+          <tbody>
+            <tr>
+              <td colspan="2" align="center" class="bg1">
+                <div style="width:100%;" align="center" class="borderwrap">
+                  <table cellpadding="0" cellspacing="0" width="100%" class="darkrow3">
+                    <tbody>
+                      <tr>
+                        <td align="right" width="20%">
+                          <strong>Post Options</strong>
+                        </td>
+                        <td align="left" width="80%">';
+      $form['field_forum_replies']['#suffix'] = '</td></tr></tbody></table></div></td></tr>';
+      //Adding HTML tag for submit button
+      $form['actions']['#prefix'] = '<tr>
+          <td class="formbuttonrow" colspan="2">';
+      $form['actions']['#suffix'] = '</td></tr></tbody></table></div>';
+    }
+  }  
+  return $form;
+}
+/**
+ * Callback function fast_reply_comment_form_validate
+ * to validate fast reply form and redirect to comment reply form
+ **/
+function fast_reply_comment_form_validate($form, &$form_state){
+  if(isset($form_state['input']['op'])) {
+    $body = $form_state['input']['comment_body']['und']['0']['value'];
+    $button = $form_state['input']['op'];
+    if($button == 'More Options') {
+      $_SESSION['fast_reply_body'] = $body;
+      drupal_goto('comment/reply/'.arg(1));
+    }
+  }
+  else {
+    form_set_error('form', 'Invalid submit');
+  }
+}
+/**
+ * Implements hook_views_bulk_operations_form_alter()
+ */
+function forum_support_views_bulk_operations_form_alter(&$form, &$form_state, $vbo) {
+  global $user;
+  //print "<pre>";print_r($form['select']);exit;    
+  if($form['#form_id'] =='views_form_user_personal_board_page' || $form['#form_id'] =='views_form_user_personal_board_page_1'){
+    $user_detail = (array)user_load($user->uid);
+    $roles = array("administrator", "moderator");
+    $roles_result = array_intersect($roles, $user_detail['roles']);
+    if(empty($roles_result)){
+      unset($form['views_bulk_operations']);
+    }
+    $form['select']['#prefix'] = '<div style="display: none;">';
+    $form['select']['#suffix'] = '</div>';
+    if(in_array("administrator", $user_detail['roles']) || in_array("moderator", $user_detail['roles'])) {
+      $form['select']['#prefix'] = '<div style="display: block;">';
+      $form['select']['#suffix'] = '</div>';
+    }
+    $form['select']['submit']['#value'] = 'With Selected (0)';
+    unset($form['select']['operation']['#options'][0]);
+  }
+  if($form['#form_id'] =='views_form_gmc_forum_topic_page_page'){
+    $user_detail = (array)user_load($user->uid);
+    $roles = array("administrator", "moderator");
+    $roles_result = array_intersect($roles, $user_detail['roles']);
+    if(empty($roles_result)){
+      unset($form['views_bulk_operations']);
+    }
+    $form['select']['#prefix'] = '<div style="display: none;">';
+    $form['select']['#suffix'] = '</div>';
+    if(in_array("administrator", $user_detail['roles']) || in_array("moderator", $user_detail['roles'])) {
+      $form['select']['#prefix'] = '<div style="display: block;">';
+      $form['select']['#suffix'] = '</div>';
+    }
+    //print "<pre>";print_r($form['select']);exit;
+    $form['select']['submit']['#value'] = 'With Selected (0)';
+    unset($form['select']['operation']['#options'][0]);
+  }
+}
+/**
+ * Callback function for exposed form submit
+ */
+function forum_support_exposed_form_submit(&$form, &$form_state) {
+  $tid = $form_state['input']['taxonomy_forums_tid'];
+  if($tid != 'All') {
+    $form_state['no_redirect'] = FALSE;
+    $form_state['redirect'] = 'forum/'.$tid;
+    $form_state['rebuild'] = FALSE;
+  }
+}
+/**
+ * Callback function form Jump on view page
+ * Return $output;
+ */
+function user_pager_jump($id, $type) {
+  global $user;
+  $roles = array("administrator", "moderator");
+  $roles_result = array_intersect($roles, $user->roles);
+  $output = '';
+  $reply_lock = '';
+  $add_topic = '';
+  if($type == 'nid_blank') {
+    $node_detail = node_load($id);
+    $tid = $node_detail->taxonomy_forums['und']['0']['tid'];
+    if($node_detail->comment == 1) {
+      $reply_lock = '<img src="/sites/all/themes/gmc_v2/images/t_closed.gif" border="0" alt="Closed Topic">';
+    }
+    else {
+      if($user->uid != 0 && (forum_access_access('create', $tid) || !empty($roles_result))) {
+        $reply_lock = '<a href="javascript:void();" class="add-forum-topic-reply" target="_self"><img src="/sites/all/themes/gmc_v2/images/t_reply.gif" border="0" alt="Reply to this topic"></a>';
+      }
+    }
+    if($user->uid != 0 && (forum_access_access('create', $tid) || !empty($roles_result))) {
+      $add_topic = '<a href="/node/add/forum?forum='.$tid.'"><img src="/sites/all/themes/gmc_v2/images/t_new.gif" border="0" alt="Start new topic"></a>';
+    }
+    $output = '<div class="new-forum-topic">'.$reply_lock.$add_topic.'</div>';
+  }
+  else if($type == 'nid_blank_bottom') {
+    $node_detail = node_load($id);
+    $tid = $node_detail->taxonomy_forums['und']['0']['tid'];
+    if($node_detail->comment == 1) {
+      $reply_lock = '<img src="/sites/all/themes/gmc_v2/images/t_closed.gif" border="0" alt="Closed Topic">';
+    }
+    else {
+      if($user->uid != 0 && (forum_access_access('create', $tid) || !empty($roles_result))) {
+        $reply_lock = '<a href="/comment/reply/'.$id.'" class="add-forum-topic-fast-reply"><img src="/sites/all/themes/gmc_v2/images/t_qr.gif" border="0" alt="Reply to this topic"></a><a href="javascript:void();" class="add-forum-topic-reply" target="_self"><img src="/sites/all/themes/gmc_v2/images/t_reply.gif" border="0" alt="Reply to this topic"></a>';
+      }
+    }
+    if($user->uid != 0 && (forum_access_access('create', $tid) || !empty($roles_result))) {
+      $add_topic = '<a href="/node/add/forum?forum='.$tid.'"><img src="/sites/all/themes/gmc_v2/images/t_new.gif" border="0" alt="Start new topic"></a>';
+    }
+    $output = '<div class="new-forum-topic">'.$reply_lock.$add_topic.'</div>';
+  }
+  else {
+    $count = 0;
+    if ($type == 'uid') {
+      $count = db_query("SELECT COUNT(c.cid) FROM {comment} c INNER JOIN node n on n.nid = c.nid WHERE c.uid = :uid AND n.type= :type", array(':uid' => $id, ':type' => 'forum'))->fetchField();
+    }
+    else if($type == 'user_topic') {
+      $count = $id;
+    }
+    else if($type == 'uid_post') {
+      $count = $id;
+    }    
+    else if($type == 'tid') {
+      $count = db_query("SELECT COUNT(n.nid) FROM {node} n INNER JOIN {field_data_taxonomy_forums} tf ON tf.entity_id = n.nid AND (tf.entity_type = 'node' AND tf.deleted = '0') WHERE tf.taxonomy_forums_tid = :id AND n.type = :type AND n.status = :status", array(':id' => $id, ':type' => 'forum', ':status' => 1))->fetchField();
+    }
+    else if($type == 'nid' ||  $type == 'nid_bottom') {
+      $count = db_query("SELECT count FROM drupal_mysql_views.node_comment_count WHERE nid = :nid", array(':nid' => $id))->fetchField();
+    }
+    else if($type == 'new-posts') {
+      $count = db_query("SELECT COUNT(nid) FROM {node} WHERE type = :type AND status = :status", array(':type' => 'forum', ':status' => 1))->fetchField();
+    }
+    $total_list = 30;
+    if(arg(0) == 'guitar_forum_topic' || $type == 'uid_post') {
+      $total_list = 20;
+    }
+    $total_pages = 0;
+    if($count > $total_list){
+      $total_pages = (int) ($count / $total_list);
+      $rest = $count % $total_list;
+      if($rest > 0) {
+        $total_pages = $total_pages + 1;
+      }
+    }
+    $_SESSION['forum-topic-page-count'] = $total_pages - 1;
+    $output = '<div class="user-pager-jump"><span class="pagelink" id="page-jump-2">'.$total_pages.' Pages <img src="/sites/all/themes/gmc_v2/images/menu_action_down.gif" alt="V" title="Open Menu" border="0"></span>';
+    $form = drupal_get_form('user_pager_jump_form');
+    $output .= '<div class="popupmenu" id="page-jump-2_menu"><div class="popupmenu-category">Jump to Page</div><div class="popupmenu-item-last">'.drupal_render($form).'</div></div></div>';
+    //add new forum topic
+    if($type == 'nid') {
+      $node_detail = node_load($id);
+      $tid = $node_detail->taxonomy_forums['und']['0']['tid'];
+      if($node_detail->comment == 1) {
+        $reply_lock = '<img src="/sites/all/themes/gmc_v2/images/t_closed.gif" border="0" alt="Closed Topic">';
+      }
+      else {
+        if($user->uid != 0 && (forum_access_access('create', $tid) || !empty($roles_result))) {
+          $reply_lock = '<a href="javascript:void();" class="add-forum-topic-reply" target="_self"><img src="/sites/all/themes/gmc_v2/images/t_reply.gif" border="0" alt="Reply to this topic"></a>';
+        }
+      }
+      if($user->uid != 0 && (forum_access_access('create', $tid) || !empty($roles_result))) {
+        $add_topic = '<a href="/node/add/forum?forum='.$tid.'"><img src="/sites/all/themes/gmc_v2/images/t_new.gif" border="0" alt="Start new topic"></a>';
+      }
+      $output .= '<div class="new-forum-topic">'.$reply_lock.$add_topic.'</div>';
+    }
+    else if($type == 'nid_bottom') {
+      $node_detail = node_load($id);
+      $tid = $node_detail->taxonomy_forums['und']['0']['tid'];
+      if($node_detail->comment == 1) {
+        $reply_lock = '<img src="/sites/all/themes/gmc_v2/images/t_closed.gif" border="0" alt="Closed Topic">';
+      }
+      else {
+        if($user->uid != 0 && (forum_access_access('create', $tid) || !empty($roles_result))) {
+          $reply_lock = '<a href="/comment/reply/'.$id.'" class="add-forum-topic-fast-reply"><img src="/sites/all/themes/gmc_v2/images/t_qr.gif" border="0" alt="Reply to this topic"></a><a href="javascript:void();" class="add-forum-topic-reply" target="_self"><img src="/sites/all/themes/gmc_v2/images/t_reply.gif" border="0" alt="Reply to this topic"></a>';
+        }
+      }
+      if($user->uid != 0 && (forum_access_access('create', $tid) || !empty($roles_result))) {
+        $add_topic = '<a href="/node/add/forum?forum='.$tid.'"><img src="/sites/all/themes/gmc_v2/images/t_new.gif" border="0" alt="Start new topic"></a>';
+      }
+      $output .= '<div class="new-forum-topic">'.$reply_lock.$add_topic.'</div>';
+    }
+    else if($type != 'uid' && $type != 'new-posts' && $user->uid != 0 && (forum_access_access('create', $id) || !empty($roles_result))){
+      $output .= '<div class="new-forum-topic"><a href="/node/add/forum?forum='.$id.'"><img src="/sites/all/themes/gmc_v2/images/t_new.gif" border="0" alt="Start new topic"></a></div>';
+    }
+  }
+  return $output;
+}
+
+/*
+ * Implements form API
+ * form Jump on view page
+ * @return $form
+ */
+function user_pager_jump_form() {
+  $form['page_number'] = array(
+    '#type' => 'textfield', 
+    '#title' => t(''), 
+    '#size' => 5, 
+    '#maxlength' => 128, 
+  );
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Go'),
+  );
+  return $form;
+}
+/**
+ * Submit API for Delete/Insert/Update User Folder.
+ * @return ''
+ */
+function user_pager_jump_form_submit(&$form, &$form_state) {
+  $page_number = $form_state['input']['page_number']-1;
+  $tid = 'All';
+  if(isset($_GET['showforum'])) {
+    $address = 'guitar_forum';
+    $showforum = $_GET['showforum'];
+    drupal_goto($address, array('query' => array('title' => '', 'page' => $page_number, 'showforum' => $showforum)));
+  }
+  else {
+    $address = arg(0).'/'.arg(1);
+    drupal_goto($address, array('query' => array('taxonomy_forums_tid' => $tid, 'page' => $page_number)));
+  }
+}
+
+//$options = array('Close Topics', 'Open Topics', 'Pin Topics', 'Unpin Topics', 'Move Topics', 'Merge Topics', 'Delete Topics', 'Set Visible (Approve)', 'Set Invisible (Unapprove)');
+/**
+ * Implementation of hook_action_info().
+ */
+function forum_support_action_info() {
+	$action = array(
+		'close_topics' => array(
+			'label' => t('Close Topics'),
+			'type' => 'node',
+			'configurable' => FALSE,
+			'triggers' => array('node_presave', 'comment_insert', 'comment_update', 'comment_delete'),
+		),
+		'open_topics' => array(
+			'label' => t('Open Topics'),
+			'type' => 'node',
+			'configurable' => FALSE,
+			'triggers' => array('node_presave', 'comment_insert', 'comment_update', 'comment_delete'),
+		),
+		'pin_topics' => array(
+			'label' => t('Pin Topics'),
+			'type' => 'node',
+			'configurable' => FALSE,
+			'triggers' => array('node_presave', 'comment_insert', 'comment_update', 'comment_delete'),
+		),
+		'unpin_topics' => array(
+			'label' => t('Unpin Topics'),
+			'type' => 'node',
+			'configurable' => FALSE,
+			'triggers' => array('node_presave', 'comment_insert', 'comment_update', 'comment_delete'),
+		),
+		'move_topics' => array(
+			'label' => t('Move Topics'),
+			'type' => 'node',
+			'configurable' => FALSE,
+			'triggers' => array('node_presave', 'comment_insert', 'comment_update', 'comment_delete'),
+		),
+		'set_visible' => array(
+			'label' => t('Set Visible (Approve)'),
+			'type' => 'node',
+			'configurable' => FALSE,
+			'triggers' => array('node_presave', 'comment_insert', 'comment_update', 'comment_delete'),
+		),
+		'set_invisible' => array(
+			'label' => t('Set Invisible (Unapprove)'),
+			'type' => 'node',
+			'configurable' => FALSE,
+			'triggers' => array('node_presave', 'comment_insert', 'comment_update', 'comment_delete'),
+		),
+	);
+	return $action;
+}
+/**
+ * Action function for close_topics.
+ */
+function close_topics(&$node, $context = array()) {
+  $node->comment = 1;
+  node_save($node);
+}
+/**
+ * Action function for open_topics.
+ */
+function open_topics(&$node, $context = array()) {
+  $node->comment = 2;
+  node_save($node);
+}
+/**
+ * Action function for pin_topics.
+ */
+function pin_topics(&$node, $context = array()) {
+  $forum_node = new stdClass();
+  $forum_node->nid = $node->nid;
+  $forum_node->type = 'forum';
+  $forum_node->field_pin_topics['und'][0]['value'] = 1;
+  field_attach_presave('node', $forum_node);
+  field_attach_update('node', $forum_node);
+}
+/**
+ * Action function for unpin_topics.
+ */
+function unpin_topics(&$node, $context = array()) {
+  $forum_node = new stdClass();
+  $forum_node->nid = $node->nid;
+  $forum_node->type = 'forum';
+  $forum_node->field_pin_topics['und'][0]['value'] = 0;
+  field_attach_presave('node', $forum_node);
+  field_attach_update('node', $forum_node);
+}
+/**
+ * Action function for move_topics.
+ */
+function move_topics(&$node, $context = array()) {
+  $forum_node = new stdClass();
+  $forum_node->nid = $node->nid;
+  $forum_node->type = 'forum';
+  $forum_node->field_move_topics['und'][0]['value'] = 1;
+  $forum_node->field_new_forum['und'][0]['value'] = 0;
+  field_attach_presave('node', $forum_node);
+  field_attach_update('node', $forum_node);
+}
+/**
+ * Action function for set_visible.
+ */
+function set_visible(&$node, $context = array()) {
+  $node->status = 1;
+  node_save($node);
+}
+/**
+ * Action function for set_invisible.
+ */
+function set_invisible(&$node, $context = array()) {
+  $node->status = 0;
+  node_save($node);
+}
+
+/**
+ * Implementation of hook_preprocess_forum_list().
+ * Preprocesses variables for _advanced_forum_preprocess_forum_list.
+ *
+ * @param $variables
+ *   An array containing the following elements:
+ *   - tid: Taxonomy term ID of the current forum.
+ *   - topics: An array of all the topics in the current forum.
+ *   - forum_per_page: The maximum number of topics to display per page.
+ *
+ * @see forum-topic-list.tpl.php
+ * @see theme_forum_topic_list()
+ */
+function forum_support_preprocess_forum_list(&$variables) {
+
+}
+
+function get_last_comment_fo($forumtid) {
+    $cache = &drupal_static(__FUNCTION__, array());
+    if (isset($cache[$forumtid.'fom'])) {
+      return $cache[$forumtid.'fom'];
+    }
+    $term_tree = taxonomy_get_tree(6, $forumtid);
+    if(empty($term_tree)) {
+      $custom_last_post = db_query("SELECT *  FROM drupal_mysql_views.forum_sort_data WHERE taxonomy_forums_tid = :tid ORDER BY forum_sort_data.created DESC LIMIT 0,1", array(':tid' => $forumtid))->fetchAll();
+      
+    }
+    else {
+      $terms = array();
+      foreach($term_tree as $term) {
+        $terms[] = $term->tid;
+      }
+      $custom_last_post = db_query("SELECT * FROM drupal_mysql_views.forum_sort_data WHERE taxonomy_forums_tid IN (:tid) ORDER BY forum_sort_data.created DESC LIMIT 0,1", array(':tid' => implode(',',$terms)))->fetchAll();
+    }
+    if(!empty($custom_last_post)) {
+      $nid = $custom_last_post['0']->nid;
+      $last_visit = '';
+      if($user->uid != 0){
+        $uid = $user->uid;
+        $last_visit = db_query("SELECT timestamp FROM {history} WHERE nid = :nid AND uid = :uid", array(':nid' => $nid, ':uid' => $uid))->fetchField();
+      }
+      else {
+        if(isset($_COOKIE['gmc_guest'])){
+          $user_visit = unserialize($_COOKIE['gmc_guest']);
+          if(isset($user_visit['gmc_guest'][$nid])) {
+            $last_visit = $user_visit['gmc_guest'][$nid];
+          }
+        }
+      }
+      if(empty($last_visit)) {
+        $last_visit = time();
+        $last_cid = db_query("SELECT cid FROM {comment} WHERE nid = :nid AND changed < :time ORDER BY changed ASC LIMIT 0 , 1", array(':nid' => $nid, ':time' => $last_visit))->fetchField();
+      }
+      else {
+        $last_cid = db_query("SELECT cid FROM {comment} WHERE nid = :nid AND changed > :time ORDER BY changed ASC LIMIT 0 , 1", array(':nid' => $nid, ':time' => $last_visit))->fetchField();
+      }
+      if(empty($last_cid)) {
+        $last_cid = $custom_last_post['0']->cid;
+      }
+      $cids = db_query("SELECT cid FROM {comment} c WHERE c.nid = :nid ORDER BY c.created ASC", array(':nid' => $custom_last_post['0']->nid));
+      $all_cids = array();
+      foreach($cids as $cid) {
+        $all_cids[] = $cid->cid;
+      }
+      $position =  array_search($last_cid, $all_cids);
+      $page_number = 0;
+      if($position >= 20){
+        $total_pages = (int) ($position / 20);
+        $rest = $position % 20;
+        if($rest > 0) {
+          $page_number = $total_pages + 1;
+        }
+      }
+      foreach($custom_last_post as $last_post) {
+        $forumlast_post = (object) array(
+          'created' => $last_post->created,
+          'name' => $last_post->name,
+          'uid' => $last_post->uid,
+          'cid' => $last_cid,
+          'nid' => $last_post->nid,
+          'n_title' => $last_post->n_title,
+          'page_number' => $page_number,
+        );
+      }
+    }
+    $cache[$forumtid.'fom'] = $forumlast_post;
+    return $forumlast_post;
+}
+
+/**
+ * Callback function get_uid_by_board_id()
+ * @return uid
+ */
+function get_uid_by_board_id($board_id){
+  $uid = db_query("SELECT entity_id FROM {field_data_field_board_id} WHERE field_board_id_value = :id", array(':id' => $board_id))->fetchField();
+  return $uid;
+}
+/**
+ * Callback function to display site jump form and forum sort form
+ * return $output;
+ **/
+function forum_sort_jump_data_block() {
+  $style = 'display: none;';
+  $forum_jump_form = '&nbsp;';
+  $forum_sort_form = '&nbsp;';
+  if(arg(0) == 'guitar_forum' && isset($_GET['showforum']) && is_numeric($_GET['showforum'])) {
+    $tchild = taxonomy_get_tree(6, $_GET['showforum'], 1, $load_entities = FALSE);
+    $user_detail = array();
+    $uid = get_uid_by_board_id($_GET['showforum']);
+    if (!empty($tchild) && $uid == 0) {
+      $style = 'display: none;';
+    }
+    else {
+      $style = 'display: block;';
+    }
+    $forum_jump = drupal_get_form('gmc_site_jump_form');
+    $forum_jump_form = drupal_render($forum_jump);
+    $forum_sort = drupal_get_form('gmc_forum_sort_form');
+    $forum_sort_form = drupal_render($forum_sort);
+  }
+  else if(arg(0) == 'guitar_forum' && isset($_GET['showforum']) && $_GET['showforum'] == 'new-posts') {
+    $style = 'display: block;';
+    $forum_jump = drupal_get_form('gmc_site_jump_form');
+    $forum_jump_form = drupal_render($forum_jump);
+    $forum_sort_form = '&nbsp;';
+  }
+  else if(arg(0) == 'guitar_forum_topic') {
+    $style = 'display: block;';
+    $forum_jump = drupal_get_form('gmc_site_jump_form');
+    $forum_jump_form = drupal_render($forum_jump);
+    $forum_sort_form = '&nbsp;';
+  }
+  $output = '<div class="activeusers" style="'.$style.'">
+        <div class="row2">
+          <table class="forum-sort-jump" cellspacing="0">
+            <tbody>
+              <tr>
+                <td align="right" width="90%">
+                  <!-- Render Site Jump Form -->
+                  '.$forum_jump_form.'
+                  <!-- Render Forum Sort Form -->
+                  '.$forum_sort_form.'
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>';
+  return $output;
+}
+/**
+ * Test function for guitar_forum_site_jump
+ * URL: guitar-forum-site-jump
+ **/
+function guitar_forum_site_jump() {
+  global $user;
+  $output = "MMM";
+  $output .= drupal_render(drupal_get_form('gmc_online_filter_form'));
+  //print gmc_online_list();
+  return $output;
+}
+/**
+ * Callback function gmc_online_list
+ * to displaying Online user list
+ */
+function gmc_online_list(){
+  $output = "";
+  $interval = REQUEST_TIME - variable_get('user_block_seconds_online', 900);
+  // Select table
+  $query = db_select("sessions", "s");
+  $query->fields("s", array("uid", "hostname"));
+  $query = $query->distinct();
+  $query = $query->condition('s.timestamp', $interval, '>=');
+  if(isset($_GET['show_mem'])) {
+    if($_GET['show_mem'] == 'guest') {
+      $query = $query->condition('s.uid', 0, '=');
+    }
+    else if($_GET['show_mem'] == 'reg'){
+      $query = $query->condition('s.uid', 0, '>');
+    }
+  }
+  $query = $query->extend('TableSort')->extend('PagerDefault')->limit(25);
+  $query = $query->orderBy('s.timestamp', 'DESC');
+  $result = $query->execute();
+
+  $header = array(
+        array('data' => 'Member Name', 'width' => '30%'),
+        array('data' => 'Location', 'width' => '30%'),
+        array('data' => 'Time', 'width' => '20%', 'align' => 'center'),
+        array('data' => '&nbsp;', 'width' => '10%'),
+      );
+  $rows = array();
+  // Looping for filling the table rows
+  $unserialize = array();
+  $x = 1;
+  while($data = $result->fetchObject()){
+    $query = db_select("sessions", "s")
+      ->fields("s", array("session"))
+      ->condition('s.hostname', $data->hostname, '=')
+      ->condition('s.uid', $data->uid, '=')
+      ->condition('s.timestamp', $interval, '>=')
+      ->orderBy('s.timestamp', 'DESC')
+      ->range(0,1);
+    $session_data = $query->execute()->fetchField();
+    $gmc_unserialize = gmc_unserialize_session_date($session_data);
+    $unserialize['gm_online_session'.$x] = $gmc_unserialize['gm_online_session'];
+    $x++;
+  }
+  $order = SORT_DESC;
+  if(isset($_GET['sort_key']) && $_GET['sort_key'] == 'click') {
+    $sort = 'request_time';
+  }
+  else if(isset($_GET['sort_key']) && $_GET['sort_key'] == 'name'){
+    $sort = 'memeber';
+  }
+  if(isset($_GET['sort_order']) && $_GET['sort_order'] == 'asc') {
+    $order = SORT_ASC;
+  }
+  else if(isset($_GET['sort_order']) && $_GET['sort_order'] == 'desc'){
+    $order = SORT_DESC;
+  }
+  $sort_unserialize = gmc_array_sort($unserialize, $sort, $order);
+  foreach($sort_unserialize as $unserialize_data) {
+    if($unserialize_data['uid'] == 0) {
+      $member_name = 'Guest';
+      $image = '&nbsp;';
+    }
+    else {
+      $user_detail = user_load($unserialize_data['uid']);
+      if(array_search('instructor', $user_detail->roles)) {
+        $member_name = '<a href="/instructor/'.$user_detail->uid.'"><span style="color:red">'.ucwords($unserialize_data['memeber']).'</span></a>';
+      }
+      else {
+        $member_name = '<a href="/user/'.$user_detail->uid.'">'.ucwords($unserialize_data['memeber']).'</a>';
+      }
+      $image = '<a href="/messages/new/'.$unserialize_data['uid'].'"><img src="/sites/all/themes/gmc_v2/images/p_pm.gif" border="0" alt="PM"/></a>';
+    }
+    $location = gmc_location_name($unserialize_data['location']);
+    $rows[] = array(
+      array('data' => $member_name, 'class' => 'row1'),
+      array('data' => $location, 'class' => 'row1'),
+      array('data' => 'Today, '.date("H:i A", $unserialize_data['request_time']), 'class' => 'row1'),
+      array('data' => $image, 'class' => 'row1'),
+    );
+  }
+  // Output of table with the paging
+  $output = '<div class="borderwrap guitar_forum_online"><div class="maintitle">&nbsp;&nbsp;Online Users</div>';
+  $output .= theme_table(
+      array(
+      "header" => $header,
+      "rows" => $rows,
+      "attributes" => array('width' => '100%', 'class' => array('ipbtable'), 'cellspacing' => 1),
+      "caption" => "",
+      "colgroups" => array(),
+      "sticky" => "",
+      "empty" => "",
+      )
+    ).theme("pager");
+  //Adding filter form
+  $form = drupal_get_form('gmc_online_filter_form');
+  $output  .= '<div class="gmc-online-filter-form"><span class="online-sort-by"><b>Sort by: &nbsp;</b></span>'.drupal_render($form).'</div>';
+  $output  .= '</div>';
+  return $output;
+}
+/**
+ * Callback function gmc_unserialize_session_date
+ * to unserialize the drupal session date
+ */
+function gmc_unserialize_session_date( $data ) {
+  if(strlen( $data) == 0) {
+    return array();
+  }
+  // match all the session keys and offsets
+  preg_match_all('/(^|;|\})([a-zA-Z0-9_]+)\|/i', $data, $matchesarray, PREG_OFFSET_CAPTURE);
+  $returnArray = array();
+  $lastOffset = null;
+  $currentKey = '';
+  foreach ( $matchesarray[2] as $value ) {
+    $offset = $value[1];
+    if(!is_null( $lastOffset)) {
+      $valueText = substr($data, $lastOffset, $offset - $lastOffset );
+      $returnArray[$currentKey] = unserialize($valueText);
+    }
+    $currentKey = $value[0];
+    $lastOffset = $offset + strlen( $currentKey )+1;
+  }
+  $valueText = substr($data, $lastOffset );
+  $returnArray[$currentKey] = unserialize($valueText);
+  return $returnArray;
+}
+/**
+ * Callback function gmc_location_name
+ * to change last visited URL to a location name
+ */
+function gmc_location_name($string){
+  $delimiters = array("/","?","=","&");
+  $convert_delimiters = str_replace($delimiters, $delimiters[0], $string);
+  $exploded = explode($delimiters[0], $convert_delimiters);
+  if($exploded[1] == 'guitar_forum'){
+    if(array_search('online', $exploded)) {
+      $location = '<a href="/guitar_forum/?act=online">Viewing Online List</a>';
+    }
+    else if(array_search('showforum', $exploded)) {
+      $page_term = taxonomy_term_load($exploded[3]);
+      if(!empty($page_term)) {
+        $location = 'Viewing Forum: <a href="/guitar_forum/?showforum='.$page_term->tid.'">'.$page_term->name.'</a>';
+      }
+    }
+    else {
+      $location = 'Viewing Board Index';
+    }
+  }
+  else if($exploded[1] == 'guitar_forum_topic'){
+    $page_node = node_load($exploded[2]);
+    if(!empty($page_node)) {
+      $location = 'Viewing Topic: <a href="/guitar_forum_topic/'.$page_node->nid.'">'.$page_node->title.'</a>';
+    }
+    else {
+      $location = $string;
+    }
+  }
+  else if($exploded[1] == 'user' || $exploded[1] == 'instructor'){
+    $location = 'Viewing Members Profile';
+  }    
+  else if($exploded[1] == 'gmc-search'){
+    $location = 'Searching...';
+  }
+  else {
+    //$location = $string;
+    $location = 'Viewing Board Index';
+  }
+  return $location;
+}
+/**
+ * Callback function gmc_array_sort
+ * to sort online user array data by name and time
+ */
+function gmc_array_sort($array, $on, $order=SORT_ASC) {
+    $new_array = array();
+    $sortable_array = array();
+    if (count($array) > 0) {
+        foreach ($array as $k => $v) {
+            if (is_array($v)) {
+                foreach ($v as $k2 => $v2) {
+                    if ($k2 == $on) {
+                        $sortable_array[$k] = $v2;
+                    }
+                }
+            } else {
+                $sortable_array[$k] = $v;
+            }
+        }
+        switch ($order) {
+            case SORT_ASC:
+                asort($sortable_array);
+            break;
+            case SORT_DESC:
+                arsort($sortable_array);
+            break;
+        }
+
+        foreach ($sortable_array as $k => $v) {
+            $new_array[$k] = $array[$k];
+        }
+    }
+    return $new_array;
+}
+
+/*
+ * Implements form API
+ * form Jump on view page
+ * @return $form
+ */
+function gmc_online_filter_form() {
+  $options = array('click' => t('Last Click'), 'name' => t('Member Name'));
+  if(isset($_GET['sort_key'])) {
+    $default_value = $_GET['sort_key'];
+  }
+  $form['sort_key'] = array(
+    '#type' => 'select',
+    '#title' => t(''),
+    '#options' => $options,
+    '#default_value' => $default_value,
+  );
+  $options = array('reg' => t('Show Registered Only'), 'guest' => t('Show Guests Only'), 'all' => t('Show All Users'));
+  if(isset($_GET['show_mem'])) {
+    $default_value = $_GET['show_mem'];
+  }
+  $form['show_mem'] = array(
+    '#type' => 'select',
+    '#title' => t(''),
+    '#options' => $options,
+    '#default_value' => $default_value,
+  );
+  $options = array('desc' => t('Descending'), 'asc' => t('Ascending'));
+  if(isset($_GET['sort_order'])) {
+    $default_value = $_GET['sort_order'];
+  }
+  $form['sort_order'] = array(
+    '#type' => 'select',
+    '#title' => t(''),
+    '#options' => $options,
+    '#default_value' => $default_value,
+  );
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Update'),
+  );
+  return $form;
+}
+
+/**
+ * Submit API for forum jump.
+ * @return ''
+ */
+function gmc_online_filter_form_submit(&$form, &$form_state) {
+  //print "<pre>";print_r($form_state['input']);exit;
+  $sort_key = $form_state['input']['sort_key'];
+  $show_mem = $form_state['input']['show_mem'];
+  $sort_order = $form_state['input']['sort_order'];
+  drupal_goto('guitar_forum', array('query' => array('act' => 'online', 'sort_key' => $sort_key, 'show_mem' => $show_mem, 'sort_order' => $sort_order)));
+}
+
+/**
+ * Callback function gmc_online_browsing_forum
+ * to displaying current browsing user of the page
+ */
+function gmc_online_browsing_forum(){
+  global $user;
+  $current_path = $_SERVER['REQUEST_URI'];
+  $output = "";
+  $browsing = '';
+  $interval = REQUEST_TIME - variable_get('user_block_seconds_online', 1800);
+  // Select table
+  $style = 'display: none;';
+  if(arg(0) == 'guitar_forum' && isset($_GET['showforum'])) {
+    $tchild = taxonomy_get_tree(6, $_GET['showforum'], 1, $load_entities = FALSE);
+    $user_detail = array();
+    $uid = get_uid_by_board_id($_GET['showforum']);
+    if (!empty($tchild) && $uid == 0) {
+      $style = 'display: none;';
+    }
+    else {
+      $style = 'display: block;';
+    }
+    $browsing = 'browsing this forum';
+  }
+  else if(arg(0) == 'guitar_forum_topic') {
+    $style = 'display: block;';
+    $browsing = 'reading this topic';
+  }
+  
+  $query = db_select("sessions", "s");
+  $query->fields("s", array("uid", "hostname"));
+  $query = $query->distinct();
+  $query = $query->condition('s.timestamp', $interval, '>=');
+  $query = $query->orderBy('s.timestamp', 'DESC');
+  $result = $query->execute();
+
+  $unserialize = array();
+  $x = 0;
+  if($user->uid != 0) {
+    $unserialize['gm_online_session'.$x] = array('memeber' => $user->name, 'uid' => $user->uid, 'location' => $current_path, 'request_time' => time());
+  }
+  else {
+    $unserialize['gm_online_session'.$x] = array('memeber' => 'Guest', 'uid' => $user->uid, 'location' => $current_path, 'request_time' => time());
+  }
+  while($data = $result->fetchObject()){
+    if($data->uid != $user->uid) {
+      $query = db_select("sessions", "s")
+        ->fields("s", array("session"))
+        ->condition('s.hostname', $data->hostname, '=')
+        ->condition('s.uid', $data->uid, '=')
+        ->condition('s.timestamp', $interval, '>=')
+        ->orderBy('s.timestamp', 'DESC')
+        ->range(0,1);
+      $session_data = $query->execute()->fetchField();
+      $gmc_unserialize = gmc_unserialize_session_date($session_data);
+      $x++;
+      $unserialize['gm_online_session'.$x] = $gmc_unserialize['gm_online_session'];
+    }
+  }
+  $total_user = 0;
+  $guests_user = 0;
+  $members_user = 0;
+  $members = '';
+  foreach($unserialize as $serialize) {
+    if($serialize['location'] == $current_path) {
+      $total_user = $total_user + 1;
+      if($serialize['uid'] > 0){
+        $members_user = $members_user + 1;
+        $user_detail = user_load($serialize['uid']);
+        $time = date("h:i A", $serialize['request_time']);
+        if(array_search('instructor', $user_detail->roles)) {
+          $members .= '<a href="/instructor/'.str_replace(" ", "-", $user_detail->name).'"  title="Reading ('.$time.')..."><span style="color:red">'.ucwords($user_detail->name).'</span></a>, ';
+        }
+        else {
+          $members .= '<a href="/users/'.str_replace(" ", "-", $user_detail->name).'"  title="Reading ('.$time.')...">'.ucwords($user_detail->name).'</a>, ';
+        }
+      }
+      else {
+        $guests_user = $guests_user + 1;
+      }
+    }
+  }
+  if($total_user > 1) {
+    $total_browse_user = $total_user.' User(s)';
+  }
+  else {
+    $total_browse_user = $total_user.' User';
+  }
+  $style .= 'padding-bottom: 1px; width: 912px; margin-left: -10px; margin-top: 10px;';//margin-bottom: 20px;
+  $output = '<div class="borderwrap" style="'.$style.'">
+        <div class="formsubtitle" style="padding: 4px;">'.$total_browse_user.' are '.$browsing.' ('.$guests_user.' Guests and 0 Anonymous Users)</div>
+        <div class="row1" style="padding: 4px;">'.$members_user.' Members: '.$members.'</div>
+      </div>';
+  return $output;
+}
+
+/*
+ * Implements form API
+ * form Jump on view page
+ * @return $form
+ */
+function gmc_site_jump_form() {
+  $terms = taxonomy_get_tree(6);
+  $options = array('Site Jump' => array(1 => t('Forum Home'), 2 => t('Search'), 3 => t('Help')));
+  foreach($terms as $term) {
+    $options['Forum Jump'][$term->tid] = html_entity_decode($term->name);
+  }
+  $default_value = 1;
+  if(isset($_GET['showforum'])) {
+    $default_value = $_GET['showforum'];
+  }
+  $form['site_jump'] = array(
+    '#type' => 'select',
+    '#title' => t(''),
+    '#options' => $options,
+    '#default_value' => $default_value,
+  );
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Go'),
+  );
+  return $form;
+}
+
+/**
+ * Submit API for forum jump.
+ * @return ''
+ */
+function gmc_site_jump_form_submit(&$form, &$form_state) {
+  //print "<pre>";print_r($form_state['input']);exit;
+  $search_forum = trim($form_state['input']['site_jump']);
+  if($search_forum > 5) {
+    drupal_goto('guitar_forum', array('query' => array('showforum' => $search_forum)));
+  }
+}
+/*
+ * Implements form API
+ * form Jump on view page
+ * @return $form
+ */
+function gmc_forum_sort_form() {
+  //Sort by
+  $options = array('post' => t('Order: Last Post'), 'poster' => t('Order: Last Poster'), 'title' => t('Order: Topic Title'), 'name' => t('Order: Topic Starter'), 'created' => t('Order: Topic Started'), 'replies' => t('Order: Replies'), 'php' => t('Order: Views'));
+  $default_value = 'post';
+  if(isset($_GET['order'])) {
+    $default_value = $_GET['order'];
+  }
+  $form['sort_by'] = array(
+    '#type' => 'select',
+    '#title' => t(''),
+    '#options' => $options,
+    '#default_value' => $default_value,
+  );
+  //Sort order
+  $options = array('ASC' => t('A-Z'), 'DESC' => t('Z-A'));
+  $default_value = 'DESC';
+  if(isset($_GET['sort'])) {
+    $default_value = $_GET['sort'];
+  }
+  $form['sort_order'] = array(
+    '#type' => 'select',
+    '#title' => t(''),
+    '#options' => $options,
+    '#default_value' => $default_value,
+  );
+  //Sort Post By
+  $options = array('1' => t('From: Today'), '5' => t('From: 5 days'), '7' => t('From: 7 days'), '10' => t('From: 10 days'), '15' => t('From: 15 days'), '20' => t('From: 20 days'), '25' => t('From: 25 days'), '30' => t('From: 30 days'), '60' => t('From: 60 days'), '90' => t('From: 90 days'), '100' => t('Show All'));
+  $default_value = '100';
+  if(isset($_GET['post_day'])) {
+    $default_value = $_GET['post_day'];
+  }
+  $form['post_day'] = array(
+    '#type' => 'select',
+    '#title' => t(''),
+    '#options' => $options,
+    '#default_value' => $default_value,
+  );
+  //Sort topic
+  $options = array('all' => t('Topics: All'), 'open' => t('Topics: Open'), 'hot' => t('Topics: Hot'), 'poll' => t('Topics: Polls'), 'locked' => t('Topics: Locked'), 'moved' => t('Topics: Moved'), 'istarted' => t('Topics: I Started'), 'ireplied' => t('Topics: I Replied'));
+  $default_value = 'all';
+  if(isset($_GET['topic_filter'])) {
+    $default_value = $_GET['topic_filter'];
+  }
+  $form['topic_filter'] = array(
+    '#type' => 'select',
+    '#title' => t(''),
+    '#options' => $options,
+    '#default_value' => $default_value,
+  );
+  //Remember
+  $check = array('' => '');
+  $form['remember'] = array(
+    '#type' => 'checkbox', 
+    '#title' => t('Remember these options'),
+    '#attributes' => $check,
+  );
+
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Go'),
+  );
+  return $form;
+}
+
+/**
+ * Submit API for forum sort.
+ * @return ''
+ */
+function gmc_forum_sort_form_submit(&$form, &$form_state) {
+  //print "<pre>";print_r($form_state['input']);exit;
+    $sort_by = $form_state['input']['sort_by'];
+    $sort_order = $form_state['input']['sort_order'];
+    $post_day = $form_state['input']['post_day'];
+    $topic_filter = $form_state['input']['topic_filter'];
+  $showforum = $_GET['showforum'];
+  
+  drupal_goto('guitar_forum', array('query' => array('showforum' => $showforum, 'order' => $sort_by, 'sort' => $sort_order, 'post_day' => $post_day, 'topic_filter' => $topic_filter)));
+}
+
+/**
+ * Callback function guitar_forum_count
+ * It will return the count of forum post
+ * register user and new member register
+ **/
+function guitar_forum_count($text) {
+  $caches = &drupal_static(__FUNCTION__, array());
+  if (isset($caches)) {
+    if ($cache = cache_get($text)) {
+      return $cache->data;
+    }
+  }
+  if($text == 'total_post'){
+    $count = db_query("SELECT COUNT(c.cid) FROM {comment} c INNER JOIN node n on n.nid = c.nid WHERE n.type= :type AND n.status = 1", array(':type' => 'forum'))->fetchField();
+    $result = number_format($count);
+  }
+  else if ($text == 'total_user'){
+    $count = db_query("SELECT COUNT(u.uid) FROM {users} u")->fetchField();
+    $result = number_format($count);
+  }
+  else if ($text == 'new_member'){
+    $user_info = db_query("SELECT u.name, u.uid FROM {users} u INNER JOIN {users_roles} ur on ur.uid = u.uid WHERE ur.rid= :rid AND u.status = 1 ORDER BY u.created DESC LIMIT 0 , 1", array(':rid' => 5))->fetchAll();
+    $result = $user_info[0];
+  }
+  cache_set($text, $result, 'cache', time() + 3600);
+  return $result;
+}
+
+
+/**
+ * Implements hook_comment_presave()
+ * @return $form
+ */
+function forum_support_comment_presave($comment) {
+  $count = count(arg());
+  $node_detail = node_load($comment->nid);
+  if(arg(0) == 'comment' && arg(1) == 'reply' && $count == 3) {
+    if(isset($node_detail->field_forum_replies['und']['0']['value'])) {
+      $user_detail = user_load($node_detail->uid);
+      $mail = $user_detail->mail;
+      $name = $user_detail->name;
+      $title = $node_detail->title;
+      $nid = $comment->nid;
+      $cid = $comment->nid;
+      gmc_forum_notification($mail, $name, $title, $nid, $cid);
+    }
+  }
+  else if(arg(0) == 'comment' && arg(1) == 'reply' && $count == 4) {
+    $comment_detail = comment_load($comment->pid);
+    if(isset($comment_detail->field_forum_replies['und']['0']['value'])) {
+      $user_detail = user_load($comment_detail->uid);
+      $mail = $user_detail->mail;
+      $name = $user_detail->name;
+      $title = $node_detail->title;
+      $nid = $comment->nid;
+      $cid = $comment->nid;
+      gmc_forum_notification($mail, $name, $title, $nid, $cid);
+    }
+  }
+}
+
+/**
+ * Implementation of hook_views_query_alter
+ * @param type $view
+ * @param type $query 
+ */
+function forum_support_views_query_alter(&$view, &$query) {
+  global $user;
+  if ($view->name == 'gmc_forum_topic_page') {
+    // && $view->current_display == 'block_5'
+    $user_detail = (array)user_load($user->uid);
+    if((in_array("administrator", $user_detail['roles']) || in_array("moderator", $user_detail['roles']))) {
+      foreach($query->where[1]['conditions'] as $key => $conditions) {
+        if($conditions['field'] == 'comment.status') {
+          $query->where[1]['conditions'][$key]['field'] = 'comment.status';
+          $query->where[1]['conditions'][$key]['value'] = array(0, 1);
+          $query->where[1]['conditions'][$key]['operator'] = 'in';
+        }
+        else if($conditions['field'] == 'node_comment.status') {
+          $query->where[1]['conditions'][$key]['field'] = 'node_comment.status';
+          $query->where[1]['conditions'][$key]['value'] = array(0, 1);
+          $query->where[1]['conditions'][$key]['operator'] = 'in';
+        }
+      }
+    }
+  }
+  if($view->name == 'user_forum_post') {
+    $user_detail = (array)user_load($user->uid);
+    if((in_array("administrator", $user_detail['roles']) || in_array("moderator", $user_detail['roles']))) {
+      foreach($query->where[1]['conditions'] as $key => $conditions) {
+        if($conditions['field'] == 'node.status') {
+          $query->where[1]['conditions'][$key]['field'] = 'node.status';
+          $query->where[1]['conditions'][$key]['value'] = array(0, 1);
+          $query->where[1]['conditions'][$key]['operator'] = 'in';
+        }
+      }
+    }
+  }
+}
+/*
+ * Callback function to send mail notification
+ * to the user after reply post in forum topic.
+ */
+function gmc_forum_notification($mail, $name, $title, $nid, $cid){
+  global $user, $base_url;
+  $current_user = user_load($user->uid);
+  if (isset($current_user->field_first_name['und'][0]['value'])) {
+    $current_user_name = $current_user->field_first_name['und'][0]['value']." ".$current_user->field_last_name['und'][0]['value'];
+  } else {
+    $current_user_name = $current_user->name; 
+  }  
+  $mailto = $mail;
+  $subject = 'New forum topic reply notification';
+  //Mail Message
+  $message = "Hello ".ucwords($name).",<br/><br/>";
+  $message .= ucwords($current_user_name)." has just posted a new reply in the <a href=\"".$base_url."/guitar_forum_topic/".$nid."\">".$title."</a> forum topic. Click <a href=\"".$base_url."/guitar_forum_topic/".$nid."#entry".$cid."\">here</a> to read it.<br/><br/><br/>";
+  $message .= "---<br/>";
+  $message .= "This message was sent to ".$mail." per your request.<br/>";
+  $message .= "If you no longer wish to receive post reply notification emails for this forum topic, click <a href=\"".$base_url."/node/".$nid."/edit\">here</a>.<br/>";
+  $message .= "You can manage your forum notification emails and unsubscribe by visiting this page : link<br/><br/>";
+  $message .= "Regards,<br/>";
+  $message .= "GuitarMasterClass.net Team.<br/><br/>";
+    $random_hash = md5(uniqid(time()));
+  //Mail Header
+    $header = "From: GMC <support@guitarmasterclass.net>\r\n";
+    $header .= "Reply-To: support@guitarmasterclass.net\r\n";
+    $header .= "MIME-Version: 1.0\r\n";
+    $header .= "Content-Type: multipart/mixed; boundary=\"".$random_hash."\"\r\n\r\n";
+    $header .= "This is a multi-part message in MIME format.\r\n";
+    $header .= "--".$random_hash."\r\n";
+    $header .= "Content-Type: text/html; charset=ISO-8859-1\r\n";
+    $header .= "Content-Transfer-Encoding: 7bit\r\n\r\n";
+    $header .= $message."\r\n\r\n";
+    $header .= "--".$random_hash."\r\n";
+  if (mail($mailto, $subject, "", $header)) {
+    drupal_set_message(t("Message Send"), 'status');
+    } else {
+    drupal_set_message(t("Enable to send message try again"), 'error');
+    }
+}
+/**
+ * Callback function gmc_add_target_blank_forum_topic()
+ * to add target blank attribute in anchor tag
+ * //gmc-user-signature-update
+ **/
+function gmc_add_target_blank_forum_topic($cid){
+  global $base_url;
+  $browserInfo = browser_info();
+  $is_mobile = $browserInfo['mobile'];
+  $content = db_query("SELECT comment_body_value FROM {field_data_comment_body} WHERE entity_id = :entity_id", array(':entity_id' => $cid))->fetchField();
+  $content = str_replace("style_emoticons/<#EMO_DIR#>","/style_emoticons/default", $content);
+  $content = str_replace("<#EMO_DIR#>","default", $content);
+  $content = str_replace("style_emoticons/&lt;#EMO_DIR#&gt;","/style_emoticons/default", $content);
+  $content = str_replace("http://www.guitarmasterclass.net/guitar_forum/style_emoticons/<#EMO_DIR#>/",'/style_emoticons/default/', $content);
+  $content = str_replace("<{POST_SNAPBACK}>",'<img src="/sites/all/themes/gmc_v2/images/post_snapback.gif"/>', $content);
+  //replace live scale image URL to Drupal image URL
+  $content = str_replace("http://www.guitarmasterclass.net/scalegenerator","/scalegenerator",$content);
+  $content = str_replace("http://www.guitarmasterclass.net/images/scales/gmcscale","/sites/default/files/generatescaleimage/scales/gmcscale",$content);
+  if(isset($_GET['page'])) {
+    $content = str_replace("#entry",'?page='.$_GET['page'].'#entry', $content);
+  }
+  if($is_mobile || preg_match("/Trident\/7.0;(.*)rv:11.0/", $_SERVER["HTTP_USER_AGENT"], $match) != 0){
+    //print htmlentities($content);exit;
+    $pattern = array(
+      "/<iframe frameborder=\"0\" height=\"81\" src=\"http:\/\/player.soundcloud.com\/player.swf\?url=(.*?)\" width=\"745\"><\/iframe>/",
+      "/<object height=\"81\" width=\"100\%\"><param \(\"movie\" value=\"(.*?)\" \/><param \(\"allowscriptaccess\" value=\"always\" \/><embed allowscriptaccess=\"always\" height=\"81\" src=\"http:\/\/player.soundcloud.com\/player.swf\?url=(.*?)\" type=\"application\/x-shockwave-flash\" width=\"100\%\" \/><\/object>/",
+      "/<iframe allowscriptaccess=\"always\" frameborder=\"0\" height=\"81\" src=\"http:\/\/player.soundcloud.com\/player.swf\?url=(.*?)\" type=\"application\/x-shockwave-flash\" width=\"745\"><\/iframe>/",      
+      "/<iframe allowscriptaccess=\"always\" frameborder=\"0\" height=\"81\" scrolling=\"0\" src=\"http:\/\/player.soundcloud.com\/player.swf\?url=(.*?)\" type=\"application\/x-shockwave-flash\" width=\"745\"><\/iframe>/",
+      "/<iframe frameborder=\"0\" height=\"81\" scrolling=\"0\" src=\"http:\/\/player.soundcloud.com\/player.swf\?url=(.*?)\" width=\"745\"><\/iframe>/",
+      "/<iframe allowscriptaccess=\"always\" frameborder=\"0\" height=\"120\" scrolling=\"0\" src=\"https:\/\/w.soundcloud.com\/player\/\?url=(.*?)&amp;auto_play=false&amp;hide_related=false&amp;show_comments=false&amp;show_user=fasle&amp;show_reposts=false&amp;visual=true\" type=\"application\/x-shockwave-flash\" width=\"745\"><\/iframe>/",
+      "/<iframe width=\"(.*?)\" height=\"(.*?)\" scrolling=\"no\" frameborder=\"no\" src=\"https:\/\/w.soundcloud.com\/player\/\?url=(.*?)&amp;auto_play=false&amp;hide_related=false&amp;show_comments=true&amp;show_user=true&amp;show_reposts=false&amp;visual=true\"><\/iframe>/",
+    );
+    $replacement = array(
+      '<iframe width="100%" height="120" scrolling="no" frameborder="no" src="https://w.soundcloud.com/player/?url=$1&auto_play=false&hide_related=false&show_comments=false&show_user=fasle&show_reposts=false&visual=false"></iframe>',
+      '<iframe width="100%" height="120" scrolling="no" frameborder="no" src="https://w.soundcloud.com/player/?url=$2&auto_play=false&hide_related=false&show_comments=false&show_user=fasle&show_reposts=false&visual=false"></iframe>',
+      '<iframe width="100%" height="120" scrolling="no" frameborder="no" src="https://w.soundcloud.com/player/?url=$1&auto_play=false&hide_related=false&show_comments=false&show_user=fasle&show_reposts=false&visual=false"></iframe>',
+      '<iframe width="100%" height="120" scrolling="no" frameborder="no" src="https://w.soundcloud.com/player/?url=$1&auto_play=false&hide_related=false&show_comments=false&show_user=fasle&show_reposts=false&visual=false"></iframe>',
+      '<iframe width="100%" height="120" scrolling="no" frameborder="no" src="https://w.soundcloud.com/player/?url=$1&auto_play=false&hide_related=false&show_comments=false&show_user=fasle&show_reposts=false&visual=false"></iframe>',
+      '<iframe width="100%" height="120" scrolling="no" frameborder="no" src="https://w.soundcloud.com/player/?url=$1&auto_play=false&hide_related=false&show_comments=false&show_user=fasle&show_reposts=false&visual=false"></iframe>',
+      '<iframe width="100%" height="120" scrolling="no" frameborder="no" src="https://w.soundcloud.com/player/?url=$3&auto_play=false&hide_related=false&show_comments=false&show_user=fasle&show_reposts=false&visual=false"></iframe>',
+    );
+    $content = preg_replace($pattern, $replacement, $content);
+    //print $content;exit;
+  }
+  else {
+    $pattern = array(
+      "/<iframe allowscriptaccess=\"always\" frameborder=\"0\" height=\"81\" scrolling=\"0\" src=\"https:\/\/w.soundcloud.com\/player\/\?url=(.*?)&amp;auto_play=false&amp;hide_related=false&amp;show_comments=false&amp;show_user=fasle&amp;show_reposts=false&amp;visual=true\" type=\"application\/x-shockwave-flash\" width=\"745\"><\/iframe>/",
+      "/<iframe allowscriptaccess=\"always\" frameborder=\"0\" height=\"120\" scrolling=\"0\" src=\"https:\/\/w.soundcloud.com\/player\/\?url=(.*?)&amp;auto_play=false&amp;hide_related=false&amp;show_comments=false&amp;show_user=fasle&amp;show_reposts=false&amp;visual=true\" type=\"application\/x-shockwave-flash\" width=\"745\"><\/iframe>/",
+      "/<iframe width=\"100%\" height=\"120\" scrolling=\"no\" frameborder=\"no\" src=\"https:\/\/w.soundcloud.com\/player\/\?url=(.*?)&amp;auto_play=false&amp;hide_related=false&amp;show_comments=false&amp;show_user=fasle&amp;show_reposts=false&amp;visual=true\"><\/iframe>/",
+      "/<iframe width=\"100%\" height=\"81\" scrolling=\"no\" frameborder=\"no\" src=\"https:\/\/w.soundcloud.com\/player\/\?url=(.*?)&amp;auto_play=false&amp;hide_related=false&amp;show_comments=false&amp;show_user=fasle&amp;show_reposts=false&amp;visual=true\"><\/iframe>/",
+      "/<iframe width=\"100%\" height=\"120\" scrolling=\"no\" frameborder=\"no\" src=\"https:\/\/w.soundcloud.com\/player\/\?url=(.*?)&amp;auto_play=false&amp;hide_related=false&amp;show_comments=false&amp;show_user=false&amp;show_reposts=false&amp;visual=false\"><\/iframe>/",
+      "/<iframe width=\"(.*?)\" height=\"(.*?)\" scrolling=\"no\" frameborder=\"no\" src=\"https:\/\/w.soundcloud.com\/player\/\?url=(.*?)&amp;auto_play=false&amp;hide_related=false&amp;show_comments=true&amp;show_user=true&amp;show_reposts=false&amp;visual=true\"><\/iframe>/",
+    );
+    $replacement = array(
+      '<iframe allowscriptaccess="always" frameborder="0" height="81" src="http://player.soundcloud.com/player.swf?url=$1" type="application/x-shockwave-flash" width="745"></iframe>',
+      '<iframe allowscriptaccess="always" frameborder="0" height="81" src="http://player.soundcloud.com/player.swf?url=$1" type="application/x-shockwave-flash" width="745"></iframe>',
+      '<iframe allowscriptaccess="always" frameborder="0" height="81" src="http://player.soundcloud.com/player.swf?url=$1" type="application/x-shockwave-flash" width="745"></iframe>',
+      '<iframe allowscriptaccess="always" frameborder="0" height="81" src="http://player.soundcloud.com/player.swf?url=$1" type="application/x-shockwave-flash" width="745"></iframe>',
+      '<iframe allowscriptaccess="always" frameborder="0" height="81" src="http://player.soundcloud.com/player.swf?url=$1" type="application/x-shockwave-flash" width="745"></iframe>',
+      '<iframe allowscriptaccess="always" frameborder="0" height="81" src="http://player.soundcloud.com/player.swf?url=$3" type="application/x-shockwave-flash" width="745"></iframe>',
+    );
+    $content = preg_replace($pattern, $replacement, $content);
+  }
+   $matches = array();
+  if($content != NULL) {
+    $content = bbcodeHtml($content);
+    $pattern = array(
+      "/<p><\/p>/",
+      "/<p> <\/p>/",
+      "/<!--\/sizeo-->/",
+      "/<!--sizec-->/",
+      "/<!--\/sizec-->/",
+      "/<!--sizeo:(.*?)-->/",
+      "/<!--\/coloro-->/",
+      "/<!--colorc-->/",
+      "/<!--\/colorc-->/",
+      "/<!--coloro:(.*?)-->/",
+	  "/<!--quotec-->/",
+	  "/<!--QuoteEnd-->/",
+      "/<!--QuoteEEnd-->/",
+	  "/\n\n/",
+    );
+    $replacement = array(
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+	  "",
+	  "",
+	  "",
+    );
+    $content = str_replace("<br />\n<img","<br /><img",$content);
+    //Firstly remove blank tag
+    $content = preg_replace($pattern, $replacement, $content);
+    $pattern = array(
+      "/<p><span style=\"(.*?)\"><\/span><\/p>\n<p><b><\/b><\/p>\n<p><span style=\"(.*?)\"><\/span><\/p>\n<p>(.*?)<\/p><p><b>(.*?)<\/b><\/p>/",
+      "/<p><span style=\"(.*?)\"><\/span><\/p>\n<p><b>(.*?)<\/b><\/p>/",
+      "/<p><b><\/b><\/p>\n<p><span style=\"(.*?)\"><\/span><\/p>\n<p><span style=\"(.*?)\"><\/span><\/p>\n<p>(.*?)<\/p>\n<p>(.*?)<\/p>/",
+      "/<p><span style=\"(.*?)\"><\/span><\/p>\n<p><span style=\"(.*?)\"><\/span><\/p>\n<p>(.*?)<\/p>\n<p>/",
+      "/<object width=\"(.*?)\" height=\"(.*?)\">\n\s+<param \(\"movie\" value=\"http:\/\/www.youtube.com\/v\/(.*?)&amp;hl=en&amp;fs=1\"\/>\n\s+<param \(\"allowFullScreen\" value=\"true\"\/>\n\s+<param \(\"allowscriptaccess\" value=\"always\"\/>\n\s+<embed src=\"http:\/\/www.youtube.com\/v\/(.*?)&amp;hl=en&amp;fs=1\" type=\"application\/x-shockwave-flash\" allowscriptaccess=\"always\" allowfullscreen=\"true\" width=\"560\" height=\"340\"\/>\n<\/object>/",
+      "/<object width=\"(.*?)\" height=\"(.*?)\">\s+<param \(\"movie\" value=\"http:\/\/www.youtube.com\/v\/(.*?)&amp;hl=en&amp;fs=1\"\/>\s+<param \(\"allowFullScreen\" value=\"true\"\/>\s+<param \(\"allowscriptaccess\" value=\"always\"\/>\s+<embed src=\"http:\/\/www.youtube.com\/v\/(.*?)&amp;hl=en&amp;fs=1\" type=\"application\/x-shockwave-flash\" allowscriptaccess=\"always\" allowfullscreen=\"true\" width=\"560\" height=\"340\"\/>\s+<\/object>/",
+      "/<object width=\"(.*?)\" height=\"(.*?)\"><param \(\"movie\" value=\"http:\/\/www.youtube.com\/v\/(.*?)&hl=en&fs=1\"><\/param><param \(\"allowFullScreen\" value=\"true\"><\/param><param \(\"allowscriptaccess\" value=\"always\"><\/param><embed src=\"http:\/\/www.youtube.com\/v\/(.*?)&hl=en&fs=1\" type=\"application\/x-shockwave-flash\" allowscriptaccess=\"always\" allowfullscreen=\"true\" width=\"560\" height=\"340\"><\/embed><\/object>/",
+      '/<iframe width=\"(.*?)\" height=\"(.*?)\" src=\"http:\/\/youtube.com\/embed\/(.*?)\?autoplay=0\" frameborder=\"0\" type=\"text\/html\"><\/iframe>/',
+      '/src=\"http:\/\/youtube.com\/embed\/(.*?)\?autoplay=0\"/',
+    );
+    $replacement = array(
+      '<div class="forum-title-style-replace"><span style="$1; font-weight: bold;"><span style="$2;">$3</span></span><br/><b>$4</b></div>',
+      '<p class="forum-title-style-replace"><span style="$1; font-weight: bold;">$2</span></p>',
+      '<p><b><span style="$1"><span style="$2">$3</span></span>$4</b></p>',
+      '<p><span style="$1"><span style="$2">$3</span></span>',
+      '<iframe frameborder="0" width="$1" height="$2" src="http://youtube.com/embed/$3?autoplay=0&wmode=transparent" type="text/html"></iframe>',
+      '<iframe frameborder="0" width="$1" height="$2" src="http://youtube.com/embed/$3?autoplay=0&wmode=transparent" type="text/html"></iframe>',
+      '<iframe frameborder="0" width="$1" height="$2" src="http://youtube.com/embed/$3?autoplay=0&wmode=transparent" type="text/html"></iframe>',
+      '<iframe frameborder="0" width="$1" height="$2" src="http://youtube.com/embed/$3?autoplay=0&wmode=transparent" type="text/html"></iframe>',
+      'src="http://youtube.com/embed/$1?autoplay=0&wmode=transparent"',
+    );
+    //Now Replace the tag data
+    $content = preg_replace($pattern, $replacement, $content);
+    if(preg_match_all('/<a href=\"(.*?)\">\[view_full_image_link\]<\/a><br \/>/i',$content,$matches)){
+      //print "<pre>";print_r($matches);exit;
+      for($i = 0; $i <= count($matches[0]); $i++){
+        if(isset($matches[0][$i])) {
+          //$new = preg_replace('/target=[^ ]+/i', '', $matches[0][$i]);
+          //print "<pre>";print_r($matches);exit;
+          $doc = new DOMDocument();
+          $doc->loadHTML($matches[0][$i]);
+          $xpath = new DOMXPath($doc);
+          $src = $xpath->evaluate("string(//a/@href)");
+          $image = $base_url.$src;
+          $size = getimagesize($image);
+          //print $src.'<br/>'.$image;
+          //print "<pre>";print_r($size);exit;
+          if($size[0] <= 700) {
+            $new = preg_replace('/<a href=\"(.*?)\">\[view_full_image_link\]<\/a><br \/>/i', '', $matches[0][$i]);
+            $content = str_replace($matches[0][$i],$new,$content); //done!
+          }
+          else {
+            $new = preg_replace('/<a href=\"(.*?)\">\[view_full_image_link\]<\/a><br \/>/i', '<div class="click-to-view-full-image" title="Click to view full image"><a href="$1" target="_blank"><img border="0" alt="" style="vertical-align:middle" src="/sites/all/modules/custom/gmc_lesson_review/img-resized.png"> Click to view full image</a></div>', $matches[0][$i]);
+            $content = str_replace($matches[0][$i],$new,$content); //done!
+          }
+        }
+      }
+    }
+//**
+	/*if(preg_match_all('/<img (.*?)>/i',$content,$matches)){
+		print "<pre>";print_r($matches);exit;
+		for($i = 0; $i <= count($matches[0]); $i++){
+			if(isset($matches[0][$i]) && $matches[0][$i] != '') {
+				//$new = preg_replace('/target=[^ ]+/i', '', $matches[0][$i]);
+				//print "<pre>";print_r($matches);exit;
+				$doc = new DOMDocument();
+				$doc->loadHTML($matches[0][$i]);
+				$xpath = new DOMXPath($doc);
+				$src = $xpath->evaluate("string(//img/@src)");
+				$image = $base_url.$src;
+				if (file_exists($image)) {
+					$size = getimagesize($image);
+					if($size[0] > 700) {
+						$new = preg_replace('/<img (.*?)>/i', '<div class="click-to-view-full-image" title="Click to view full image"><a href="'.$image.'" target="_blank"><img border="0" alt="" style="vertical-align:middle" src="/sites/all/modules/custom/gmc_lesson_review/img-resized.png"> Click to view full image</a></div><img $1>', $matches[0][$i]);
+						$content = str_replace($matches[0][$i],$new,$content); //done!
+					}
+				}
+			}
+		}
+	}*/
+//**
+    if(preg_match_all('/<a\s[^>]*href=[^# ]+[^>]*>/i',$content,$matches)){
+      //loop through
+      for($i = 0; $i <= count($matches[0]); $i++){
+        if(isset($matches[0][$i])) {
+          $new = preg_replace('/target=[^ ]+/i', '', $matches[0][$i]);
+          $new = rtrim($new,'>') . ' target="_blank"' . '>';
+          //this should be exact
+          $new = str_replace('>',' target="_blank">',$new); //done!
+          $content = str_replace($matches[0][$i],$new,$content); //done!
+        }
+      }
+    }
+  }
+  return $content;
+}
+/**
+ * Callback function gmc_unread_forum_topic()
+ * to get unread forum reply of the login user
+ * URL: gmc-unread-forum-topic
+ **/
+function gmc_unread_forum_topic($nid){
+  global $user;
+  $output = '';
+  $last_visit = '';
+  $cid = '';
+  $new_topic = 0;
+  if($user->uid != 0){
+    $uid = $user->uid;
+    $last_visit = db_query("SELECT timestamp FROM {history} WHERE nid = :nid AND uid = :uid", array(':nid' => $nid, ':uid' => $uid))->fetchField();
+    if(empty($last_visit)) {
+      $last_visit = time();
+      $new_topic = 1;
+      $cid = db_query("SELECT cid FROM {comment} WHERE nid = :nid AND changed < :time ORDER BY changed ASC LIMIT 0 , 1", array(':nid' => $nid, ':time' => $last_visit))->fetchField();
+    }
+    else {
+      $cid = db_query("SELECT cid FROM {comment} WHERE nid = :nid AND changed > :time ORDER BY changed ASC LIMIT 0 , 1", array(':nid' => $nid, ':time' => $last_visit))->fetchField();
+    }
+  }
+  else {
+    if(isset($_COOKIE['gmc_guest'])){
+      $user_visit = unserialize($_COOKIE['gmc_guest']);
+      if(isset($user_visit['gmc_guest'][$nid])) {
+        $last_visit = $user_visit['gmc_guest'][$nid];
+        $cid = db_query("SELECT cid FROM {comment} WHERE nid = :nid AND changed > :time ORDER BY changed ASC LIMIT 0 , 1", array(':nid' => $nid, ':time' => $last_visit))->fetchField();
+      }
+      else {
+        $new_topic = 1;
+      }
+    }
+  }
+  if(!empty($cid)) {
+    $total_pages = gm_forum_topic_page($cid, $nid);
+    $output = '<a href="/guitar_forum_topic/'.$nid.'?page='.$total_pages.'#entry'.$cid.'"><img src="/sites/all/themes/gmc_v2/images/newpost.gif" border="0" alt="Goto last unread" title="Goto last unread" hspace="2"></a>';
+  }
+  else if($new_topic == 1) {
+    $output = '<a href="/guitar_forum_topic/'.$nid.'"><img src="/sites/all/themes/gmc_v2/images/newpost.gif" border="0" alt="Goto last unread" title="Goto last unread" hspace="2"></a>';
+  }
+  return $output;
+}
+/**
+ * Callback function gmc_forum_topic_lastpost()
+ * to get unread forum reply of the login user
+ **/
+function gmc_forum_topic_lastpost($nid){
+  $output = '';
+  $cid = db_query("SELECT cid FROM {comment} WHERE nid = :nid ORDER BY created DESC LIMIT 0 , 1", array(':nid' => $nid))->fetchField();
+  if (!empty($cid)) {
+	  $node_detail = node_load($nid);
+	  $total_cids = $node_detail->comment_count;
+    $total_list = 20;
+    $total_pages = 0;
+    if($total_cids > $total_list){
+      $total_pages = (int) ($total_cids / $total_list);
+      $rest = $total_cids % $total_list;
+      if($rest = 0) {
+        $total_pages = $total_pages - 1;
+      }
+    }
+    $output = '<a href="/guitar_forum_topic/'.$nid.'?page='.$total_pages.'#entry'.$cid.'">By</a>';
+  }
+  else {
+    $output = '<a href="/guitar_forum_topic/'.$nid.'">By</a>';
+  }
+  return $output;
+}
+/**
+ * Callback function gm_forum_topic_page()
+ * to get pager page number of post(comment)
+ * return $total_pages
+ **/
+function gm_forum_topic_page($cid, $nid){
+  $total_post = '';
+  $total_post = db_query("SELECT c.cid FROM {comment} c WHERE c.nid = :nid", array(':nid' => $nid));
+  $total_pages = 0;
+  if(!empty($total_post)) {
+    foreach($total_post as $key => $post_cid) {
+      if($post_cid->cid == $cid){
+        break;
+      }
+    }
+    $total_list = 20;
+    if($key > $total_list){
+      $total_pages = (int) ($key / $total_list);
+      $rest = $key % $total_list;
+      if($rest = 0) {
+        $total_pages = $total_pages - 1;
+      }
+    }
+  }
+  return $total_pages;
+}
+/**
+ * Callback function gmc_unread_forum_topic()
+ * to get unread forum reply of the login user
+ * URL: gmc-unread-forum-topic
+ **/
+function gmc_unseen_forum_topic($nid){
+  global $user;
+  $output = '';
+  $last_visit = '';
+  $cid = '';
+  if($user->uid != 0){
+    $uid = $user->uid;
+    $last_visit = db_query("SELECT timestamp FROM {history} WHERE nid = :nid AND uid = :uid", array(':nid' => $nid, ':uid' => $uid))->fetchField();
+    if(empty($last_visit)) {
+      $output = '<img src="/sites/all/themes/gmc_v2/images/f_norm.gif" border="0" alt="New Posts">';
+    }
+    else {
+      $cid = db_query("SELECT cid FROM {comment} WHERE nid = :nid AND changed > :time ORDER BY changed ASC LIMIT 0 , 1", array(':nid' => $nid, ':time' => $last_visit))->fetchField();
+      if(!empty($cid)) {
+        $output = '<img src="/sites/all/themes/gmc_v2/images/f_norm.gif" border="0" alt="New Posts">';
+      }
+      else {
+        $output = '<img src="/sites/all/themes/gmc_v2/images/f_hot_no.gif" border="0" alt="New Posts">';
+      }
+    }
+  }
+  else {
+    $output = '<img src="/sites/all/themes/gmc_v2/images/f_hot_no.gif" border="0" alt="New Posts">';
+  }
+  return $output;
+}
+
+/**
+ * Callback function gmc_multi_page_jump()
+ * to get number of page to display pagination with title
+ * URL: gmc-multi-page-jump
+ **/
+function gmc_multi_page_jump($nid = NULL){
+  $output = '';
+  //$nid = 110569;//112113;
+  if($nid != NULL) {
+    //$count = db_query("SELECT count FROM drupal_mysql_views.node_comment_count WHERE nid = :nid", array(':nid' => $nid))->fetchField();
+	
+	$node_detail = node_load($nid);
+	$count = $node_detail->comment_count;
+    $total_list = 20;
+    $total_pages = 0;
+    if($count > $total_list){
+      $total_pages = (int) ($count / $total_list);
+      $rest = $count % $total_list;
+      if($rest > 0) {
+        $total_pages = $total_pages + 1;
+      }
+    }
+    if($total_pages != 0){
+      //$output = '<a href="#"><img src="/sites/all/themes/gmc_v2/images/pages_icon.gif" alt="*" border="0"></a>';
+      $page = 1;
+      if($total_pages > 4){
+        $x_last = 3;
+      }
+      else {
+        $x_last = $total_pages;
+      }
+      for($x = 0; $x <= $x_last-1; $x++) {
+        if($page)
+        $output .= '<span class="minipagelink"><a href="/guitar_forum_topic/'.$nid.'?page='.$x.'">'.$page.'</a></span>';  
+        $page++;
+      }
+      if($x_last != $total_pages) {
+        $page = $total_pages - 1;
+        $output .= '<span class="minipagelink"><a href="/guitar_forum_topic/'.$nid.'?page='.$page.'">&raquo; '.$total_pages.'</a></span>';  
+      }
+    }
+  }
+  return $output;
+}
+
+
+/*
+ * Implements form API
+ * form execute action for forum node from topic page
+ * @return $form
+ */
+function guitar_forum_action_form() {
+  $form['guitar_forum_operation'] = array(
+    '#type' => 'select',
+    '#title' => t(''),
+    '#options' => array(
+      'close_topics' => t('Close Topics'),
+      'views_bulk_operations_delete_item' => t('Delete Topics'),
+      'move_topics' => t('Move Topics'),
+      'open_topics' => t('Open Topics'),
+      'pin_topics' => t('Pin Topics'),
+      'set_invisible' => t('Set Invisible (Unapprove)'),
+      'set_visible' => t('Set Visible (Approve)'),
+      'unpin_topics' => t('Unpin Topics'),
+    ),
+    '#default_value' => 0,
+  );
+  $form['forum_id'] = array(
+    '#type' => 'hidden', 
+    '#value' => arg(1),
+  );
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Go'),
+  );
+  return $form;
+}
+/**
+ * Submit API for Delete/Insert/Update User Folder.
+ * @return ''
+ */
+function guitar_forum_action_form_submit(&$form, &$form_state) {
+  //print "<pre>";print_r($form_state['input']);exit;
+  $object = node_load($form_state['input']['forum_id']);
+  $action_ids = $form_state['input']['guitar_forum_operation'];
+  actions_do($action_ids, $object);
+  drupal_set_message(t('Performed '.ucwords(str_replace('_', ' ', $action_ids)).' on this forum topic.'), $type = 'status');
+}
+/**
+ * Callback function gmc_comment_check
+ * to check the forum comment
+ * that comment has visible or not.
+ **/
+function gmc_comment_check(){
+  global $user;
+  $roles = array("administrator", "moderator");
+  $roles_result = array_intersect($roles, $user->roles);
+  if(empty($roles_result)){
+    $url = $_POST['url'];
+    $url_part1 = explode('#entry', $url);
+    $cid = $url_part1[1];
+    $invisible = db_query("SELECT status FROM {comment} WHERE cid = :cid", array(':cid' => $cid))->fetchField();
+    if($invisible == 0) {
+      $nid = db_query("SELECT nid FROM {comment} WHERE cid = :cid", array(':cid' => $cid))->fetchField();
+      $node_detail = node_load($nid);
+      $tid = $node_detail->taxonomy_forums['und']['0']['tid'];
+      //drupal_goto('guitar_forum', array('query' => array('showforum' => $tid)));
+      print $tid;
+    }
+    else {
+      print 'false';
+    }
+  }
+  else {
+    print 'false';
+  }
+}
+/**
+ * Callback function forum_topic_current_page_number
+ * to display total page count of forum topic
+ * return $total_pages
+ **/
+function forum_topic_current_page_number($nid) {
+  $count = db_query("SELECT count FROM drupal_mysql_views.node_comment_count WHERE nid = :nid", array(':nid' => $nid))->fetchField();
+  $total_list = 20;
+  $total_pages = 0;
+  if($count > $total_list){
+    $total_pages = (int) ($count / $total_list);
+    $rest = $count % $total_list;
+    if($rest > 0) {
+      $total_pages = $total_pages + 1;
+    }
+  }
+  return $total_pages;
+}
+/**
+ * Callback function gmc_student_videos
+ * to display student videos list
+ **/
+function gmc_student_videos() {
+  global $base_url;
+  $html = '';
+  $x = 0;
+  $y = 0;
+  $rows = array();
+  $output = '<div class="content-block">
+    <h1 class="startpage_welcome_text">
+      <img src="/font/Student+Videos/20/">
+    </h1>
+      <div class="top"></div>';
+  $header = array(
+    array('data' => t("")),
+    array('data' => t("")),
+  );
+  //fetch data from pm_draft table
+  $sql_query = db_select('lesson_rec', 'lr');
+  $sql_query->fields('lr');
+  $sql_query->orderBy('timestamp', 'DESC');
+  $sql_query = $sql_query->extend('PagerDefault')->limit(6);
+  $result = $sql_query->execute();
+  foreach($result as $key => $node) {
+    $html = '';
+    $n = node_load($node->nid);
+    $u = user_load($node->uid);
+    $width = 440;
+    $height = 280;
+    $lesson_link = l($n->title, 'node/'.$n->nid);
+    $forum_profile = l($u->name, 'forum-profile/'.str_replace(" ", "-", $u->name));
+    
+    $html .= '<div class="student-videos-info"><h1 nname="'.$n->name.'" ntitle="'.$n->title.'" uname="'.$u->name.'">'.$lesson_link.' by '.$forum_profile.'</h1>';
+    $html .= '<div id="res-youtube-video-id"><object id="res-youtube-video" width="'.$width.'" height="'.$height.'" value="'.$node->fid.'"><param name="movie" value="http://www.youtube.com/v/'.$node->fid.'&amp;hl=en&amp;fs=1"><param name="allowFullScreen" value="true"><param name="allowscriptaccess" value="always"><embed src="http://www.youtube.com/v/'.$node->fid.'&amp;hl=en&amp;fs=1" type="application/x-shockwave-flash" allowscriptaccess="always" allowfullscreen="true" width="'.$width.'" height="'.$height.'"></object></div></div>';
+    $rows[$y][$x] = $html;
+    if($x == 0){
+      $x = 1;
+    }
+    else {
+      $x = 0;
+      $y = $y + 1;
+    }
+  }
+  //print "<pre>";print_r($rows);exit;
+  $output .= theme('table', array('header' => $header, 'rows' => $rows, 'attributes' => array('id' => 'gmc-student-videos')));
+  $output .= theme('pager');
+  $output .= '<var></var></div>';
+  return $output;
+}
+/**
+ * Callback function gmc_forum_attach_file_url()
+ * to redirect from live site file url to 
+ * Drupal file url
+ **/
+function gmc_forum_attach_file_url($live_fid) {
+  $drupal_uri = db_query("SELECT drupal_uri FROM dev_syn_drupal.import_forum_attachment WHERE live_fid = :live_fid", array(':live_fid' => $live_fid))->fetchField();
+  if(empty($drupal_uri)) {
+    $drupal_uri = db_query("SELECT uri,fid FROM dev_syn_drupal.file_managed WHERE filename LIKE (SELECT attach_file FROM ds2_gmc.ibf_attachments WHERE attach_id = :attach_id)", array(':attach_id' => $live_fid))->fetchAll();
+    if(!empty($drupal_uri)) {
+      db_insert('import_forum_attachment')
+        ->fields(array(
+          'drupal_fid' => $drupal_uri['0']->fid,
+          'live_fid' => $live_fid,
+          'drupal_uri' => $drupal_uri['0']->uri,
+          )
+        )
+        ->execute();
+      $url = file_create_url($drupal_uri['0']->uri);
+      drupal_goto($url);
+    }
+    else {
+      return "<h2 style=\"font-color: red; font-size: 20px;\">File not found</h2>";
+    }
+  }
+  else {
+    $url = file_create_url($drupal_uri);
+    drupal_goto($url);
+  }
+}
+/**
+ * Callback function browser_info()
+ * to return the client side browser information
+ * @return $browser
+ **/
+function browser_info() {
+  $browser = array(
+    'name'     => false,
+    'version'   => false,
+    'engine'   => false,
+    'os'     => false,
+    'os_version' => false,
+    'mobile'   => false,
+  );
+
+  if (isset($_SERVER['HTTP_USER_AGENT'])) {
+    if ( preg_match('/\WAppleWebKit\W/', $_SERVER['HTTP_USER_AGENT']) ){
+      $browser['engine']    = 'webkit' ;
+      if (  preg_match('/\WChrome\/(\d+)\.([\.\d]+)\W/', $_SERVER['HTTP_USER_AGENT'], $ls ) ){
+        $browser['name']    = 'chrome' ;
+        $browser['version']    = $ls[1] ;
+      }
+      else if ( preg_match('/\W\sVersion\/(\d+)\.([\.\d]+)\s+Safari\//', $_SERVER['HTTP_USER_AGENT'], $ls ) ){
+        $browser['name']    = 'safari' ;
+        $browser['version']    = $ls[1] ;
+      }
+      else if ( preg_match('/\W\sVersion\/(\d+)\.([\.\d]+)\s+Mobile\/?(\w*?)\s+Safari\//', $_SERVER['HTTP_USER_AGENT'], $ls ) ) {
+        $browser['name']    = 'safari' ;
+        $browser['version']    = $ls[1] ;
+        $browser['mobile']    = true ;
+      }
+    }
+    else if ( preg_match('/\sMSIE\s+(\d+)\.([\.\d+]);\W/', $_SERVER['HTTP_USER_AGENT'], $ls) ){
+      $browser['engine']    = 'trident' ;
+      $browser['name']    = 'ie' ;
+      $browser['version']    = $ls[1] ; 
+    }
+    else if( preg_match('/\sGecko\/(\d+)\s/', $_SERVER['HTTP_USER_AGENT'], $ls) ){
+      $browser['engine']    = 'gecko' ;
+      if(  preg_match('/\WFirefox\/(\d+)\.([\.\d]+)/', $_SERVER['HTTP_USER_AGENT'], $ls ) ){
+        $browser['name']    = 'firefox' ;
+        $browser['version']    = $ls[1] ;
+      }
+      else {
+      }
+    }
+    else if( preg_match('/Opera\/(\d+)\.([\.\d]+)\W/', $_SERVER['HTTP_USER_AGENT'], $ls) ){
+      $browser['engine']    = 'presto' ;
+      $browser['name']    = 'opera' ;
+      $browser['version']    = $ls[1] ;
+    }
+    if( preg_match('/Mac OS X ([\.\_\d]+)/', $_SERVER['HTTP_USER_AGENT'], $ls) ){
+      $browser['os']    = 'osx' ;
+      $browser['os_version']    = $ls[1] ; 
+    }
+    else if(preg_match('/Windows NT (\d+)\.([\.\d]+)/', $_SERVER['HTTP_USER_AGENT'], $ls) ){
+      $browser['os']    = 'win' ;
+      $browser['os_version']    = $ls[1] ;
+    }
+    else if(preg_match('/\siPhone OS ([\.\_\d]+)/', $_SERVER['HTTP_USER_AGENT'], $ls) ){
+      $browser['os']    = 'iphone' ;
+      $browser['os_version']    = $ls[1] ;
+      $browser['mobile']    = true ;
+    }
+    else if(preg_match('/\WiPad\W.+? OS ([\.\_\d]+)/', $_SERVER['HTTP_USER_AGENT'], $ls) ){
+      $browser['os']    = 'ipad' ;
+      $browser['os_version']    = $ls[1] ;
+      $browser['mobile']    = true ;
+    }
+    else if(preg_match('/\siPod OS ([\.\_\d]+)/', $_SERVER['HTTP_USER_AGENT'], $ls) ){
+      $browser['os']    = 'ipod' ;
+      $browser['os_version']    = $ls[1] ;
+      $browser['mobile']    = true ;
+    }
+    else if(preg_match('/\sAndroid ([\.\_\d]+)/', $_SERVER['HTTP_USER_AGENT'], $ls) ){
+      $browser['os']    = 'android' ;
+      $browser['os_version']    = $ls[1] ;
+      $browser['mobile']    = true ;
+    }
+    if( $browser['version'] ) {
+      $browser['version'] = (int) $browser['version'] ;
+    }
+    if( $browser['os_version'] ) {
+      $browser['os_version'] = (int) $browser['os_version'] ;
+    }
+    //$is_debug = '';
+    $browser['app_version'] = '' ;
+    $browser['is_iphone']  = 'iphone' == $browser['os'];
+    $browser['is_ipod']    = 'ipod' == $browser['os'];
+    $browser['is_ipad']    = 'ipad' == $browser['os'];
+    $browser['is_android']  = 'android' == $browser['os'];
+    $browser['use_html5player']  = false ;
+    if( $browser['engine'] === 'webkit' ){
+      if($browser['mobile'] ) {
+        $browser['use_html5player']  = true ;
+      }
+    }
+  }
+  return $browser ;
+}
+
+
+function guitar_forum2_callback($tids) {
+  error_reporting(E_ALL);
+  ini_set('display_errors', TRUE);
+  ini_set('display_startup_errors', TRUE);
+  global $user;
+	if(isset($_GET['showforum']) && $_GET['showforum'] == 'new-posts') {
+		$data = views_embed_view('forum_new_posts', $display_id = 'page_1');
+	}
+	else if(isset($_GET['act']) && (strtolower($_GET['act']) == 'attach') && $_GET['type'] == 'post') {
+		//redirect to attach file URL
+		$data = gmc_forum_attach_file_url($_GET['id']);
+		
+	} else {
+
+	  $nid = '';
+		if(isset($_GET['showforum'])) {
+			$nid = $_GET['showforum'];
+		}
+
+		if($user->uid == 0) {
+			$data .= '<div id="guest-userlinks"><p><span><a href="/guitar_forum?showforum=new-posts">View New Posts</a></span></p></div>';
+		}
+		$user_detail = array();
+		if($nid != '') {
+			$uid = get_uid_by_board_id($nid);
+			if($uid != 0) {
+				$user_detail = user_load($uid);
+			}
+		}
+		if(isset($_GET['act']) && $_GET['act'] == 'online') {
+			$data = gmc_online_list();
+		}
+		else if ( $nid == '') {
+			$nid = 4645;
+
+		}
+		
+		$tchild = taxonomy_get_tree(6, $nid, 1, $load_entities = FALSE);
+		if (!empty($tchild)) {
+			$forum_term = gmc_forum_load($nid);
+			$forum_per_page = variable_get('forum_per_page', 25);
+			$sortby = variable_get('forum_order', 1);
+			$topics = forum_get_topics($nid, $sortby, $forum_per_page);
+			$data .=  theme('forums', array('forums' => $forum_term->forums, 'topics' => $topics, 'parents' => $forum_term->parents, 'tid' => $forum_term->tid, 'sortby' => $sortby, 'forums_per_page' => $forum_per_page));
+			if(!empty($user_detail)) {
+				$data .= views_embed_view('user_personal_board', $display_id = 'page_1', $nid);
+			}
+		}
+		elseif(arg(1) == '') {
+			$data .= views_embed_view('user_personal_board', $display_id = 'page_1', $nid);
+		}
+	}
+	return $data;
+}
+
+
+function gmc_forum_load($tid = NULL) {
+  global $user;
+  $caches = &drupal_static(__FUNCTION__, array());
+  // Return a cached forum tree if available.
+  if (!isset($tid)) {
+    $tid = 0;
+  }
+  if (isset($caches)) {
+    if ($user->uid > 0) {
+      if ($cache = cache_get('gmc_forum_load'.$tid))
+        return $cache->data;
+    } else if ($cache = cache_get('gmc_forum_load0'.$tid)) {
+      return $cache->data;
+    }
+  }
+
+  $vid = variable_get('forum_nav_vocabulary', 0);
+
+  // Load and validate the parent term.
+  if ($tid) {
+    $forum_term = taxonomy_term_load($tid);
+    if (!$forum_term || ($forum_term->vid != $vid)) {
+      return $cache[$tid] = FALSE;
+    }
+  }
+  // If $tid is 0, create an empty object to hold the child terms.
+  elseif ($tid === 0) {
+    $forum_term = (object) array(
+      'tid' => 0,
+    );
+  }
+
+  // Determine if the requested term is a container.
+  if (!$forum_term->tid || in_array($forum_term->tid, variable_get('forum_containers', array()))) {
+    $forum_term->container = 1;
+  }
+
+  // Load parent terms.
+  $forum_term->parents = taxonomy_get_parents_all($forum_term->tid);
+
+  // Load the tree below.
+  $forums = array();
+  $_forums = taxonomy_get_tree($vid, $tid, 1);
+  
+  if (count($_forums)) {
+    $query = db_select('node', 'n');
+    $query->join('node_comment_statistics', 'ncs', 'n.nid = ncs.nid AND n.status = 1');
+    $query->join('forum', 'f', 'n.vid = f.vid');
+    $query->addExpression('COUNT(n.nid)', 'topic_count');
+    $query->addExpression('SUM(ncs.comment_count)', 'comment_count');
+    $counts = $query->fields('f', array('tid'))->condition('n.status', 1)->groupBy('tid')->addTag('node_access')->execute()->fetchAllAssoc('tid');
+  }
+  $i = 1;
+  foreach ($_forums as $forum) {
+    // Determine if the child term is a container.
+    if (in_array($forum->tid, variable_get('forum_containers', array()))) {
+      $forum->container = 0;
+    }
+    // Merge in the topic and post counters.
+    if (!empty($counts[$forum->tid])) {
+      $forum->num_topics = $counts[$forum->tid]->topic_count;
+      $forum->num_posts = $counts[$forum->tid]->topic_count + $counts[$forum->tid]->comment_count;
+    }
+    else {
+      $forum->num_topics = 0;
+      $forum->num_posts = 0;
+    }
+    $forumset = taxonomy_get_tree($vid, $forum->tid);
+    if (count($forumset)) {
+      $termstid = array();
+      foreach($forumset as $term) {
+        $termstid[] = $term->tid;
+      }
+      $forumtid = implode(',',$termstid);
+    } else {
+      $forumtid  = $forum->tid;
+    }
+    // Cache the lastpost result, and return the tree.
+    
+    if ($cache2 = cache_get(md5($forum->tid))) { 
+         $forum->last_post = $cache2->data;
+    
+    } else {
+      $query = db_select('forums_extra', 'n');
+      $query->fields('n');
+      $query->condition('tid', $forum->tid, '=');
+      $topic = $query->range(0, 1)->execute()->fetchObject();         
+      // Merge in the "Last Post" information.
+      $last_post = new stdClass();
+      if (!empty($topic->last_update_time)) {
+        $last_post->created = $topic->last_update_time;
+        $last_post->name = $topic->last_update_user_name;
+        $last_post->uid = $topic->last_update_uid;
+        $last_post->n_title = $topic->last_update_title;
+        $last_post->nid = $topic->forum_nid;
+        $last_post->cid = $topic->current_cid;
+        $last_post->page_number = isset($topic->page_number) ? $topic->page_number : 0;
+      }
+      $forum->num_topics = $topic->forum_topic_count;
+      $forum->num_posts = $topic->forum_reply_count;
+      cache_set(md5($forum->tid), $last_post, 'cache', time() + 3600);
+      $forum->last_post = $last_post;
+    }
+    $forums[$forum->tid] = $forum;
+    $i++;
+  }
+  // Cache the result, and return the tree.
+  $forum_term->forums = $forums;
+  if ($user->uid > 0) {
+    cache_set('gmc_forum_load'.$tid, $forum_term, 'cache', time() + 3600);
+  } else {
+    cache_set('gmc_forum_load0'.$tid, $forum_term, 'cache', time() + 3600);
+  }
+  return $forum_term;
+}
