@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<options imagePath="video/" videoPath="video/45.flv" logoX="300" logoY="250" buffer_time="5">
+
+	<!-- IF FALSE, YOU NEED TO PASS AN IMAGE TO THE SWF FILE-->
+	<autostart>false</autostart>	
+		
+	<logo>video/clip_image001_0000.gif</logo>
+	
+	<!-- SET VOLUME: 0 to 100 -->
+	<volume>70</volume>
+	
+	<!-- SET THE TEXT AT THE END -->
+	<text><![CDATA[Check out the other videos here:<br><font color="#720105"><a href="http://www.apple.com" target="_blank">quitar lesson 1</a></font><br>]]></text>		
+
+</options>

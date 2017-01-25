@@ -1,0 +1,56 @@
+<?php
+
+/**
+ * @file Rules - Installation file.
+ */
+
+/**
+ * Implements hook_schema().
+ */
+function gmc_admin_keyword_schema() {
+	//Save subscribe user/instructor detail
+  $schema['gmc_keyword'] = array(
+    'fields' => array(
+      'keyword_id' => array(
+        'type' => 'serial',
+        'not null' => TRUE,
+        'description' => 'Keyword ID',
+      ),
+      'keyword_title' => array(
+        'description'   => 'Keyword Title',
+        'type'          => 'varchar',
+        'length'        => 255,
+        'not null'      => TRUE,
+      ),
+      'keyword_body' => array(
+        'description'   => 'Keyword Body',
+        'type'          => 'text',
+        'not null'      => TRUE,
+        'size'          => 'big',
+      ),
+      'keyword_short_body' => array(
+        'description'   => 'Keyword Short Body',
+        'type'          => 'text',
+        'not null'      => TRUE,
+        'size'          => 'big',
+      ),
+      'keyword_link' => array(
+        'description'   => 'Keyword Link',
+        'type'          => 'varchar',
+        'length'        => 255,
+        'not null'      => TRUE,
+      ),
+      'keywords' => array(
+        'description'   => 'Keywords',
+        'type'          => 'varchar',
+        'length'        => 255,
+        'not null'      => FALSE,
+      ),
+    ),
+    'primary key' => array('keyword_id'),
+    'indexes' => array(
+       'keyword_id' => array('keyword_id'),
+    ),
+  );
+  return $schema;
+}

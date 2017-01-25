@@ -1,0 +1,699 @@
+<?php
+/**
+* Implementation of hook_menu
+*/
+function gmc_admin_keyword_menu() {
+  $items = array();
+  //Menu for display/add keywords.
+  $items['manage/keywords'] = array(
+    'title' => 'Keywords',
+    'description' => 'Keywords Page',
+	'page callback' => 'gmc_keywords',
+    //'access callback' => TRUE,
+    'access arguments' => array('access administration pages'),
+  );
+  //Menu for Delete keywords.
+  $items['manage/delete/keywords'] = array(
+    'title' => 'Keywords Delete',
+    'description' => 'Keywords Delete',
+	'page callback' => 'delete_keywords',
+    //'access callback' => TRUE,
+    'access arguments' => array('access administration pages'),
+  );
+  //Menu to user.
+  $items['spoken-video-example'] = array(
+    'title' => '',
+    'description' => 'Spoken Video Example',
+	'page callback' => 'spoken_video_example',
+    'access callback' => TRUE,
+  );
+  //Menu to user.
+  $items['onscreen-explanations'] = array(
+    'title' => '',
+    'description' => 'On Screen Explanations',
+	'page callback' => 'onscreen_explanations_example',
+    'access callback' => TRUE,
+  );
+  //Menu to user.
+  $items['extended-camera-angles'] = array(
+    'title' => '',
+    'description' => 'Extended camera angles',
+	'page callback' => 'extended_camera_angles_example',
+    'access callback' => TRUE,
+  );
+  //Menu to user.
+  $items['member-info'] = array(
+    'title' => '',
+    'description' => 'GMC Member Info',
+	'page callback' => 'gmc_member_info',
+    'access callback' => TRUE,
+  );
+  //Menu to user.
+  $items['referrals-info'] = array(
+    'title' => '',
+    'description' => 'GMC Referrals Info',
+	'page callback' => 'gmc_referrals_info',
+    'access callback' => TRUE,
+  );
+  //Menu to user.
+  $items['kmc-metal'] = array(
+    'title' => '',
+    'description' => 'GMC KMC Metal Page',
+	'page callback' => 'gmc_kmc_metal',
+    'access callback' => TRUE,
+  );
+  //Menu to user.
+  $items['you-ready-song-collaboration'] = array(
+    'title' => 'You ready song collaboration',
+    'description' => 'You Ready Song Collaboration Page',
+	'page callback' => 'gmc_song_collaboration',
+    'access callback' => TRUE,
+  );
+
+  //Menu to generate xml for video play at you-ready-song-collaboration page.
+  $items['lessonviewer/you-ready-song'] = array(
+    'title' => 'video play at you-ready-song-collaboration page',
+    'description' => 'Menu to generate xml for video play at you-ready-song-collaboration page',
+    'page callback' => 'generate_lessonviewer_xml',
+    'access callback' => TRUE,
+	'file' => 'settingsother.php',
+	'type' => MENU_CALLBACK,
+ );
+
+  //Menu to import spellings.
+  $items['manage/import/keywords'] = array(
+    'title' => 'Keywords Import',
+    'description' => 'Keywords Import',
+	'page callback' => 'import_keywords',
+    'access callback' => TRUE,
+  );
+  //Menu to import spellings.
+  $items['membersonly/%'] = array(
+    'title' => '',
+    'description' => 'Members Only Lessons Videos',
+	'page callback' => 'members_only_lessons_videos',
+    'page arguments' => array(1),
+    'access callback' => TRUE,
+  );
+  //Menu to import spellings.
+  $items['membersonly/backing_track/%'] = array(
+    'title' => '',
+    'description' => 'Members Only backing track',
+	'page callback' => 'membersonly_backing_track',
+    'page arguments' => array(2),
+    'access callback' => TRUE,
+  );
+  //Menu to import spellings.
+  $items['membersonly/tab/%'] = array(
+    'title' => '',
+    'description' => 'Members Only TAB',
+	'page callback' => 'membersonly_tab',
+    'page arguments' => array(2),
+    'access callback' => TRUE,
+  );
+ return $items;
+}
+/**
+ * Implements hook_init()
+ */
+function gmc_admin_keyword_init(){
+	if((arg(0) == 'manage' && arg(1) == 'keywords') || (arg(0) == 'node' && arg(1) == '111949') || (arg(0) == 'lessons' && arg(1) == 'keywords')) {
+		drupal_add_js(drupal_get_path('module', 'gmc_admin_keyword') . '/js/gmc_keywords.js');
+	}
+	if(arg(0) == 'membersonly') {
+		drupal_add_js(drupal_get_path('module', 'gmc_admin_keyword') . '/jwplayer/jwplayer.js');
+	}
+}
+/**
+ * Implements hook_theme()
+ * @return $themes
+ */
+function gmc_admin_keyword_theme($existing, $type, $theme, $path) {
+	$themes = array (
+		'spoken_video' => array(
+			'template' => 'template/spoken_video',
+		),
+		'onscreen_explanations' => array(
+			'template' => 'template/onscreen_explanations',
+		),
+		'extended_camera_angles' => array(
+			'template' => 'template/extended_camera_angles',
+		),
+		'member_info' => array(
+			'variables' => array('key' => NULL),
+			'template' => 'template/member_info',
+		),
+		'referrals_info' => array(
+			'template' => 'template/referrals_info',
+		),
+		'kmc_metal' => array(
+			'template' => 'template/kmc_metal',
+		),
+		'song_collaboration' => array(
+			'template' => 'template/song_collaboration',
+		),
+		'members_only_lessons' => array(
+			'variables' => array('file_url' => NULL),
+			'template' => 'template/members_only_lessons',
+		),
+		'members_backing_track' => array(
+			'variables' => array('nid' => NULL),
+			'template' => 'template/members_backing_track',
+		),
+	);
+	return $themes;	
+}
+
+/**
+ * Implements hook_node_view()
+ * @return $node
+ */
+function gmc_admin_keyword_node_view($node, $view_mode, $langcode) {
+	if($node->type == 'gmc_basic_page') {
+		$backing_tab = '';
+		$tab = '';
+		$backing_track = '';
+		if(isset($node->field_backing_track['und'])) {
+			$backing_track .= '<td width="42"><img src="/sites/all/themes/gmc_v2/images/play.gif" width="36" height="31" align="absbottom"></td>';
+			$backing_track .= '<td width="134"><a href="#" class="huvudtext12" onclick="javascript:window.open(\'/membersonly/backing_track/'.$node->nid.'\',\'\',\'height=200,width=300,left=300,resizable=yes,scrollbars=yes,top=300\')">Backing Track</a></td>';
+		}
+		else {
+			$backing_track .= '';
+		}
+		if(isset($node->field_scales_tab['und'])) {
+			$tab .= '<td width="42"><img src="/sites/all/themes/gmc_v2/images/ac045.gif" width="30" height="38" align="absbottom"></td>';
+			$tab .= '<td width="230"><a href="/membersonly/tab/'.$node->nid.'" class="huvudtext12">TAB</a></td>';
+		}
+		else {
+			$tab .= '';
+		}
+		if($backing_track != '' || $tab != '') {
+			$backing_tab = '<table height="57" border="0" align="center" cellspacing="0" class="graram">
+							<tbody>
+								<tr>
+									<td valign="middle" bgcolor="#F6F6F6">
+									<table width="286" height="55" border="0" cellspacing="0">
+										<tbody>
+											<tr>'.$backing_track.'</tr>
+											<tr>
+												<td>&nbsp;</td>
+												<td>&nbsp;</td>
+											</tr>
+											<tr>'.$tab.'</tr>
+										</tbody>
+									</table>
+									</td>
+								</tr>
+							</tbody>
+						</table>';
+		}
+		$node->content['admin_backing_tab'] = array(
+			'#markup' => $backing_tab,
+			'#weight' => 1000,
+		);
+		if(empty($node->content['comments'])) {
+			$login_message = '<div class="admin-login-message"><strong style="text-decoration:underline;">Login in the top right corner</strong> to write a comment.</div>';
+			$node->content['admin_login_message'] = array(
+				'#markup' => $login_message,
+				'#weight' => 1001,
+			);
+		}
+		//print "<pre>";print_r($node);exit;
+	}
+}
+/**
+* Callback function gmc_keywords
+* for create/display Keywords
+* @return $output;
+*/
+function gmc_keywords() {
+	global $user;
+	$output = '';
+	if(!empty($_REQUEST['keyword_id'])){
+		//Spelling add form
+		$output .= '<span class="update-new-keyword"><h2>Update keyword</h2></span>';
+		$form = drupal_get_form('gmc_keywords_form');
+		$output .= '<div class="keywords-update-form">'.drupal_render($form).'</div>';
+	}
+	else{
+		//Spelling add form
+		$output .= '<div class="add-new-keywords"><a href="#">New keyword</a></div>';
+		$form = drupal_get_form('gmc_keywords_form');
+		$output .= '<div class="keywords-insert-form">'.drupal_render($form).'</div>';
+	}
+	//Table header	
+	$header = array(
+		array('data' => t('Keyword ID'),'field'=>'keyword_id', 'sort'=>'asc'),
+		array('data' => t('Title'),'field'=>'keyword_title', 'sort'=>'asc'),
+		array('data' => t('Body')),
+		array('data' => t('Link')),
+		array('data' => t('Keywords')),
+		array('data' => t('Action')),
+	);
+	//fetch data from pm_draft table
+	$sql_query = db_select('gmc_keyword', 'gk');
+	$sql_query->fields('gk');
+	$sql_query = $sql_query->extend('TableSort')->extend('PagerDefault')->limit(30);
+	$result = $sql_query->orderByHeader($header)->execute();
+	foreach($result as $data){
+		$rows[] = array(
+			$data->keyword_id,
+			$data->keyword_title,
+			$data->keyword_body,
+			'<a href="'.$data->keyword_link.'">'.wordwrap($data->keyword_link, 10, "\n", true).'</a>',
+			$data->keywords,
+			l('Edit', 'manage/keywords', array('attributes' => array('class' => array('keysop')),'query' => array('keyword_id' => $data->keyword_id))).'<br/>'.l('Delete', 'manage/delete/keywords', array('attributes' => array('class' => array('keysop'),'id' => array('delop'),'onclick' => array('if(!confirm("Really Delete?")){return false;}')),'query' => array('keyword_id' => $data->keyword_id))),
+		);
+	}
+	$output .= theme('table', array('header' => $header, 'rows' => $rows, 'attributes' => array('id' => 'gmc-keywords-table')));
+	$output .= theme('pager');
+	return $output;
+}
+
+/**
+* Implements form API
+* Callback function gmc_keywords_form
+* to save keywords
+* @return $form
+*/
+function gmc_keywords_form() {
+	if(!empty($_REQUEST['keyword_id'])){
+		$kid =	$_REQUEST['keyword_id'];
+		$result = db_select('gmc_keyword', 'g')
+					->fields('g')
+					->condition('keyword_id', $kid)
+					->execute()
+					->fetchObject();
+		$key_title = $result->keyword_title;
+		$key_body = $result->keyword_body; 
+		$key_link = $result->keyword_link; 
+		$keys = $result->keywords; 
+		$submit_text = t('Update');
+	}
+	else{
+		$key_title 	= '';
+		$key_body  	= ''; 
+		$key_link  	= ''; 
+		$keys	  	= ''; 
+		$submit_text = t('Save');
+	}
+	$form['keyword_title'] = array(
+		'#type'  => 'textfield', 
+		'#title' => t('Title'),
+		'#value' => $key_title ,
+	);
+	$form['keyword_body'] = array(
+		'#type' => 'textarea', 
+		'#title' => t('Body'),
+		'#value' => $key_body ,
+	);
+	$form['keyword_link'] = array(
+		'#type' => 'textfield', 
+		'#title' => t('Link'),
+		'#value' => $key_link ,
+	);
+	$form['keywords'] = array(
+		'#type' => 'textfield', 
+		'#title' => t('Keywords (Separated with comma)'),
+		'#value' => $keys ,
+	);
+	$form['submit'] = array(
+		'#type' => 'submit',
+		'#value' => $submit_text,
+	);
+	return $form;
+}
+/**
+ * hook_submit for save spell correction.
+ * @return '';
+ */
+function gmc_keywords_form_submit(&$form, &$form_state) {
+	if(!empty($_REQUEST['keyword_id'])){
+		$num_updated = db_update('gmc_keyword') 
+						  ->fields(array(
+								'keyword_title' => $form_state['input']['keyword_title'],
+								'keyword_body' => $form_state['input']['keyword_body'],
+								'keyword_link' => $form_state['input']['keyword_link'],
+								'keywords' => $form_state['input']['keywords'],
+						  ))
+					  ->condition('keyword_id', $_REQUEST['keyword_id'], '=')
+					  ->execute();
+		drupal_set_message("Keyword Updated successfully!", "status");
+		drupal_goto('manage/keywords');
+	}
+	else{
+		global $user;
+		db_insert('gmc_keyword')
+			->fields(array(
+				'keyword_title' => $form_state['input']['keyword_title'],
+				'keyword_body' => $form_state['input']['keyword_body'],
+				'keyword_link' => $form_state['input']['keyword_link'],
+				'keywords' => $form_state['input']['keywords'],
+				)
+			)
+			->execute();
+		drupal_set_message("Keywords inserted successfully!", "status");
+	}
+}
+
+/**
+* Callback function delete_spelling
+* for delete spelling correction
+* @return '';
+*/
+function delete_keywords() {
+	$keyword_id = $_GET['keyword_id'];
+	db_delete('gmc_keyword')
+	  ->condition('keyword_id', $keyword_id)
+	  ->execute();
+	drupal_set_message("Keywords deleted successfully!", "status");
+	drupal_goto('manage/keywords');
+}
+/**
+* Callback function import_keywords
+* for Import keywords from live site table
+* @return '';
+*/
+function import_keywords() {
+	$data = db_query("SELECT * FROM admin_oskar.Keyword ORDER BY Keyword.ID ASC LIMIT 0, 45");
+	foreach($data as $keywords) {
+	$keyword = str_replace(',', ', ', $keywords->Keywords);
+	$keyword = str_replace('  ', ' ', $keyword);
+	print "<pre>";print_r($keywords);exit;
+		/*db_insert('dev_syn_drupal.gmc_keyword')
+			->fields(array(
+				'keyword_title' => $keywords->Title,
+				'keyword_body' => $keywords->Body,
+				'keyword_short_body' => $keywords->ShortBody,
+				'keyword_link' => $keywords->Link,
+				'keywords' => $keyword,
+				)
+			)
+			->execute();*/
+	}
+	return '0, 45';
+}
+
+/**
+ * Callback function for load comment in ASC
+ */
+function kmc_comment_load($nid) {
+	return db_query('SELECT * FROM comment c INNER JOIN field_data_comment_body cb on cb.entity_id = c.cid WHERE c.nid = :nid order by created ASC', array(':nid' => $nid))->fetchAll();
+}
+
+
+
+/**
+* Implements form API
+* Callback function kmc_metal_comment_form
+* to post comment
+* @return $form
+*/
+function kmc_metal_comment_form() {
+	$form['node_id'] = array(
+		'#type' => 'hidden', 
+		'#default_value' => 75116,
+	);
+	$form['comment_body'] = array(
+		'#type' => 'textarea', 
+		'#title' => t('Post a comment '),
+	);
+	$form['submit'] = array(
+		'#type' => 'submit',
+		'#value' => t('Add Comment'),
+	);
+	return $form;
+}
+/**
+ * hook_submit for save KMC Metal comment.
+ * @return '';
+ */
+function kmc_metal_comment_form_submit(&$form, &$form_state) {
+	global $user;
+	
+	$comment = (object) array(
+		'nid' => $form_state['input']['node_id'],
+		'cid' => 0,
+		'pid' => 0,
+		'uid' => $user->uid,
+		'mail' => '',
+		'is_anonymous' => 0,
+		'homepage' => '',
+		'status' => COMMENT_PUBLISHED,
+		'subject' => '',
+		'language' => LANGUAGE_NONE,
+		'comment_body' => array(
+		  LANGUAGE_NONE => array(
+			0 => array (
+			  'value' => $form_state['input']['comment_body'],
+			  'format' => 'filtered_html'
+			)
+		  )
+		),
+	);
+	comment_submit($comment);
+	comment_save($comment);
+	drupal_set_message("Comment posted successfully!", "status");
+}
+
+/**
+* Implements form API
+* Callback function song_collaboration_comment_form
+* to post comment
+* @return $form
+**/
+function song_collaboration_comment_form() {
+	$form['node_id'] = array(
+		'#type' => 'hidden', 
+		'#default_value' => 36727,
+	);
+	$form['comment_body'] = array(
+		'#type' => 'textarea', 
+		'#title' => t('Post a comment '),
+	);
+	$form['submit'] = array(
+		'#type' => 'submit',
+		'#value' => t('Add Comment'),
+	);
+	return $form;
+}
+/**
+ * hook_submit for save Song Collaboration comment.
+ * @return '';
+ **/
+function song_collaboration_comment_form_submit(&$form, &$form_state) {
+	global $user;
+	
+	$comment = (object) array(
+		'nid' => $form_state['input']['node_id'],
+		'cid' => 0,
+		'pid' => 0,
+		'uid' => $user->uid,
+		'mail' => '',
+		'is_anonymous' => 0,
+		'homepage' => '',
+		'status' => COMMENT_PUBLISHED,
+		'subject' => '',
+		'language' => LANGUAGE_NONE,
+		'comment_body' => array(
+		  LANGUAGE_NONE => array(
+			0 => array (
+			  'value' => $form_state['input']['comment_body'],
+			  'format' => 'full_html'
+			)
+		  )
+		),
+	);
+	comment_submit($comment);
+	comment_save($comment);
+	drupal_set_message("Comment posted successfully!", "status");
+}
+/**
+ * Callback function get_referer_key_value()
+ * to print member referer key value 
+ * at gmc-member-info page
+ * @return $key
+ */
+function get_referer_key_value() {
+	$key = '';
+	global $user;
+	if($user->uid == 0){
+		$uid = 1;
+	}
+	else {
+		$uid = $user->uid;
+	}
+	$key_value = db_query("SELECT key_value from gmc_referer_key where uid = :uid", array(':uid' => $uid));
+	$num = $key_value->rowCount();
+	if($num != 0) {
+		$key = $key_value->fetchField();
+	}
+	else {
+		$length = 7;
+		$key = generated_key_exist($length);
+		$insert = db_insert('gmc_referer_key')
+		->fields(array(
+			'uid' => $uid,
+			'key_value' => $key,
+			'bonus_level' => 0,
+			'created' => time(),
+		))
+		->execute();
+	}
+	return $key;
+}
+
+/**
+ * Callback function spoken_video_example
+ * for user to display exmaple video.
+ */
+function spoken_video_example() {
+	$empty = array("Spoken Video Example");
+	return theme('spoken_video', $empty);
+}
+/**
+ * Callback function onscreen_explanations_example
+ * for user to display exmaple video.
+ */
+function onscreen_explanations_example() {
+	$empty = array("On Ecreen Explanations");
+	return theme('onscreen_explanations', $empty);
+}
+/**
+ * Callback function extended_camera_angles_example
+ * for user to display exmaple video.
+ */
+function extended_camera_angles_example() {
+	$empty = array("Extended camera angles");
+	return theme('extended_camera_angles', $empty);
+}
+/**
+ * Callback function gmc_member_info
+ * for user to referer link and count.
+ */
+function gmc_member_info() {
+	$key = get_referer_key_value();
+	return theme('member_info', array('key' => $key));
+}
+/**
+ * Callback function gmc_referrals_info
+ * for user to referer information/policy.
+ */
+function gmc_referrals_info() {
+	$empty = array("GMC Referrals Info");
+	return theme('referrals_info', $empty);
+}
+/**
+ * Callback function gmc_kmc_metal
+ * for user to play/download mp3 songs file.
+ */
+function gmc_kmc_metal() {
+	$empty = array("GMC KMC Metal");
+	return theme('kmc_metal', $empty);
+}
+/**
+ * Callback function gmc_song_collaboration
+ * for user for You Ready Sonf Collaboration.
+ */
+function gmc_song_collaboration() {
+	$empty = array("GMC Song Collaboration");
+	return theme('song_collaboration', $empty);
+}
+/**
+ * Callback function members_only_lessons_videos
+ * for Paid user to view lessons videos.
+ */
+function members_only_lessons_videos($file_name) {
+	global $user;
+	$roles = array("paid user", "administrator", "moderator");
+	$roles_result = array_intersect($roles, $user->roles);
+	if (!empty($roles_result)) {	
+		$uri = db_query("SELECT uri FROM file_managed fm INNER JOIN field_data_field_upload_videos v ON v.field_upload_videos_fid = fm.fid WHERE fm.filename LIKE :file_name", array(':file_name' => '%'.$file_name.'%'))->fetchField();
+		$url = file_create_url($uri);
+		return theme('members_only_lessons', array('file_url' => $url));
+	}
+	else {
+		$output = '<div class="gmc-padding"><div>
+			<div id="message-accessexception">
+				<h4>You have tried to access content only available to members with an active subscription, please <span style="text-decoration: underline;" class="signupHighlighting">log in</span> or <a style="text-decoration: underline;" href="/signup/">sign up</a>.</h4>
+			<p></p>
+			</div>
+			<var></var>
+		</div></div>';
+		return $output;
+	}
+}
+/**
+ * Callback function gmc_song_collaboration
+ * for user for You Ready Sonf Collaboration.
+ */
+function membersonly_backing_track($nid) {
+	global $user;
+	$roles = array("paid user", "administrator", "moderator");
+	$roles_result = array_intersect($roles, $user->roles);
+	if (!empty($roles_result)) {	
+		return theme('members_backing_track', array('nid' => $nid));
+	}
+	else {
+		$output = '<div class="gmc-padding"><div>
+			<div id="message-accessexception">
+				<h4>You have tried to access content only available to members with an active subscription, please <span style="text-decoration: underline;" class="signupHighlighting">log in</span> or <a style="text-decoration: underline;" href="/signup/">sign up</a>.</h4>
+			<p></p>
+			</div>
+			<var></var>
+		</div></div>';
+		return $output;
+	}
+}
+/**
+ * Callback function gmc_song_collaboration
+ * for user for You Ready Sonf Collaboration.
+ */
+function membersonly_tab($nid) {
+	global $user;
+	$roles = array("paid user", "administrator", "moderator");
+	$roles_result = array_intersect($roles, $user->roles);
+	if (!empty($roles_result)) {	
+		//return theme('members_only_tab', array('nid' => $nid));
+		$node_detail = node_load($nid);
+		$tab = $node_detail->field_scales_tab;
+		$tab_content = '';
+		foreach($tab['und'] as $file) {
+			$url = file_create_url($file['uri']);
+			//$tab_content .= file_get_contents($url);
+			//drupal_goto($url);
+			//return $tab_content;
+
+			//cURL script
+			$user="admin";
+			$pass="h2G@&foCK49Es998";
+
+			$ch = curl_init();
+			curl_setopt($ch, CURLOPT_URL, $url);
+			curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+			curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_ANY);
+			curl_setopt($ch, CURLOPT_USERPWD, "$user:$pass");
+			curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
+			curl_setopt($ch, CURLOPT_FRESH_CONNECT, true);
+			curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows; U; Windows NT 6.0; da; rv:1.9.0.11) Gecko/2009060215 Firefox/3.0.11');
+			$contents = curl_exec($ch);
+			if ($contents === false) {
+			   trigger_error('Failed to execute cURL session: ' . curl_error($ch), E_USER_ERROR);
+			}
+			$tab_content .= str_replace("\n", "<br/>", $contents);
+		}
+		print '<div style="font-family: \'Courier\',\'monospace\',\'Courier new\' !important; font-size: 14px !important;">'.$tab_content.'</div>';
+		exit;
+	}
+	else {
+		$output = '<div class="gmc-padding"><div>
+			<div id="message-accessexception">
+				<h4>You have tried to access content only available to members with an active subscription, please <span style="text-decoration: underline;" class="signupHighlighting">log in</span> or <a style="text-decoration: underline;" href="/signup/">sign up</a>.</h4>
+			<p></p>
+			</div>
+			<var></var>
+		</div></div>';
+		return $output;
+	}
+}
+
