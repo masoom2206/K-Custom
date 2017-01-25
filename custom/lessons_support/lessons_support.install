@@ -1,0 +1,59 @@
+<?php
+
+/**
+ * @file Rules - Installation file.
+ */
+
+/**
+ * Implements hook_install().
+ *
+function lessons_support_install() {
+  module_load_include('inc', 'rules', 'modules/events');
+  // Set the modules' weight to 20, see
+  // http://drupal.org/node/445084#comment-1533280 for the reasoning.
+  db_query("UPDATE {system} SET weight = 20 WHERE name = 'rules'");
+}*/
+
+/**
+ * Implements hook_uninstall().
+ *
+function lessons_support_uninstall() {
+  variable_del('rules_empty_sets');
+  variable_del('rules_debug');
+}*/
+
+/**
+ * Implements hook_schema().
+ */
+function lessons_support_schema() {
+  $schema['gmc_usernotes'] = array(
+    'fields' => array(
+      'id' => array(
+        'type' => 'serial',
+        'not null' => TRUE,
+        'description' => 'Serial number.',
+      ),
+      'uid' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'description' => 'The User id.',
+      ),
+      'lesson_nid' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'description' => 'The lesson node id.',
+      ),
+     'notes' => array(
+        'type' => 'text',
+		'not null' => FALSE,
+        'size' => 'big',
+        'description' => 'The note description.',
+      ),
+    ),
+    'primary key' => array('id'),
+    'indexes' => array(
+      'id' => array('id'),
+    ),
+  );
+  return $schema;
+}

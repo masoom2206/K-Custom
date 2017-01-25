@@ -1,0 +1,9 @@
+name = GMC Lessons Listing
+description = Custom GMC Lessons Function Module for lessons listings.
+package = Custom
+version = VERSION
+core = 7.x
+files[] = gmc_lessons_listing.module
+; Information added by drupal.org packaging script on 2013-02-20
+version = "7.custom"
+project = support

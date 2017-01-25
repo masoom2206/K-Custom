@@ -1,0 +1,289 @@
+<?php
+/**
+* Implementation of hook_menu
+*/
+function gmc_admin_lessons_list_menu() {
+  $items = array();
+  $items['lessons-list'] = array(
+    'title' => 'Find lessons',
+    'description' => 'Autocomplete Search Result',
+	'page callback' => 'admin_lessons_list',
+    'access callback' => TRUE,
+  );
+ return $items;
+}
+
+/**
+ * Callback function admin_lessons_list()
+ * for admin lesson page
+ * @return $output
+ */
+function admin_lessons_list(){
+	$output = '';
+	$output .= drupal_render(drupal_get_form('find_lessons_form'));
+	$output .= views_embed_view('admin_lessons_list','page');
+	return $output;
+}
+
+/**
+ * Implementation of hook_views_query_alter
+ * @param type $view
+ * @param type $query 
+ */
+function gmc_admin_lessons_list_views_query_alter(&$view, &$query) {
+
+}
+
+/**
+ * Form API for admin
+ * to find instructor lessons
+ * @return form
+ */
+function find_lessons_form(){
+	global $user, $base_url;
+
+	$form['find_lessons_part_one_start'] = array(
+	  '#markup' => '	<table border="0" cellspacing="0" cellpadding="0">
+		<tbody>
+			<tr>
+				<td>Instructor: </td>
+				<td>',
+	);
+	//Instructor Levels
+	$options = array('any' => t('Any'));
+	$query = db_query("SELECT u.uid, u.name FROM users u INNER JOIN users_roles ur on ur.uid = u.uid INNER JOIN node n on n.uid = u.uid WHERE ur.rid = :rid AND u.status = :status AND n.type LIKE :type AND n.status = :status ORDER BY u.name ASC", array(':rid' => 4, ':status' => 1, ':type' => 'lessons', ':status' => 1));
+	foreach($query as $result){
+		$options[trim($result->name)] = ucwords(trim($result->name));
+	}
+	$default_instructor = 'any';
+	if(isset($_GET['uid']) && $_GET['uid'] != '') {
+		$default_instructor = $_GET['uid'];
+	}
+	$form['instructor'] = array(
+		'#type' => 'select',
+		'#title' => t(''),
+		'#options' => $options,
+		'#default_value' => $default_instructor,
+	);
+	$form['find_lessons_part_two_start'] = array(
+	  '#markup' => '</td>
+				<td>Technique: </td>
+				<td>',
+	);
+	//Technique category
+	$terms = taxonomy_get_tree(9);
+	$options = array('any' => t('Any'));
+	foreach($terms as $term) {
+		$options[$term->name] = $term->name;
+	}
+	$technique_type = 'any';
+	if(isset($_GET['field_lesson_type_tid'])) {
+		$technique_type = $_GET['field_lesson_type_tid'];
+	}
+	$form['technique'] = array(
+		'#type' => 'select',
+		'#title' => t(''),
+		'#options' => $options,
+		'#default_value' => $technique_type,
+	);
+	$form['find_lessons_part_three_start'] = array(
+	  '#markup' => '</td>
+				<td>',
+	);
+				
+	//Spoken Video checkbox
+	$check = array('checked' => 'checked');
+	if(isset($_GET['field_spoken_video_value']) && $_GET['field_spoken_video_value'] != 'All'){
+		$check = array('checked' => 'checked');
+	}
+	$form['spoken_video'] = array(
+		'#type' => 'checkbox', 
+		'#title' => t('Spoken Video'),
+		'#attributes' => $check,
+	);
+	$form['find_lessons_part_four_start'] = array(
+	  '#markup' => '</td>
+			</tr>
+			<tr>
+				<td>Difficulty Level: </td>
+				<td>',
+	);
+	//Difficulty Levels
+	$options = array('1' => 1, '2' => 2, '3' => 3, '4' => 4, '5' => 5, '6' => 6, '7' => 7, '8' => 8, '9' => 9, '10' => 10);
+	$from = 1;
+	$to = 10;
+	$form['difficulty_fieldset']['difficulty_level_from'] = array(
+		'#type' => 'select',
+		'#title' => t(''),
+		'#options' => $options,
+		'#default_value' => $from,
+		'#field_suffix' => t('To'),
+	);
+	$form['difficulty_fieldset']['difficulty_level_to'] = array(
+		'#type' => 'select',
+		'#title' => t(''),
+		'#options' => $options,
+		'#default_value' => $to,
+	);
+	$form['find_lessons_part_five_start'] = array(
+	  '#markup' => '</td>
+				<td>Lesson Type: </td>
+				<td>',
+	);
+	//Lesson Type Category
+	$terms = taxonomy_get_tree(7);
+	$options = array('any' => t('Any'));
+	foreach($terms as $term) {
+		$options[$term->name] = $term->name;
+	}
+	$lesson_type = 'any';
+	if(isset($_GET['field_music_category_tid'])) {
+		$lesson_type = $_GET['field_music_category_tid'];
+	}
+	$form['lesson_type'] = array(
+		'#type' => 'select',
+		'#title' => t(''),
+		'#options' => $options,
+		'#default_value' => $lesson_type,
+	);
+	$form['find_lessons_part_six_start'] = array(
+	  '#markup' => '</td>
+				<td>',
+	);
+	//Backing Tracks checkbox
+	$check = array('checked' => 'checked');
+	if(isset($_GET['field_spoken_video_value']) && $_GET['field_spoken_video_value'] != 'All'){
+		$check = array('checked' => 'checked');
+	}
+	$form['backing_tracks'] = array(
+		'#type' => 'checkbox', 
+		'#title' => t('Backing Tracks'),
+		'#attributes' => $check,
+	);
+	$form['find_lessons_part_seven_start'] = array(
+	  '#markup' => '</td>
+			</tr>
+			<tr>
+				<td>Tags:</td>
+				<td>',
+	);
+	//Tags field
+	$form['tags'] = array(
+		'#type' => 'textfield', 
+		'#title' => t(''),
+		'#size' => 20, 
+		'#maxlength' => 128, 
+	);
+	$form['find_lessons_part_eight_start'] = array(
+	  '#markup' => '</td>
+				<td>Music Category: </td>
+				<td>',
+	);
+	//Music Category
+	$terms = taxonomy_get_tree(8);
+	$options = array('any' => t('Any'));
+	foreach($terms as $term) {
+		$options[$term->name] = $term->name;
+	}
+	$music_category = 'any';
+	if(isset($_GET['field_music_category_tid'])) {
+		$music_category = $_GET['field_music_category_tid'];
+	}
+	$form['music_category'] = array(
+		'#type' => 'select',
+		'#title' => t(''),
+		'#options' => $options,
+		'#default_value' => $music_category,
+	);
+	$form['find_lessons_part_nine_start'] = array(
+	  '#markup' => '</td>
+				<td>',
+	);
+	//GuitarPro checkbox
+	$check = array('checked' => 'checked');
+	if(isset($_GET['field_spoken_video_value']) && $_GET['field_spoken_video_value'] != 'All'){
+		$check = array('checked' => 'checked');
+	}
+	$form['guitar_pro'] = array(
+		'#type' => 'checkbox', 
+		'#title' => t('GuitarPro'),
+		'#attributes' => $check,
+	);
+	$form['find_lessons_part_ten_start'] = array(
+	  '#markup' => '</td>
+			</tr>
+			<tr>
+				<td>Order by: </td>
+				<td colspan="3">',
+	);
+	//Order By
+	$options = array('date' => t('Date'), 'level' => t('Difficulty Level'));
+	$order_by = 'date';
+	$form['order_by'] = array(
+		'#type' => 'select',
+		'#title' => t(''),
+		'#options' => $options,
+		'#default_value' => $order_by,
+	);
+	$form['find_lessons_part_eleven_start'] = array(
+	  '#markup' => '</td>
+				<td>',
+	);
+	//Tab Scales checkbox
+	$check = array('checked' => 'checked');
+	if(isset($_GET['field_spoken_video_value']) && $_GET['field_spoken_video_value'] != 'All'){
+		$check = array('checked' => 'checked');
+	}
+	$form['tab_scales'] = array(
+		'#type' => 'checkbox', 
+		'#title' => t('Tab Scales'),
+		'#attributes' => $check,
+	);
+	$form['find_lessons_part_twelve_start'] = array(
+	  '#markup' => '</td>
+			</tr>
+			<tr>
+				<td>Reverse order: </td>
+				<td colspan="4">',
+	);
+	//Reverse order checkbox
+	$check = array('checked' => 'checked');
+	if(isset($_GET['field_spoken_video_value']) && $_GET['field_spoken_video_value'] != 'All'){
+		$check = array('checked' => 'checked');
+	}
+	$form['reverse_order'] = array(
+		'#type' => 'checkbox', 
+		'#title' => t(''),
+		'#attributes' => $check,
+	);
+	$form['find_lessons_part_thirteen_start'] = array(
+	  '#markup' => '</td>
+			</tr>
+		</tbody>
+	</table>
+	<p>',
+	);
+	//Submit Button
+	$form['submit'] = array(
+		'#type' => 'submit',
+		'#value' => t('Filter Results'),
+	);
+	$form['reset_form'] = array(
+		'#type' => 'button',
+		'#value' => t('Reset Form'),
+		'#attributes' => array('onclick' => 'this.form.reset(); return false;'),
+	);
+	$form['find_lessons_part_fourteen_end'] = array(
+	  '#markup' => '</p>',
+	);
+	return $form;
+}
+/**
+ * hook_submit()
+ * @return ''
+ */
+function find_lessons_form_submit(&$form, &$form_state) {
+	global $user;
+	$instructor = $form_state['input']['instructor'];
+	drupal_goto('lessons-list', array('query' => array('uid' => $instructor)));
+}

@@ -1,0 +1,9 @@
+name = Import Bookmark
+description = Import Data Bookmark for GMC.
+package = Custom
+version = VERSION
+core = 7.x
+files[] = import_bookmark.module
+; Information added by drupal.org packaging script on 2013-08-17
+version = "7.custom"
+project = import_bookmark

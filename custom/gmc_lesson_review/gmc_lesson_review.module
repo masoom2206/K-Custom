@@ -1,0 +1,477 @@
+<?php
+
+function gmc_lesson_review_init() {
+  if(arg(2) == 'webform-results' || arg(0) == 'new-possible-lesson-by-instructor' || arg(2) == 'all-parts') {
+    drupal_add_js(drupal_get_path('module', 'gmc_lesson_review').'/js/gms_lesson_review.js');
+  }
+  if(arg(0) == 'guitar_forum_topic') {
+    drupal_add_js(drupal_get_path('module', 'gmc_lesson_review').'/js/ips_attach.js');
+  }
+}
+
+/** function for submit review request for complete lesson.
+  *
+  **/
+
+function gmc_lesson_review_menu() {
+  $items['send/review/request'] = array(
+    'page callback' => 'instructor_send_review_request',
+    'access callback' => TRUE,
+	  'type' => MENU_CALLBACK,
+  );
+  $items['reedit/review/request'] = array(
+    'page callback' => 'instructor_reedit_review_request',
+    'access callback' => TRUE,
+	  'type' => MENU_CALLBACK,
+  );
+  $items['inst/send/review/appoved/%'] = array(
+    'page callback' => 'instructor_send_review',
+    'access callback' => TRUE,
+	  'type' => MENU_CALLBACK,
+  );
+ $items['review/complete/lessons'] = array(
+    'page callback' => 'review_complete_lessons',
+    'access callback' => TRUE,
+	  'type' => MENU_CALLBACK,
+  );
+ $items['complete/revision/lesson/publish'] = array(
+    'page callback' => 'complete_revision_lesson_publish',
+    'access callback' => TRUE,
+	  'type' => MENU_CALLBACK,
+  );
+ $items['icp'] = array(
+    'page callback' => 'icp_lessons',
+    'access callback' => TRUE,
+	  'type' => MENU_CALLBACK,
+  );
+ return $items;
+}
+
+function instructor_reedit_review_request() {
+  global $user;
+  $nid = $_POST['nid'];
+  $uid = $_POST['uid'];
+  $sid = $_POST['sid'];
+  db_delete('gmc_lesson_review')
+    ->condition('entity_id', $nid)
+    ->execute();
+  drupal_goto('node/'.$nid.'/all-parts');
+
+}
+
+function icp_lessons() {
+  global $user;
+  $node = db_select('node', 'n')
+         ->fields('n')
+         ->condition('n.uid', $user->uid)
+         ->condition('n.type', 'lessons')
+         ->execute()->fetchAll();
+  foreach($node as $value) {
+     $revistion = _get_review_status($value->nid);
+     if ($revistion == 0) {
+       if ($value->status == 0)
+         $edit = l('edit', 'node/'.$value->nid.'/edit');
+       else 
+         $edit = '---';
+     } else {
+       $edit = '---';
+     }
+     $action = $edit . '&nbsp;&nbsp;&nbsp;&nbsp;' . l('Lesson Maker', 'node/'.$value->nid.'/all-parts');
+     $status = ($value->status == 1) ? 'Yes' : 'No';
+     $rows[] = array($value->title, $status, date("Y-m-d H:i:s", $value->created), $action);
+  }
+
+    $header = array("Title", "Published", "Published On", "Operations");
+    $data = '<div class="page-review-complete"><h3>ICP</h3><div id="content">';
+    $data .= theme('table', array(
+              'header' => $header,
+              'rows' => $rows,
+              'attributes' => array('width' => '100%')
+            ));
+    $data .= '</div></div>';
+   return $data;
+}
+ 
+function instructor_send_review_request() {
+  global $user;
+  $nid = $_POST['nid'];
+  $uid = $_POST['uid'];
+  $sid = $_POST['sid'];
+  $revision = $_POST['revision'];
+  if ($revision > 0) {
+    $revision = 1;
+  }
+  $node = node_load($nid);
+  $params = array(
+    '@url' => url('node/' . $node->nid, array('absolute' => TRUE)),
+    '@url2' => url('revisionlesson/preview/' . $node->nid, array('absolute' => TRUE)),
+    '@url3' => url('node/' . $node->nid . '/all-parts' , array('absolute' => TRUE)),
+    '@title' => $node->title,
+    '@username' => $user->name,
+  );
+  $send = TRUE;
+  $to = "support@guitarmasterclass.net, kristoferdahl7@gmail.com";
+  $from = $user->mail;
+  $key = '';
+  if (!empty($sid) && isset($sid)) {
+    db_merge('gmc_lesson_review') 
+    ->key(array('sid' => $sid))
+    ->fields(array(
+      'uid' => $uid,
+      'entity_id' => 0000,
+      'approved' => 2,
+      'email' => 0,
+      'sid' => $sid,
+      'revision' => $revision,
+      'date' => time()
+    ))->execute();  
+    drupal_mail('gmc_lesson_review', $key, $to, $language, $params, $from, $send);
+  } else {
+    db_merge('gmc_lesson_review') 
+    ->key(array('entity_id' => $nid))
+    ->fields(array(
+      'uid' => $user->uid,
+      'entity_id' => $nid,
+      'approved' => 2,
+      'email' => 1,
+      'sid' => 0,
+      'revision' => $revision,
+      'date' => time()
+    ))->execute(); 
+    
+    drupal_mail('gmc_lesson_review', $key, $to, $language, $params, $from, $send);
+  }
+  
+  print 'Done';
+  //drupal_goto('node/'.$nid.'/all-parts');
+}
+
+/**
+* Implements hook_mail().
+*/
+function gmc_lesson_review_mail($key, &$message, $params) {
+  $message['headers']['Content-Type'] = 'text/html; charset=UTF-8; format=flowed';
+  $message['subject'] = t("Lesson change pending review ( @title ).", $params);
+  $message['body'] = array();
+  $message['body'][] = t("Hello", $params);
+  $message['body'][] = t("<br/>Instructor @username has completed modifications for '@title' : @url2.", $params);
+  $message['body'][] = t("<br/>Please confirm the changes and approve.", $params);
+  $message['body'][] = t("<br/>Link to revisions admin page : @url3", $params);
+  $message['body'][] = t("<br/>Thanks", $params);
+  return $message;
+} 
+
+function instructor_send_review($nid) {
+  $form['nid'] = array(
+    '#type' => 'hidden',
+    '#default_value' =>  $nid,
+  );
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Approved'),
+  );
+  return $form;
+}
+
+function get_review_ids($nid) {
+  $lid = db_select('gmc_lesson_review', 'n')
+         ->fields('n')
+         ->condition('n.entity_id', $nid)
+         ->execute()->fetchAll();
+  return !empty($lid) ? $lid[0]->email : 0;
+}
+
+function _get_revision_status_review($nid) {
+  $lid = db_select('gmc_lesson_review', 'n')
+         ->fields('n')
+         ->condition('n.entity_id', $nid)
+         ->execute()->fetchAll();
+  return $lid[0]->revision;
+}
+
+function  get_approved_status($sid) {
+  $lid = db_select('gmc_lesson_review', 'n')
+         ->fields('n')
+         ->condition('n.sid', $sid)
+         ->execute()->fetchAll();
+  return !empty($lid) ? $lid[0]->sid : 0;
+}
+
+function review_complete_lessons() {
+  $lid = db_select('gmc_lesson_review', 'n')
+         ->fields('n')
+         ->condition('n.entity_id', 0, '!=')
+         ->execute()->fetchAll();
+  $rows = array();
+  foreach($lid as $value) {
+     $node = node_load($value->entity_id);
+     $user = user_load($node->uid);
+     if ($value->email == 0) {
+       $action = 'Waiting for completions'; 
+     } else {
+       $action = l('Lesson completed by instctor', 'node/'.$node->nid, array('attributes' => array('target' => '_blank'))) . '&nbsp;&nbsp;&nbsp;';
+       if ($value->revision == 0 ) {
+         $action .= l('Publish', 'lesson-revision-lists/'.$node->nid,  array('attributes' => array('target' => '_blank')));
+       } else {
+         $action = l('Lesson completed by instctor', 'revisionlesson/preview/'.$node->nid, array('attributes' => array('target' => '_blank'))) . '&nbsp;&nbsp;&nbsp;';
+         $action .= l('Publish Lesson Revision', 'node/'.$node->nid.'/all-parts',  array('attributes' => array('target' => '_blank')));
+       }
+     }
+     $rows[] = array($node->title, $user->name, date("Y-m-d H:i:s", $value->date), $action);
+  }
+  $header = array("Title", "Author", "Published", "Operations");
+  return theme('table', array(
+            'header' => $header,
+            'rows' => $rows,
+            'attributes' => array('width' => '100%')
+          ));
+}
+
+function gmc_lesson_review_node_insert($node){
+  if ($node->type == 'lessons') {
+  if (!empty($_GET['sid']) && isset($_GET['sid'])) {
+    db_merge('gmc_lesson_review') 
+      ->key(array('sid' => $_GET['sid']))
+      ->fields(array(
+        'uid' => $_GET['uid'],
+        'entity_id' => $node->nid,
+        'approved' => 2,
+        'sid' => $_GET['sid'],
+        'email' => 0,
+        'date' => time()
+      ))->execute(); 
+    db_delete('webform_submitted_data')
+      ->condition('sid', $_GET['sid'])
+      ->execute();
+    db_delete('webform_submissions')
+      ->condition('sid', $_GET['sid'])
+      ->execute();
+    }
+  }
+}
+
+	
+/*-------------------------------------------------------------------------*/
+// Render attachments
+/*-------------------------------------------------------------------------*/
+/**
+* Swaps the HTML for the nice attachments.
+*
+* @param	array Array of HTML blocks to convert: [ rel_id => $html ]
+* @return	array Array of converted HTML blocks and attach code: [ id => array[ html => '', attach_html => '' ] ]
+*/
+function render_attachments( $comment, $rel_ids=array(), $skin_name='skin_topic', $cid) {
+  global $base_url;
+  $comment = preg_replace( "#\[attachment=(\d+?)\:(?:[^\]]+?)\]#is", '[attachment]'."$1".'[/attachment]', $comment);
+  $comments = comment_load($cid);
+ // print_r($comments); exit;
+  $dess = explode('[attachment]', $comment);
+  $des = array();
+    foreach($dess as $key => $desx) {
+      $pos = strpos($desx, '[/attachment]');
+      if($pos !== false) {
+        $desxx = explode('[/attachment]', $desx);
+          foreach($desxx as $keys => $desxxx) {
+            if (is_numeric($desxxx) && $desxxx != '') {
+                $count = db_query("SELECT * FROM {ds2_gmc.ibf_attachments} WHERE attach_id = :id",array(':id' => $desxxx))->rowCount();
+              if ($count > 0 ) {
+                $ls = db_select('ds2_gmc.ibf_attachments', 'c')
+                        ->fields('c')
+                        ->condition('attach_id', $desxxx,'=')
+                        ->execute()
+                        ->fetchObject();
+                $path = '/opt/web/guitarmasterclass.net/public_html/guitar_forum/uploads/'.$ls->attach_location; 
+                if (file_exists($path)) {
+                  $fp = file_get_contents($path);
+                  $lsfilename = str_replace(' ', '_', $ls->attach_file);
+                  $xpath = 'public://forum_topic_file/'.$lsfilename;
+                  $file = file_save_data($fp, $xpath, FILE_EXISTS_RENAME);
+                  $file->status = FILE_STATUS_PERMANENT;
+                  $file->uid = $comments->uid;
+                  file_save($file);
+                  $dfind = '[attachment]'.$desxxx.'[/attachment]';
+                  $rep = '[attachment2]' . $file->fid . '[/attachment2]'; 
+                  $comment = str_replace($dfind, $rep, $comment);
+                  $comments->comment_body['und'][0]['value'] = $comment; // Everything here is pretty much like with a node
+                  $comments->comment_body['und'][0]['format'] = 'full_html'; 
+                  comment_save($comments);
+                }
+              }
+            }
+         }
+      }
+    }
+    $dess = explode('[attachment2]', $comment);
+    foreach($dess as $key => $desx) {
+      $pos = strpos($desx, '[/attachment2]');
+      if($pos !== false) {
+        $desxx = explode('[/attachment2]', $desx);
+        foreach($desxx as $keys => $desxxx) {
+          if (is_numeric($desxxx) && $desxxx != '') {
+            $file = file_load($desxxx);
+            $dfind = '[attachment2]'.$desxxx.'[/attachment2]';
+            if ($file->type == 'image') {
+              $uri = $file->uri;  // file path as uri: 'public://';
+              $file_path = file_create_url($uri);
+              $file_path = str_replace('forun_topic_file', 'forum_topic_file', $file_path);
+              $datas = getimagesize($file_path);
+              $width = $datas[0];
+              $ration = ($width < 700) ? $width : 700;
+              $height = $datas[1];
+              $red = 100 - ($ration/$width)*100;
+              
+              //$rep = '<img width="576px;" src="'.$file_path.'" />'; 
+              $rep = '<br/><div style="background-color: #000; width:'.$ration.'px; padding: 2px; cursor: pointer;" class="resized-linked-image" title="Click to view full image"><a href="'.$file_path.'" target="_blank"><img border="0" alt="" style="vertical-align:middle" src="/'.drupal_get_path('module', 'gmc_lesson_review').'/img-resized.png" />&nbsp;Reduced: '.$red.'% of original size [ '.$width.' x '.$height.' ] - Click to view full image</a></div><img alt="Attached Image" class="linked-image" width="'.$ration.'px" src="'.$file_path.'" id="--ipb-img-resizer-1"><br />';
+            } else {
+              $count = isset($file->download_count) ? $file->download_count : 0;
+              $uri = file_entity_download_uri($file);
+              $uri = $base_url.'/'.$uri['path'].'?token='.file_entity_get_download_token($file);
+              $rep = '<a target="_blank" title="Download attachment" href="'.$uri.'"><img alt="Attached File" src="/'.drupal_get_path('module', 'gmc_lesson_review').'/'.$file->type.'.gif"></a> <a target="_blank" title="Download attachment" href="'.$uri.'"> '.$file->filename.' </a> ( '.gmc_convert_filesize($file->filesize).' ) <span style="color: #434951; font-size: 11px;">Number of downloads: '.$file->download_count.'</span><br />';
+            }  
+            $comment = str_replace($dfind, $rep, $comment);
+          }
+        }
+      }
+    }
+	if(isset($comments->field_upload_files['und'][0])){
+		//$comment = $comments->comment_body['und']['0']['value'];
+		$comment .= '<br/><div><span class="edit">Attached File(s)</span><br/>';
+		foreach($comments->field_upload_files['und'] as $file) {
+			//$file = (object)$file;
+			$file = file_load($file['fid']);
+			if ($file->type == 'image') {
+			  $uri = $file->uri;  // file path as uri: 'public://';
+			  $file_path = file_create_url($uri);
+			  $datas = getimagesize($file_path);
+			  $width = $datas[0];
+			  $ration = ($width < 700) ? $width : 700;
+			  $height = $datas[1];
+			  $red = 100 - ($ration/$width)*100;
+			  
+			  //$rep = '<img width="576px;" src="'.$file_path.'" />'; 
+			  $comment .= '<br/><div style="background-color: #000; width:'.$ration.'px; padding: 2px; cursor: pointer;" class="resized-linked-image" title="Click to view full image"><a href="'.$file_path.'" target="_blank"><img border="0" alt="" style="vertical-align:middle" src="/'.drupal_get_path('module', 'gmc_lesson_review').'/img-resized.png" />&nbsp;Reduced: '.$red.'% of original size [ '.$width.' x '.$height.' ] - Click to view full image</a></div><img alt="Attached Image" class="linked-image" width="'.$ration.'px" src="'.$file_path.'" id="--ipb-img-resizer-1"><br />';
+			}
+			else {
+				$count = isset($file->download_count) ? $file->download_count : 0;
+				$uri = file_entity_download_uri($file);
+				$uri = $base_url.'/'.$uri['path'].'?token='.file_entity_get_download_token($file);
+				$comment .= '<a target="_blank" title="Download attachment" href="'.$uri.'"><img alt="Attached File" src="/'.drupal_get_path('module', 'gmc_lesson_review').'/'.$file->type.'.gif"></a> <a target="_blank" title="Download attachment" href="'.$uri.'"> '.$file->filename.' </a> ( '.gmc_convert_filesize($file->filesize).' ) <span style="color: #434951; font-size: 11px;">Number of downloads: '.$count.'</span><br />';
+			}
+		}
+		$comment .= '</div>';
+	}
+  //comment_save($comments);
+	return $comment;
+}
+
+/*function make_revision_lesson( $comment, $rel_ids=array(), $skin_name='skin_topic', $cid) {
+	$comment = preg_replace( "#\[attachment=(\d+?)\:(?:[^\]]+?)\]#is", '[attachment]'."$1".'[/attachment]', $comment);
+  $dess = explode('[attachment]', $comment);
+  $comments = comment_load($cid);
+ // print_r($comments); exit;
+  $des = array();
+    foreach($dess as $key => $desx) {
+      $pos = strpos($desx, '[/attachment]');
+      if($pos !== false) {
+        $desxx = explode('[/attachment]', $desx);
+          foreach($desxx as $keys => $desxxx) {
+            if (is_numeric($desxxx) && $desxxx != '') {
+                $count = db_query("SELECT * FROM {ds2_gmc.ibf_attachments} WHERE attach_id = :id",array(':id' => $desxxx))->rowCount();
+              if ($count > 0 ) {
+                $ls = db_select('ds2_gmc.ibf_attachments', 'c')
+                        ->fields('c')
+                        ->condition('attach_id', $desxxx,'=')
+                        ->execute()
+                        ->fetchObject();
+                $path = '/opt/web/guitarmasterclass.net/public_html/guitar_forum_march20/uploads/'.$ls->attach_location; 
+                if (file_exists($path)) {
+                  $uri = $file->uri;  // file path as uri: 'public://';
+                  $file_path = file_create_url($uri);
+                  $file_path = str_replace('forun_topic_file', 'forum_topic_file', $file_path);
+                  $datas = getimagesize($file_path);
+                  $width = $datas[0];
+                  $ration = ($width < 700) ? $width : 700;
+                  $height = $datas[1];
+                  $red = 100 - ($ration/$width)*100;
+                  
+                }
+}*/
+
+function complete_revision_lesson_publish() {
+  $nid = $_POST['nid'];
+  $olddata = db_select('lesson_files', 'n')
+            ->fields('n')
+            ->condition('n.nid', $nid)
+            ->execute()->fetchAll();
+  $newdata = db_select('gmc_files_review', 'n')
+            ->fields('n')
+            ->condition('n.nid', $nid)
+            ->execute()->fetchAll();
+  foreach ($newdata as $key => $value) {
+    db_merge('lesson_files')
+      ->key(array('fid' => $value->fid))
+      ->fields(array(
+        'nid' => $value->nid,
+        'fid' => $value->fid,
+        'status' => $value->status,
+	      'weight' => $value->weight,
+	      'notes' => $value->notes,
+        'description' => $value->description,
+        'publish' => $value->publish,
+      ))
+      ->execute();
+  }
+  $tab = _get_revison_completetab($nid);
+  $fid = _get_mp3_revison_status($nid);
+  $node = node_load($nid);
+  if (!empty($fid))
+    $node->field_downloadable_backing['und'][0]['value'] = $fid;
+  if (!empty($tab))
+    $node->field_complete_tab['und'][0]['value'] = $tab;
+  field_attach_presave('node', $node);
+  field_attach_update('node', $node);
+  db_delete('gmc_node_backing_revision')
+    ->condition('nid', $nid)
+    ->execute();
+  db_delete('gmc_node_complete_tab')
+    ->condition('nid', $nid)
+    ->execute();
+  db_delete('gmc_files_review')
+    ->condition('nid', $nid)
+    ->execute();
+  db_delete('gmc_lesson_review')
+    ->condition('entity_id', $nid)
+    ->execute();
+  print 'done';
+}
+
+function gmc_lesson_review_form_apachesolr_query_alter($query) {
+  $query->addParam('fl', 'tm_field_difficulty_level');
+}
+
+
+/**
+ * Callback function gmc_convert_filesize()
+ * to convert file size into KB, MB, GB
+ **/
+function gmc_convert_filesize($bytes) {
+	if ($bytes >= 1073741824) {
+		$bytes = number_format($bytes / 1073741824, 2) . ' GB';
+	}
+	elseif ($bytes >= 1048576) {
+		$bytes = number_format($bytes / 1048576, 2) . ' MB';
+	}
+	elseif ($bytes >= 1024) {
+		$bytes = number_format($bytes / 1024, 2) . ' KB';
+	}
+	elseif ($bytes > 1) {
+		$bytes = $bytes . ' bytes';
+	}
+	elseif ($bytes == 1) {
+		$bytes = $bytes . ' byte';
+	}
+	else {
+		$bytes = '0 bytes';
+	}
+	return $bytes;
+}

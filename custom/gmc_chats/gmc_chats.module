@@ -1,0 +1,101 @@
+<?php
+
+/**
+ * @file gmc_chat.module
+ *
+ * Implements all the hooks for the module
+ */
+
+
+/**
+ * Implements hook_help().
+ */
+function gmc_chats_help($path, $arg) {
+  switch ($path) {
+    case 'admin/help#gmc_chat':
+      if (file_exists($file = drupal_get_path('module', 'gmc_chat') . '/README.txt')) {
+        return '<pre>' . implode("\n", array_slice(explode("\n", @file_get_contents($file)), 2)) . '</pre>';
+      }
+      break;
+  }
+}
+
+/**
+ * Implements hook_help().
+ */
+function gmc_chats_permission() {
+  return array(
+    'administer access chat' => array(
+      'title' => t('Administer Chat'),
+      'description' => t('Perform administration tasks for Administer Chat.'),
+    ),
+    'access chat' => array(
+      'title' => t('Access Chat'),
+      'description' => t('Perform Access Chat.'),
+    ),
+  );
+}
+
+
+/**
+  *  implement the hook_menu for chat configuration and chat block.
+  */
+function gmc_chats_menu() {
+  $items = array();
+  $items['admin/config/chat'] = array(
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('admin_config_chat'),
+    'type' => MENU_NORMAL_ITEM,
+    'access arguments' => array('administer access chat'),
+  );
+  $items['chatsss'] = array(
+    'title' => 'Chat at Guitar Masterclass',
+    'description' => 'Chat at Guitar Masterclas',
+    'page callback' => 'chat_config_chat',
+    'type' => MENU_NORMAL_ITEM,
+    'access arguments' => array('access chat'),
+  );
+  $items['chat-room-window'] = array(
+    'title' => 'Chat Room Window',
+    'description' => 'Chat Room Window',
+    'page callback' => 'chat_room_window',
+    'type' => MENU_NORMAL_ITEM,
+    'access arguments' => array('access chat'),
+  );
+  return $items;
+}
+
+/**
+  *  implement the admin_config_chat for chat configuration page.
+  */
+function admin_config_chat() {
+  return 'chat';
+}
+
+/**
+  *  implement the chat_config_chat for chat configuration page.
+  */
+function chat_config_chat($data= NULL) {
+  return theme('gmc_chatpage_template3', $data);
+}
+/**
+ * Callback function for display chat room in new window
+ **/
+function chat_room_window($data= NULL){
+	return theme('chat_room_window', $data);
+}
+/**
+  * Implement the hook_theme() for alter the display the chat page.
+  */
+function gmc_chats_theme() {
+   return array(
+    'gmc_chatpage_template3' => array(
+      'template' => 'templates/gmcchatpage3',
+      'arguments' => array('data' => null),
+    ),
+	'chat_room_window' => array(
+      'template' => 'templates/chat_room',
+      'arguments' => array('data' => null),
+    )
+  );
+}

@@ -1,0 +1,9 @@
+name = gmc_chats
+description = User Chats system.
+package = Custom
+version = VERSION
+core = 7.x
+files[] = gmc_chats.mdoule
+;Information added by drupal.org packaging script on 2013-10-12
+version = "7.custom"
+project = gmc chats

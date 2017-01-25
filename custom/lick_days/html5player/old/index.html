@@ -1,0 +1,68 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+    <head>
+        <title>  </title>
+         <script src="/js/mootools/mootools.js" type="text/javascript"></script>
+         <script src="/js/mootools/mootools-more.js" type="text/javascript"></script>
+	<link rel="stylesheet" href="html5player.css" type="text/css" media="screen" charset="utf-8" />
+         <script src="html5player.js" type="text/javascript"></script>
+         <script type="text/javascript">
+		 document.addEvent('domready', function() {
+			
+			var gp	= new GmcPlayer('gmc_player',  {
+				
+			} );
+			
+			gp.load( 'http://mc723.loong.changl.2288.org/gmc_res/Arpeggios_fixed.mp4' ) ;
+			 
+			return ;
+			window.tmp_123  = document.getElementById('video' ) ;
+			
+			var v  = $('video');
+		     
+			 v.addEvents({
+			    'timeupdate': function(){
+				console.log( 'timeupdate',  v.currentTime , v.defaultMuted , v.duration ,  v.initialTime , v.muted ,  v.ended , v.paused , v.seeking , v.volume, v.accessKey );
+			    } ,
+			    'seeked': function(){
+				console.log( 'seeked', v.play, v.pause  );
+			    }
+			 });
+			 
+			 $('skip').addEvents({
+			    'click': function(){
+				    v.currentTime   = 10 ;
+			     }
+			 });
+			 $('play').addEvents({
+			    'click': function(){
+				    v.play() ;
+			     }
+			 });
+			 $('pause').addEvents({
+			    'click': function(){
+				    v.pause() ;
+			     }
+			 });
+	    });
+	 
+        </script>
+    </head>
+    <body>
+    
+    <div id="gmc_player"></div>
+
+<!--
+    <video width="320" height="240" id="video" controls="controls" >
+      <source src="http://mc723.loong.changl.2288.org/gmc_res/Arpeggios_fixed.mp4" type="video/mp4" />
+      Your browser does not support the video tag.
+    </video>
+
+    <div id="skip"> skip </div> 
+    <div id="play"> play </div> 
+    <div id="pause"> pause </div> 
+-->
+    
+    </body>
+</html>
+

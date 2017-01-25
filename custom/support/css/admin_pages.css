@@ -1,0 +1,10 @@
+/**
+ * @file
+ * Admin Pages styling
+ *
+ * We provide some Admin pages style for any admin theme has used.
+ */
+
+/***************admin-chat-panel CSS Start*****************/
+.page-admin-chat-adminpanel #topcmm_123flashchat, .page-admin-chat-adminpanel #topcmm_123flashchat embed{height: 750px !important; width: 912px !important;}
+/***************admin-chat-panel CSS END*******************/

@@ -1,0 +1,138 @@
+<?php
+/**
+ * hook_menu()  
+ */
+
+function gmc_forum_menu() {
+$items['guitar_forum_topic/index'] = array(
+    'title' => 'redirect on new forum',
+    'page callback' => 'formu_mapping',
+    'access arguments' => array('access content'),
+    'type' => MENU_NORMAL_ITEM,
+  );
+  $items['guitar_forum/cat'] = array(
+    'title' => 'redirect on new forum',
+    'page callback' => 'formu_cat_mapping',
+    'access arguments' => array('access content'),
+    'type' => MENU_NORMAL_ITEM,
+  );
+  $items['guitar_forum/usr'] = array(
+    'title' => 'redirect on new user',
+    'page callback' => 'formu_usr_mapping',
+    'access arguments' => array('access content'),
+    'type' => MENU_NORMAL_ITEM,
+  );
+  return $items;
+}
+
+/**
+ * check id forum id and rediect 
+ */
+function formu_mapping(){
+  $showtopic = 0;
+  $path      = 'guitar_forum';
+  if (isset($_GET['st']) && $_GET['st'] != 0 ) {
+    $page      = ($_GET['st']/20);
+  } else {
+    $page      = 0;
+  }
+  if(isset($_GET['showtopic'])){
+    $showtopic = $_GET['showtopic'];
+    $forum_topic_id = db_select('import_topics_comment', 'TP')
+                        ->fields('TP',array('topic_id'))
+                        ->condition('live_topic_id',$showtopic,'=')
+                        ->execute()
+                        ->fetchField();
+    if(isset($forum_topic_id) && !empty($forum_topic_id)){    
+      $path  ='guitar_forum_topic/'.$forum_topic_id ;  
+      $pid = $_GET['p'];
+      $cid  = db_select('import_topics_comment_reply', 'yp')
+                        ->fields('yp',array('cid'))
+                        ->condition('pid',$pid,'=')
+                        ->execute()
+                        ->fetchField();
+      if (!$cid) {        
+        $query = array('query'=>array('page' => $page));
+      } else {
+        if(!isset($_GET['st']) ) {
+          $cidcount  = db_select('import_topics_comment_reply', 'yp')
+                      ->fields('yp')
+                      ->condition('pid',$pid,'<=')
+                      ->condition('nid',$forum_topic_id ,'=')
+                      ->orderBy('cid', 'DESC')
+                      ->execute()
+                      ->rowCount();
+          if ($cidcount > 20) {
+             $page      = ($cidcount/20);
+          }
+        }
+        $query = array('query'=>array('page' => $page), 'fragment' => 'entry'.$cid);
+      }
+    }
+  }
+  #redirect on actuall forum topic      
+  drupal_goto($path,$query);
+}
+/**
+ * check cat id forum id and rediect 
+ */
+function formu_cat_mapping(){
+  $showtopic = 0;
+  $path      = 'guitar_forum';
+  $query     = array();  
+  if(isset($_GET['showforum'])){
+    $showtopic = $_GET['showforum'];
+    $forum_id  = db_select('field_data_field_import_id', 'TP')
+                        ->fields('TP',array('entity_id'))
+                        ->condition('field_import_id_value',$showtopic,'=')
+                        ->condition('bundle','forums','=')
+                        ->execute()
+                        ->fetchField();
+    if(isset($forum_id) && !empty($forum_id)){    
+      $path  ='guitar_forum';
+      $query = array('query'=>array('showforum'=>$forum_id));     
+      
+    }
+  }
+  #redirect on actuall forum topic      
+  drupal_goto($path,$query);
+}
+
+/**
+ * check show_user id is php live site user id and rediect 
+ */
+function formu_usr_mapping(){
+  $showuser = 0;
+  $path      = 'user';
+  $query     = array();  
+  if(isset($_GET['showuser'])){
+    $showuser = $_GET['showuser'];
+     $result = db_select('live_gmc_user', 'lg')
+                ->fields('lg')
+                ->condition('lg.ipb_id', $showuser, '=')
+                ->execute();
+     $num_of_results = $result->rowCount();
+    if($num_of_results != 0 && !empty($showuser)){  
+      $resultx = db_select('live_gmc_user', 'lg')
+                ->fields('lg', array('id'))
+                ->condition('lg.ipb_id', $showuser, '=')
+                ->execute()->fetchField();   
+      $resultuid  = $resultx;
+    } else {
+      $resultuid  = $showuser;
+
+    }
+    $uid = db_select('gmc_users', 'gu')
+                ->fields('gu', array('uid'))
+                ->condition('gu.juid', $resultuid, '=')
+                ->execute()->fetchField();   
+    $path = 'user/'.$uid;
+  }
+  #redirect on actuall forum topic      
+  drupal_goto($path);
+}
+
+
+function gmc_forum_url_inbound_alter(&$path, &$options, $original_path) {
+
+}

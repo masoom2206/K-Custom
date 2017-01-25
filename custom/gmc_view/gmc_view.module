@@ -1,0 +1,302 @@
+<?php
+/**
+* Implements hook_views_api().
+*/
+function gmc_view_views_api() {
+  return array(
+    'api' => 3,
+    'path' => drupal_get_path('module', 'gmc_view') . '/views',
+  );
+}
+
+
+function gmc_view_menu() {
+  $items = array();
+  $items['gmc_view'] = array(
+    'title' => 'gmc_view',
+    'page callback' => 'gmc_view_callback',
+    'type' => MENU_CALLBACK,
+    'access arguments' =>  array('administer content'),
+  );
+  $items['gmc_view_reply'] = array(
+    'title' => 'gmc_view',
+    'page callback' => 'gmc_view_reply_callback',
+    'type' => MENU_CALLBACK,
+    'access arguments' =>  array('administer content'),
+  );
+  $items['get_mean_term'] = array(
+    'title' => 'gmc_view',
+    'page callback' => 'get_mean_term',
+    'type' => MENU_CALLBACK,
+    'access arguments' =>  array('administer content'),
+  );
+  return $items;
+}
+
+function gmc_view_callback() {
+  $query = db_select('forums_extra', 'fe')
+      ->fields('fe')
+      ->execute();
+  $forms = array(); 
+  $querya = db_select('node', 'n');
+  $querya->join('node_comment_statistics', 'ncs', 'n.nid = ncs.nid');
+  $querya->join('forum', 'f', 'n.vid = f.vid');
+  $querya->addExpression('COUNT(n.nid)', 'topic_count');
+  $querya->addExpression('SUM(ncs.comment_count)', 'comment_count');
+  $counts = $querya->fields('f', array('tid'))->condition('n.status', 1)->groupBy('tid')->addTag('node_access')->execute()->fetchAllAssoc('tid');   
+  while ($record = $query->fetchAssoc()) {
+     $forms[$record['tid']] = $record;
+     $xdata = array();
+     if ($cdata = taxonomy_get_children($record['tid'], 6)) {
+        foreach ($cdata as $data) {
+         $xdata[] = $data->tid;
+        }
+     } else {
+       $xdata[] = $record['tid'];
+     }
+
+     $cdata = implode(",",$xdata);
+     $forms[$record['tid']]['chid'] = $cdata;
+     $num_posts = 0;
+     foreach ($xdata as $xdataforum) {
+        $num_posts = $counts[$xdataforum]->comment_count + $num_posts;
+     }
+     $dtax = db_query('SELECT n.nid, n.uid, u1.uid, u1.name, n.title AS title, ncs.cid, ncs.last_comment_timestamp AS last_comment_timestamp, ncs.last_comment_uid AS last_comment_uid, CASE ncs.last_comment_uid WHEN 0 THEN ncs.last_comment_name ELSE u2.name END AS last_comment_name FROM node n INNER JOIN users u1 ON n.uid = u1.uid INNER JOIN forum f ON n.vid = f.vid AND f.tid IN (:tid) INNER JOIN node_comment_statistics ncs ON n.nid = ncs.nid INNER JOIN users u2 ON ncs.last_comment_uid = u2.uid WHERE (n.status = 1) ORDER BY last_comment_timestamp DESC LIMIT 1 OFFSET 0',array(':tid' => $cdata))->fetchALL();
+     $forms[$record['tid']]['details'] = $dtax;
+     $dtay = db_query('SELECT * FROM node n INNER JOIN users u1 ON n.uid = u1.uid INNER JOIN forum f ON n.vid = f.vid AND f.tid IN (:tid) INNER JOIN node_comment_statistics ncs ON n.nid = ncs.nid INNER JOIN users u2 ON ncs.last_comment_uid = u2.uid WHERE (n.status = 1) ORDER BY last_comment_timestamp DESC',array(':tid' => $cdata))->rowCount();
+     $forms[$record['tid']]['rowcount'] = $dtay;
+     $dtaz = db_query('SELECT * FROM node n INNER JOIN users u1 ON n.uid = u1.uid INNER JOIN forum f ON n.vid = f.vid AND f.tid IN (:tid) INNER JOIN node_comment_statistics ncs ON n.nid = ncs.nid INNER JOIN users u2 ON ncs.last_comment_uid = u2.uid WHERE (n.status = 1) ORDER BY last_comment_timestamp DESC',array(':tid' => $cdata))->rowCount();
+     $forms[$record['tid']]['reaplycount'] = $dtaz;
+     $forms[$record['tid']]['reaplycount2'] = $num_posts;
+     db_update('forums_extra')
+        ->fields(array(
+              'current_cid' => $dtax[0]->cid,
+              'forum_nid' => $dtax[0]->nid,
+              'forum_topic_count' => $dtaz,
+              'forum_reply_count' => $num_posts,
+              'last_update_title' => $dtax[0]->title,
+              'last_update_uid' => $dtax[0]->last_comment_uid,
+              'last_update_user_name' => $dtax[0]->last_comment_name,
+              'last_update_time' => $dtax[0]->last_comment_timestamp,
+        ))
+        ->condition('tid', $record['tid'], '=')
+        ->execute();
+  }
+  return 'done';
+}
+
+function gmc_view_reply_callback() {
+  $query = db_select('topics_extra', 'fe')
+    ->fields('fe')
+    ->execute();
+  $netw = array();  
+  while ($record = $query->fetchAssoc()) {
+    $netw[$record['nid']][] = $record['nid'].'--'.$record['uid'];
+   $records =  db_select('field_data_taxonomy_forums', 'ft')
+      ->fields('ft')
+      ->condition('entity_id', $record['nid'] ,'=')
+      ->execute()
+      ->fetchAssoc();
+      db_update('topics_extra')
+        ->fields(array(
+              'tid' => $records['taxonomy_forums_tid'],
+        ))
+        ->condition('nid', $record['nid'], '=')
+        ->execute();
+    $reply = db_query('SELECT * FROM {comment} WHERE nid = :nid ORDER BY comment.created  DESC', array(':nid' => $record['nid']))->rowCount();
+    $netw[$record['nid']][] = $rcount = $reply ? $reply : 0;
+    db_update('topics_extra')
+        ->fields(array(
+              'forum_reply_count' => $rcount,
+        ))
+        ->condition('nid', $record['nid'], '=')
+        ->execute();
+
+    $reply = db_query('SELECT * FROM {comment} WHERE nid = :nid ORDER BY comment.created  DESC LIMIT 0,1', array(':nid' => $record['nid']))->fetchALL();
+    if (!empty($reply)) {
+      db_update('topics_extra')
+        ->fields(array(
+              'last_comment' => $reply[0]->subject,
+              'last_comment_uid' => $reply[0]->uid,
+              'last_comment_time' => $reply[0]->created,
+              'last_update_title' => $reply[0]->subject,
+              'last_update_uid' => $reply[0]->uid,
+              'last_update_user_name' => $reply[0]->name,
+              'last_update_time' => $reply[0]->created,
+              
+        ))
+        ->condition('nid', $record['nid'], '=')
+        ->execute();
+    }
+    $drupal_count = db_query("SELECT COUNT(uid) FROM node_view_count WHERE nid = :nid", array(':nid' => $record['nid']))->fetchField();
+    $live_count = db_query("SELECT view_count FROM gmc_forum_count WHERE nid = :nid", array(':nid' => $record['nid']))->fetchField();
+    $total_count = $live_count + $drupal_count;
+    db_update('topics_extra')
+      ->fields(array(
+        'forum_view_count' => $total_count,
+      ))
+      ->condition('nid', $record['nid'], '=')
+      ->execute();
+      
+  }  
+}
+
+function gmc_view_node_insert($node) {
+  if ($node->type == 'forum') {
+    db_merge('topics_extra')
+      ->key(array('nid' => $node->nid))
+      ->fields(array(
+            'nid' => $node->nid,
+            'uid' => $node->uid,
+            'tid' => $node->taxonomy_forums['und']['0']['tid'],
+      ))
+      ->execute();
+    db_merge('forums_extra')
+      ->key(array('tid' => $node->taxonomy_forums['und']['0']['tid']))
+      ->fields(array(
+            'tid' => $node->taxonomy_forums['und']['0']['tid'],
+            'forum_nid' => $node->nid,
+            'last_update_title' => $node->title,
+            'parent' => 0
+      ))
+      ->expression('forum_topic_count', 'forum_topic_count + :forum_topic_count', array(':forum_topic_count' => 1))
+      ->execute();
+  }
+}
+
+function gmc_view_comment_insert($comment) {
+  $commentsubject = $comment->subject;
+  $comment->subject = !empty($commentsubject) ? $commentsubject : 'Some reply';
+  $node = node_load($comment->nid);
+  db_merge('topics_extra')
+    ->key(array('nid' => $comment->nid))
+    ->fields(array(
+          'nid' => $comment->nid,
+          'last_comment' => $comment->subject,
+          'last_comment_uid' => $comment->uid,
+          'last_comment_time' => $comment->created,
+          'last_update_title' => $node->title,
+          'last_update_uid' => $node->uid,
+          'last_update_user_name' => $comment->name,
+          'last_update_time' => $comment->created,
+    ))
+    ->expression('forum_reply_count', 'forum_reply_count + :forum_reply_count', array(':forum_reply_count' => 1))
+    ->execute();
+  $result = db_query('SELECT * FROM {topics_extra} WHERE nid = :nid', array(':nid' => $comment->nid))->fetchALL();
+  if (!empty($result)) {
+    db_merge('forums_extra')
+      ->key(array('tid' => $result[0]->tid))
+      ->fields(array(
+            'current_cid' => $comment->cid,
+            'last_update_title' => $node->title,
+            'last_update_uid' => $comment->uid,
+            'last_update_user_name' => $comment->name,
+            'last_update_time' => $comment->created,
+      ))
+      ->expression('forum_reply_count', 'forum_reply_count + :forum_reply_count', array(':forum_reply_count' => 1))
+      ->execute();
+      $tid = $result[0]->tid;
+      $terms = taxonomy_get_parents($tid);    
+      foreach($terms as $key => $value) {
+        if ($value->tid != $tid) {
+        db_merge('forums_extra')
+          ->key(array('tid' => $value->tid))
+          ->fields(array(
+            'current_cid' => $comment->cid,
+            'last_update_title' => $node->title,
+            'last_update_uid' => $comment->uid,
+            'last_update_user_name' => $comment->name,
+            'last_update_time' => $comment->created,
+          ))
+          ->expression('forum_reply_count', 'forum_reply_count + :forum_reply_count', array(':forum_reply_count' => 1))
+          ->execute();
+      }
+    }
+  }
+}
+
+function gmc_view_node_delete($node) {
+  if ($node->type == 'forum') {
+     $tid = $node->taxonomy_forums['und']['0']['tid'];
+    if (!empty($tid)) {
+      db_merge('forums_extra')
+        ->key(array('tid' => $node->taxonomy_forums['und']['0']['tid']))
+        ->expression('forum_topic_count', 'forum_topic_count - :forum_reply_count', array(':forum_reply_count' => $node->comment_count))
+        ->execute();
+      db_delete('topics_extra')->condition('nid', $node->nid)->execute();
+      $query = db_select('SELECT *  FROM {topics_extra} WHERE tid = :tid ORDER BY topics_extra.last_comment_time DESC limit 0,1', array(':tid' => $node->taxonomy_forums['und']['0']['tid']))->fetchALL();
+      db_merge('forums_extra')
+        ->key(array('tid' => $query[0]->tid))
+        ->fields(array(
+              'current_cid' => $query[0]->current_cid,
+              'forum_nid' => $query[0]->nid,
+              'last_update_title' => $query[0]->last_update_title,
+              'last_update_uid' => $query[0]->last_update_uid,
+              'last_update_user_name' => $query[0]->last_update_user_name,
+              'last_update_time' => $query[0]->last_comment_time,
+        ))
+        ->execute();
+    }
+  }    
+}
+
+function get_mean_term($tid = 4645) {
+  $terms = taxonomy_get_parents($tid, $key = 'tid');
+  print '<pre>';
+  print_r($terms); exit;
+}
+
+function gmc_view_comment_delete($comment) {
+  $node = node_load($comment->nid);
+  $tid = $node->taxonomy_forums['und']['0']['tid'];
+  if ($node->type == 'forum') {
+  $dtax = db_query('SELECT n.nid, n.uid, u1.uid, u1.name, n.title AS title, ncs.last_comment_timestamp AS last_comment_timestamp, ncs.last_comment_uid AS last_comment_uid, CASE ncs.last_comment_uid WHEN 0 THEN ncs.last_comment_name ELSE u2.name END AS last_comment_name FROM node n INNER JOIN users u1 ON n.uid = u1.uid INNER JOIN forum f ON n.vid = f.vid AND f.tid IN (:tid) INNER JOIN node_comment_statistics ncs ON n.nid = ncs.nid INNER JOIN users u2 ON ncs.last_comment_uid = u2.uid WHERE (n.status = 1) ORDER BY last_comment_timestamp DESC LIMIT 1 OFFSET 0',array(':tid' => $tid))->fetchALL();
+    db_merge('forums_extra')
+      ->key(array('tid' => $node->taxonomy_forums['und']['0']['tid']))
+      ->fields(array(
+              'forum_nid' => $dtax[0]->nid,
+              'last_update_title' => $dtax[0]->title,
+              'last_update_uid' => $dtax[0]->last_comment_uid,
+              'last_update_user_name' => $dtax[0]->last_comment_name,
+              'last_update_time' => $dtax[0]->last_comment_timestamp,
+        ))
+      ->expression('forum_reply_count', 'forum_reply_count - :forum_reply_count', array(':forum_reply_count' => 1))
+      ->execute();
+    
+    $terms = taxonomy_get_parents($tid); 
+    foreach($terms as $key => $value) {
+      if ($value->tid != $tid) {
+        $tids = $value->tid;
+        $dtax = db_query('SELECT n.nid, n.uid, u1.uid, u1.name, n.title AS title, ncs.last_comment_timestamp AS last_comment_timestamp, ncs.last_comment_uid AS last_comment_uid, CASE ncs.last_comment_uid WHEN 0 THEN ncs.last_comment_name ELSE u2.name END AS last_comment_name FROM node n INNER JOIN users u1 ON n.uid = u1.uid INNER JOIN forum f ON n.vid = f.vid AND f.tid IN (:tid) INNER JOIN node_comment_statistics ncs ON n.nid = ncs.nid INNER JOIN users u2 ON ncs.last_comment_uid = u2.uid WHERE (n.status = 1) ORDER BY last_comment_timestamp DESC LIMIT 1 OFFSET 0',array(':tid' => $tids))->fetchALL();
+        db_merge('forums_extra')
+          ->key(array('tid' => $value->tid))
+          ->fields(array(
+                  'forum_nid' => $dtax[0]->nid,
+                  'last_update_title' => $dtax[0]->title,
+                  'last_update_uid' => $dtax[0]->last_comment_uid,
+                  'last_update_user_name' => $dtax[0]->last_comment_name,
+                  'last_update_time' => $dtax[0]->last_comment_timestamp,
+            ))
+          ->expression('forum_reply_count', 'forum_reply_count - :forum_reply_count', array(':forum_reply_count' => 1))
+          ->execute();
+      }
+    }
+    $lastcomment = db_query('SELECT * FROM {comment} WHERE nid = :nid ORDER BY comment.created  DESC LIMIT 0,1', array(':nid' => $node->nid))->fetchALL();
+     db_merge('topics_extra')
+        ->key(array('nid' => $lastcomment[0]->nid))
+        ->fields(array(
+              'nid' => $lastcomment[0]->nid,
+              'last_comment' => $lastcomment[0]->subject,
+              'last_comment_uid' => $lastcomment[0]->uid,
+              'last_comment_time' => $lastcomment[0]->created,
+              'last_update_title' => $lastcomment[0]->title,
+              'last_update_uid' => $lastcomment[0]->uid,
+              'last_update_user_name' => $lastcomment[0]->name,
+              'last_update_time' => $lastcomment[0]->created,
+        ))
+        ->expression('forum_reply_count', 'forum_reply_count - :forum_reply_count', array(':forum_reply_count' => 1))
+        ->execute(); 
+
+  }
+  drupal_set_message(t('Comment: @subject has been deleted', array('@subject' => $comment->subject)));
+}

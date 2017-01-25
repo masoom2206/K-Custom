@@ -1,0 +1,377 @@
+<?php
+/**
+ * @file Scalegenerater module to generate Scale
+ * Free scale generator: allows you to create any scale and save it as an image or share online
+ * Node id 111967 of basic page content type has attached with this module
+ */
+
+/**
+ * Implements hook_menu()
+ * @return $items
+ */
+function gmc_scale_generator_menu() {
+  $items['scalegenerator/deleteposition/%/%/%'] = array(
+    'title' => 'Guitar Scale Generator',
+    'description' => 'Hide Scale posotion',
+    'page callback' => 'delete_position',
+	'page arguments' => array(2,3,4),
+    'access callback' => TRUE,
+  );
+  
+  $items['scalegenerator/undeleteposition/%/%/%'] = array(
+    'title' => 'Guitar Scale Generator',
+    'description' => 'Show Scale posotion',
+    'page callback' => 'insert_position',
+	'page arguments' => array(2,3,4),
+    'access callback' => TRUE,
+  );
+  
+   $items['generatescaleimage'] = array(
+    'title' => 'Guitar Scale Generator',
+    'description' => 'Free scale generator: allows you to create any scale and save it as an image or share online',
+    //'page callback' => 'showScale',
+	'page callback' => 'generate_scale_image',
+    'access callback' => TRUE,
+	'file' => 'includes/generate_scale_image.inc',
+  );
+   $items['scale/position'] = array(
+    'title' => 'Guitar Scale Generator',
+    'description' => 'Scale Position',
+    //'page callback' => 'showScale',
+	'page callback' => 'scale_position',
+    'access callback' => TRUE,
+  );
+  $items['generatescaleimageauto/%'] = array(
+    'title' => 'Guitar Scale Generator',
+    'description' => 'Free scale generator: allows you to create any scale and save it as an image or share online',
+    //'page callback' => 'showScale',
+    'page callback' => 'generatescaleimageauto_scale_image',
+    'page_argument' => array(1),
+    'access callback' => TRUE,
+  );
+  return $items;
+}
+
+/**
+ * Implements hook_init()
+ */
+function gmc_scale_generator_init(){
+	if(arg(0) == 'scalegenerator' || (arg(0) == 'node' && arg(1) == 111967)) {
+		drupal_add_css(path_to_theme().'/css/styles_scalegenerator.css');
+		//drupal_add_js(drupal_get_path('module', 'gmc_scale_generator') . '/js/jquery.js');
+		drupal_add_js(drupal_get_path('module', 'gmc_scale_generator') . '/js/scalegenerator-1.0.js');
+	}
+}
+/*
+ * Callback function delete_position for hide scale position by admin
+ * @return ''
+ */
+function delete_position($scale = -1 ,$key = -1,$scaleposition = -1) { 
+	$scalename = $scale;
+	$scalename = preg_replace('/[^a-z A-Z \_ 0-9]/', '', $scalename); 
+	$scaleposition = $scaleposition;
+	$scaleposition = preg_replace('/[^0-9]/', '', $scaleposition); 
+	$key = preg_replace('/[^a-z A-Z]/', '', $key);
+	$scaleid = 0;
+	$query = db_select('scalegenerator_scales', 'ss');
+	$query->fields('ss', array('id'))
+		->condition( 'scale_name', $scalename);
+	$s = $query->execute()->fetchCol();
+	$scaleid = $s[0];
+		if ( $scaleid == NULL ) {
+			$scaleid = db_insert('scalegenerator_scales')
+						->fields(array('scale_name' => $scalename))
+						->execute();
+		}
+	db_insert('scalegenerator_positions')
+		->fields(array( 'scale_id' => $scaleid, 'key_note' => $key , 'scale_position' => $scaleposition ))
+		->execute();
+}
+/*
+ * Callback function insert_position for show scale position by admin
+ * @return ''
+ */
+function insert_position($scale = -1,$key = -1,$scaleposition = -1) {
+	$scalename = $scale;
+	$scalename = preg_replace('/[^a-z A-Z \_ 0-9]/', '', $scalename); 
+	$scaleposition = $scaleposition;
+	$scaleposition = preg_replace('/[^0-9]/', '', $scaleposition); 
+	$key = preg_replace('/[^a-z A-Z]/', '', $key);
+	$scaleid = 0;
+	$query = db_select('scalegenerator_scales', 'ss');
+	$query->fields('ss', array('id'))
+		->condition( 'scale_name', $scalename);
+	$s = $query->execute()->fetchCol();
+	$scaleid = $s[0];
+	db_delete('scalegenerator_positions')
+		->condition( 'scale_id' , $scaleid)
+		->condition('key_note' ,$key)
+		->condition('scale_position', $scaleposition)
+		->execute();
+}
+/*
+ * Callback function dynamic_js for generate js dynamically
+ * @return dynamic js file
+ */
+function dynamic_js() {
+	global $user;
+	$lastscale = "-1";
+	$lastkey = "-1";
+	$badpositions = Array();
+	$query = db_select('scalegenerator_scales', 'ss');
+	$query->join('scalegenerator_positions', 'sp', 'ss.id = sp.scale_id');
+	$query->fields('ss', array('id', 'scale_name'))
+		->fields('sp', array('scale_position', 'key_note'));
+	$scaleData = $query->execute();
+	$dynamicJs = '
+		<script type="text/javascript" charset="utf-8">
+		//<![CDATA[
+		badpositions = Array();
+		'.( in_array('administrator',$user->roles) ? 'showbad = true;' : 'showbad = false;');
+
+	foreach($scaleData as $key => $scaleItemRow) {
+		$scaleItemRow = (array)$scaleItemRow;
+	    if ($lastscale!=$scaleItemRow['scale_name']) {
+		    $lastscale=$scaleItemRow['scale_name'];
+		    $dynamicJs .= "\nbadpositions['".$lastscale."']=Array();\n";
+		    $lastkey = "-1";
+	    }
+	    if ($scaleItemRow['key_note']!="") {
+			if ($lastkey!=$scaleItemRow['key_note']) {
+				$lastkey=$scaleItemRow['key_note'];
+				$dynamicJs .= "\nbadpositions['".$lastscale."']['".$lastkey."']=Array();\n";
+			}
+
+			if ($scaleItemRow['scale_position']!="") {
+				$dynamicJs .= "badpositions['".$scaleItemRow['scale_name']."']['".$scaleItemRow['key_note']."'].push(".$scaleItemRow['scale_position'].");\n";
+			}
+	    }
+	}
+	$dynamicJs .='//]]>
+				</script>';
+	return $dynamicJs;
+}
+
+function foVal($str){
+	$res=0;
+	if (isset($_GET[$str])) $res = $_GET[$str];	
+	else if (isset($_POST[$str])) $res=$_POST[$str];
+	else $res=-1;
+	return $res;	
+}
+
+/**
+ * Callback function for scale position
+ * checking if admin has hide any scale position
+ * @return scale position
+ */
+function scale_position() {
+	global $user;
+	if($user->uid == 1){
+		print 0;
+		break;
+	}
+	else {
+		$scale = $_POST['scale'];
+		$key = $_POST['key'];
+		$num = 0;
+		$query = db_select('scalegenerator_positions', 'sp');
+		$query->join('scalegenerator_scales', 'ss', 'ss.id = sp.scale_id');
+		$query->fields('sp', array('scale_position'))
+			->condition( 'ss.scale_name' , $scale, '=')
+			->condition('sp.key_note' , $key, '=')
+			->orderBy('sp.scale_position', 'ASC');
+		$result = $query->execute();
+		$record_count = $result->rowcount();
+		if($record_count == 0) {
+			print 0;
+			break;
+		}
+		foreach($result as $position) {
+			if($num != $position->scale_position) {
+				print $num;
+				break;
+			}
+			else {
+				$num = $num + 1;
+			}
+		}
+		if($num == 9) {
+			print 0;
+			break;
+		}
+	}
+}
+
+
+function generatescaleimageauto_scale_image($img = '') {
+  ini_set('error_reporting', E_ALL);
+  ini_set('display_errors', 'On');
+  ini_set('display_startup_errors', 'On');
+  global $base_url,$user,$note_bg,$note_hl,$notebgsize,$noteheight,$notes_img,$notewidth,$fretboard,$showcage,$strings,$pathtoimages,$pathtostoredscales,$x_coords,$y_coords,$cageposition,$cagepositions,$caption,$gstring;
+  
+  $data = $_GET['path'];
+  $data = str_replace('.jpg', '', $data);
+  $data1 = explode('_e1', $data);  
+  //print_r($data1);
+  $datacap = str_replace('gmcscale_', '', $data1[0]);
+  $gstringdata = explode('_', $data1[1]); 
+  $caption = str_replace('_', ' ', $datacap);
+  $caption = ucwords($caption);
+  $gstring[1] = $gstringdata[0];
+  $gstring[2] = substr($gstringdata[1], 1,13);
+  $gstring[3] = substr($gstringdata[2], 1,13);
+  $gstring[4] = substr($gstringdata[3], 1,13);
+   $gstring[5] = substr($gstringdata[4], 1,13);
+  $gstring[6] = substr($gstringdata[5], 2,13);
+  for ($a=1;$a<7;$a++) {
+	  if (strlen($gstring[$a])<14) $gstring[$a].= "0000000000000";
+  }
+  $showcage = foVal("showcage")!="true" ? false : true;
+  $cageposition = (int) foVal("cageposition");
+
+  if (  $cageposition< 0  || $cageposition > 8 ) {
+	  $showcage = false;
+	  $cageposition = 0;
+  }
+
+  $u = file_create_url(path_to_theme());
+
+  $pathtoimages = drupal_realpath(path_to_theme()."/css/")."/";
+
+  //$pathtostoredscales = drupal_realpath("public://uploads/scales/");
+  $pathtostoredscales = drupal_realpath("images/scales/");
+  $notes_img['a'] = imagecreatefrompng($pathtoimages.'images/notes/a.png');
+
+  $notes_img['as'] = imagecreatefrompng($pathtoimages.'images/notes/as.png');
+  $notes_img['b'] = imagecreatefrompng($pathtoimages.'images/notes/b.png');
+  $notes_img['c'] = imagecreatefrompng($pathtoimages.'images/notes/c.png');
+  $notes_img['cs'] = imagecreatefrompng($pathtoimages.'images/notes/cs.png');
+  $notes_img['d'] = imagecreatefrompng($pathtoimages.'images/notes/d.png');
+  $notes_img['ds'] = imagecreatefrompng($pathtoimages.'images/notes/ds.png');
+  $notes_img['e'] = imagecreatefrompng($pathtoimages.'images/notes/e.png');
+  $notes_img['f'] = imagecreatefrompng($pathtoimages.'images/notes/f.png');
+  $notes_img['fs'] = imagecreatefrompng($pathtoimages.'images/notes/fs.png');
+  $notes_img['g'] = imagecreatefrompng($pathtoimages.'images/notes/g.png');
+  $notes_img['gs'] = imagecreatefrompng($pathtoimages.'images/notes/gs.png');
+
+  $fretboard = imagecreatefromjpeg($pathtoimages.'images/fretboard_generator_883x200.jpg');
+  $note_bg = imagecreatefrompng($pathtoimages.'images/note_button_30_gray.png');
+  $note_hl = imagecreatefrompng($pathtoimages.'images/root_note_24x22.png');
+
+  $notewidth = imagesx($notes_img['a']);
+  $noteheight = imagesy($notes_img['a']);
+
+  $notebgsize = imagesx($note_bg);
+
+  // name of each guitar string, used to generate element ids
+  $strings[0] = Array( "e6","a","d","g","b","e1");
+
+  // notes on fretboard by notename
+  $strings[1] = Array( "E","F","FS","G","GS","A","AS","B","C","CS","D","DS","E" );
+  $strings[2] = Array( "B","C","CS","D","DS","E","F","FS","G","GS","A","AS","B" );
+  $strings[3] = Array( "G","GS","A","AS","B","C","CS","D","DS","E","F","FS","G" );
+  $strings[4] = Array( "D","DS","E","F","FS","G","GS","A","AS","B","C","CS","D" );
+  $strings[5] = Array( "A","AS","B","C","CS","D","DS","E","F","FS","G","GS","A" );
+  $strings[6] = Array( "E","F","FS","G","GS","A","AS","B","C","CS","D","DS","E" );
+
+  // x & y coordinates for the notes
+  $y_coords = Array ( 2, 32, 63, 94, 125, 156 );
+  $x_coords = Array ( 6, 54, 120, 191, 262, 333, 404, 475, 546, 617, 687, 756, 827 );
+
+  // left relative coordinate and width for the cage
+  $cagepositions = Array( 17, 301, 
+						  56, 333, 
+						  122, 338, 
+						  191, 339, 
+						  263, 339, 
+						  333, 340, 
+						  404, 338, 
+						  475, 337, 
+						  546, 340 );
+
+  $filename = $_GET['path'];
+	if (file_exists($pathtostoredscales.'/'.$filename)) {
+		drupal_goto(file_create_url('images/scales/'.$filename));
+
+	}
+	//print $pathtostoredscales.'/'.$filename;
+	for ($a=1;$a<7;$a++) {
+		$currentstring = str_split($gstring[$a]);
+		for ($b=0;$b<13;$b++) {		
+			switch ($currentstring[$b]) {
+				case '0':				
+					break;
+				case '1':
+					showNoteAtd($a,$b);
+					break;
+				case 'R':
+					showNoteAtd($a,$b,true);
+			}
+		}
+	}
+	if ($showcage) showCageAtd($cageposition);
+	//print $showcage;
+	imagettftext($fretboard, 9, 0, 8, 198, 0x00CCCCCC, path_to_theme()."/fonts/arial.ttf", $caption);
+	imagettftext($fretboard, 9, 0, 630, 198, 0x00CCCCCC, path_to_theme()."/fonts/arial.ttf", "Scalegenerator 1.0 &#xA9; GuitarMasterClass.Net");
+
+	//print $fretboard;exit;
+	imagejpeg($fretboard,$pathtostoredscales.'/'.$filename,95);
+	//header('Content-type: image/jpeg');
+//	imagejpeg($fretboard,NULL,95);
+	freeimagesd();   
+	if ($_GET['set'] == 1) {
+	  drupal_goto(file_create_url('images/scales/'.$filename)); 
+	}
+}
+
+function showCageAtd($position) {
+	global $fretboard, $cagepositions;
+	
+	if ($position>8) $position = 8;
+	if ($position<0) $position = 0;
+	
+	$x1 = $cagepositions[$position*2]-14;
+	$x2 = $x1+$cagepositions[$position*2+1];
+	
+	imageline ($fretboard,$x1,0,$x1,187,0x00BFFF00);
+	imageline ($fretboard,$x1+1,0,$x1+1,187,0x00BFFF00);
+	
+	imageline ($fretboard,$x2,0,$x2,187,0x00BFFF00);
+	imageline ($fretboard,$x2+1,0,$x2+1,187,0x00BFFF00);
+}
+
+function showNoteAtd($guitarstring, $noteposition, $highlight=false) {
+	global $fretboard, $note_bg, $notes_img, $note_hl, $notebgsize, $notewidth, $noteheight, $y_coords, $x_coords, $strings;
+	
+	$x = $x_coords[$noteposition];
+	$y = $y_coords[$guitarstring-1];
+	
+	$note = strtolower($strings[$guitarstring][$noteposition]);
+	
+	imagecopy($fretboard, $note_bg, $x, $y, 0, 0, $notebgsize, $notebgsize); 
+	if ($highlight) imagecopy($fretboard, $note_hl, $x+3, $y+4, 0, 0, $notewidth, $noteheight); 
+		imagecopy($fretboard, $notes_img[$note], $x+3, $y+3, 0, 0, $notewidth, $noteheight); 
+}
+
+function freeimagesd () {
+	global $fretboard, $note_bg, $note_hl, $notes_img;
+	
+	imagedestroy($fretboard);
+	imagedestroy($note_bg);
+	imagedestroy($note_hl);
+
+	imagedestroy($notes_img['a']);
+	imagedestroy($notes_img['as']);
+	imagedestroy($notes_img['b']);
+	imagedestroy($notes_img['c']);
+	imagedestroy($notes_img['cs']);
+	imagedestroy($notes_img['d']);
+	imagedestroy($notes_img['ds']);
+	imagedestroy($notes_img['e']);
+	imagedestroy($notes_img['f']);
+	imagedestroy($notes_img['fs']);
+	imagedestroy($notes_img['g']);
+	imagedestroy($notes_img['gs']);  
+}
+

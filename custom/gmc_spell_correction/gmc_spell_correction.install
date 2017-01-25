@@ -1,0 +1,38 @@
+<?php
+
+/**
+ * @file Rules - Installation file.
+ */
+
+/**
+ * Implements hook_schema().
+ */
+function gmc_spell_correction_schema() {
+	//Save subscribe user/instructor detail
+  $schema['gmc_spelling'] = array(
+    'fields' => array(
+      'spell_id' => array(
+        'type' => 'serial',
+        'not null' => TRUE,
+        'description' => 'Spell ID',
+      ),
+      'wrong_spell' => array(
+        'description'   => 'Wrong Spell',
+        'type'          => 'varchar',
+        'length'        => 255,
+        'not null'      => TRUE,
+      ),
+      'right_spell' => array(
+        'description'   => 'Right Spell',
+        'type'          => 'varchar',
+        'length'        => 255,
+        'not null'      => TRUE,
+      ),
+    ),
+    'primary key' => array('spell_id'),
+    'indexes' => array(
+       'spell_id' => array('spell_id'),
+    ),
+  );
+  return $schema;
+}

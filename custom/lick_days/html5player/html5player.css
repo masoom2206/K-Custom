@@ -1,0 +1,148 @@
+
+.GmcHTML5PlayerContainer{
+	width:100%;
+	height:100%;
+	position:absolute;
+	top:0px; left:50%;
+	z-index:11;
+}
+
+.GmcHtml5PlayerFullScreeen>div,
+.GmcHtml5PlayerFullScreeen>a
+{
+	display:none !important;	
+}
+
+
+
+@tools_box_width	=	116px ; 
+@tools_width	=	380px ;
+@tools_left_offset	=	38px ;
+@tools_arrow_width	=	12px ;
+@tools_arrow_height	=	52px ;
+@tools_vline_width	=	5px ; 
+@tools_item_left		=	14px ;
+@tools_icon_height	=	10px ;
+@tools_static_width	=	128px ;
+@tools_static_padding	=	50px ; 
+
+@controlls_height	=	69px ;
+@controlls_width	= 100% ;
+@controlls_quality_width	= 60px ;
+@controlls_metronome_width	= 100px ;
+@controlls_mp4_width	= 60%;
+@controlls_mp3_width	= 100% - @controlls_mp4_width	 ;
+
+
+@play_or_pause_width	= 32px ;
+@progress_bar_padding_width	= 18px ;
+
+@controlls_title_width 	= 87px ;
+@controlls_min_width 	=  ( @play_or_pause_width + @controlls_title_width + @progress_bar_padding_width + @controlls_metronome_width ) / 0.38  ;
+
+html,body,#player_box{margin:0;padding:0;height:100%;width:100%;overflow:hidden;font-size:12px;color:#fff;-webkit-text-size-adjust:none}
+#player_box{position:absolute;top:0px;left:0px;background:#000}
+#mp4_player{background-color:#000}
+.app_member_only #mp4_player{width:10px;height:10px}
+#player,#player_mask{height:100%;width:100%;position:absolute;top:0px;left:0px;padding-right:43px;padding-bottom:69px;-webkit-box-sizing:border-box;-moz-box-sizing:border-box;box-sizing:border-box}
+.app_static_tools  #player, .app_static_tools #player_mask{padding-right:171px}
+#player>div,#player_mask>div{position:relative;top:0px;left:0px;height:100%}
+#player>div>*,#player_mask>div>*{display:block;height:100%;width:100%}
+#player_mask>div{background-position:50% 50%;background-repeat:no-repeat}
+#player_mask>div>*{display:none}
+.app_member_only  #player_mask>div>*{display:block}
+#player_mask>div>a{position:absolute;top:45%;left:34%;width:54%;height:14%}
+.app_debug #player_mask>div>a{background:#fff;opacity:0.4}
+.app_mobile  #player_mask>div{background-image:url(../html5player/images/ipad_play2.png);cursor:pointer}
+.app_mobile.GmcMp4Playing #player_mask > div, .app_static_tools #player_mask>div{background-image:none}
+#tools{position:absolute;top:-69px;margin-left:-116px;width:116px;left:100%;height:100%}
+#tools>div:first-child{position:absolute;left:0px;top:0px;width:380px;height:100%;background:url(../html5player/images/vertical_line.jpg) repeat-y 73px 0}
+#tools>div:first-child>div{background:#000;height:100%;width:100%;margin-left:78px}
+#tools>div:first-child>div>:first-child{height:79px;background:url(../html5player/images/tools_title.gif) no-repeat 14px 100%}
+.app_lesson_lotd #tools>div:first-child>div>:first-child{height:69px}
+#tools>div:first-child>p{margin:0px;padding:0px;background:url(../html5player/images/left_right_arrow_1.jpg) no-repeat 0 0;height:52px;width:12px;margin-top:8.5px;position:absolute;left:61px;top:50%}
+.GmcMp4Playing #tools >div:first-child >p, .app_static_tools #tools>div:first-child>p{display:none}
+#tools>div:first-child>p>a{display:block;height:50%;cursor:pointer}
+#tools>a{display:none;cursor:pointer;position:absolute;left:94px;top:0px;width:24px;height:24px;background:url(../html5player/images/download.gif) no-repeat 50% 50%}
+.app_static_tools #tools{top:0px;z-index:1}
+.app_static_tools #tools>div:first-child{left:-128px}
+.app_static_tools #tools #tools_title{height:10px}
+#tools.tools_show_download_button>a, .app_static_tools #tools>a{display:block}
+.app_lesson_lotd #tools_items{display:none}
+#gmc_html5player_member_only{position:absolute;top:110px;left:-300px;width:190px;height:92px}
+#gmc_html5player_member_only *{border:0}
+#gmc_html5player_member_only>*{border:0;margin:0px;padding:0px;width:100%;height:100%;position:absolute;top:0px;left:0px}
+#gmc_html5player_member_only>:first-child{background:#fff;opacity:0.86}
+#gmc_html5player_member_only>:last-child{background:#f0f;opacity:0.01}
+#gmc_html5player_member_only > div*{color:black;font-size:12px;line-height:16px}
+#gmc_html5player_member_only > div div{padding:6px 10px}
+#gmc_html5player_member_only > div p{text-align:center;cursor:pointer;margin:0 auto;width:100px;opacity:0.8}
+#tools_items{padding-bottom:10px;background:url(../html5player/images/tools_line.gif) no-repeat 0px 100%}
+#tools_items>a{display:block;text-indent:42px;height:18px;line-height:18px;font-size:10px;font-weight:lighter;margin:5px 0px;background-repeat:no-repeat;background-position:10px 0px}
+#tools_items>a>i{margin:auto 4px}
+#tools_items>a.Tabs{background-image:url(../html5player/images/tools_tabs.gif)}
+#tools_items>a.GuitarPro{background-image:url(../html5player/images/tools_guitarpro.gif)}
+#tools_items>a.PDF{background-image:url(../html5player/images/tools_pdf.gif)}
+#tools_items>a.Question{background-image:url(../html5player/images/tools_question.png)}
+#tools_songs{padding-top:14px;background:url(../html5player/images/tools_music.gif) no-repeat 14px 3px}
+#tools_songs>a{display:block;margin:5px 0px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;line-height:14px;font-weight:lighter;font-size:10px}
+#tools_songs > a i{display:block;float:left;text-align:center;width:38px;cursor:pointer;line-height:14px;font-style:normal}
+#tools_songs>a.tools_song_now{background:#555}
+#tools_items>a.not_available,#tools_songs>a.not_available{font-style:oblique}
+#tools_items > a.not_available i, #tools_songs > a.not_availablei{font-style:oblique}
+#gmc_html5player_member_only, .progress_time, .controlls_title, #metronome_status span,#tools_items>a,#tools_songs>a{font-family:Verdana,tahoma,arial,sans-serif}
+#controlls{background:#0f0;height:69px;margin-top:-69px;width:100%;position:absolute;top:100%;left:0;background:url(../html5player/images/bg_2.jpg) repeat-x}
+#controlls>div{height:100%;position:absolute;top:0px;left:0px;background-image:url(../html5player/images/bottom_spliter.gif);background-repeat:repeat-y;background-position:right;-webkit-box-sizing:border-box;-moz-box-sizing:border-box;box-sizing:border-box}
+#controlls #quality_box{width:60px}
+#controlls #mp4_box{width:60%;padding-left:60px}
+#controlls #metronome_box, #controlls #mp3_box{left:60%}
+#controlls #metronome_box{width:100px}
+#controlls #metronome_box input{background:#000;border-radius:2px;border-width:1px;border-style:solid;border-color:#000;font-size:10px;font-weight:100;line-height:100%;width:28px;position:absolute;left:34px;top:8px;display:block;color:#fff;text-align:center;outline:none;padding:0px;margin:0px;ime-mode:disabled}
+#controlls #mp3_box{width:40%;padding-left:100px;background-image:none}
+#controlls #mp4_box > div, #controlls #mp3_box>div{display:block;height:100%;position:relative;top:0px;left:0px}
+.app_static_tools #controlls #mp3_box{left:0px;width:100%;padding-left:160px;padding-right:171px}
+.app_static_tools #controlls #metronome_box{left:60px}
+.app_static_tools #controlls #mp4_box{display:none}
+.progress_time,.controlls_title{position:absolute;left:50%;margin:0px 0px 0px -54px;min-width:87px;text-align:left}
+#mp3_box .progress_time, #mp3_box .controlls_title{margin:0px 0px 0px -22px}
+.progress_time{top:35px;border:2px solid black;border-radius:2px;background:#000;line-height:100%;font-size:10px;text-align:center;vertical-align:bottom}
+.controlls_title{top:55px;height:14px}
+#metronome_box .controlls_title{left:0px;text-align:center;width:100%;margin:0px}
+#quality_btn,#metronome_status,#metronome_left,#metronome_right{padding:6px;height:16px;width:16px;position:absolute;top:2px;left:2px;text-align:center}
+#quality_btn *, #metronome_status *, #metronome_left *, #metronome_right*{position:absolute;top:6px;left:6px;display:block;width:14px;height:14px}
+#quality_btn span, #metronome_status span, #metronome_left span, #metronome_right span{top:7px;left:7px;background:url(../html5player/images/mp3_voice_btn_m.gif) no-repeat 50% 50%;line-height:14px;cursor:pointer;color:#fff;text-align:center}
+#quality_btn a, #metronome_status a, #metronome_left a, #metronome_right a{border-radius:2px;border-width:1px;border-style:solid;border-color:#fff;background:#fff;display:block;opacity:0.4}
+#metronome_right{left:68px}
+#metronome_right span{background:url(../html5player/images/mp3_voice_btn_p.gif) no-repeat 50% 50%}
+#metronome_status{padding:6px;top:26px;left:20px;height:16px;width:44px}
+#metronome_status*{left:11px;width:32px !important}
+#metronome_status span{left:12px;background:none}
+#quality_btn{top:20px;left:10px;width:28px;height:15px;display:none}
+.app_mobile_hq #quality_btn{display:block}
+.app_static_tools #quality_btn{top:38px}
+#quality_btn*{left:8px;top:5px;width:22px !important}
+#quality_btn span{left:9px;background:none}
+.play_or_pause{position:absolute;left:8px;top:24px;width:36px;height:36px}
+.play_or_pause>*{margin:0px;padding:0px;width:16px;height:16px;position:absolute;left:50%;top:50%;margin:-8px}
+.play_or_pause>p{margin:-9px;width:14px;height:14px;background:#fff;border:2px solid #fff;border-radius:2px;opacity:0.6}
+.play_or_pause>div{background-image:url(../html5player/images/player_play.gif);background-repeat:no-repeat;background-position:50% 50%;cursor:pointer}
+.app_mobile #mp4_box .play_or_pause{display:none}
+.play_or_pause.onPlaying>div{background-image:url(../html5player/images/player_pause.gif)}
+.progress_box{position:absolute;top:14px;left:0px;width:100%;margin:0px;padding-top:0px;padding-bottom:0px;padding-left:50px;padding-right:18px;height:10px;-webkit-box-sizing:border-box;-moz-box-sizing:border-box;box-sizing:border-box}
+.app_mobile #mp4_box .progress_box{padding-left:18px}
+.progress_box .progress_bar_box{position:relative;top:0px;left:0px;height:100%}
+.progress_box .progress_bar_box .progress_bg_bar, .progress_box .progress_bar_box .progress_buffer_bar, .progress_box .progress_bar_box .progress_bar{border-radius:4px;border-width:4px;border-style:solid;border-color:#000;position:absolute;top:0px;left:0px}
+.progress_box .progress_bar_box .progress_bg_bar{width:100%}
+.progress_box .progress_bar_box .progress_buffer_bar{border-color:#f00;width:0%}
+.progress_box .progress_bar_box .progress_bar{border-color:#fff;width:0%}
+.progress_box .progress_bar_box .progress_position{position:absolute;top:-16px;width:40px;height:40px;margin-left:-15px;background-image:url(../html5player/images/ball.gif);background-repeat:no-repeat;background-position:50% 50%;cursor:pointer;left:0%}
+#full_screen{width:30px;height:30px;position:absolute;top:10px;left:10px;background:url(../html5player/images/fullscreen_hover.gif) no-repeat 50% 50%;opacity:0.3;cursor:pointer}
+.app_mobile #full_screen{top:100%;left:12px;margin-top:-108px}
+.app_static_tools #full_screen{top:100%;left:16px;margin-top:-66px;margin-left:0}
+#full_screen.vHover{opacity:0.8}
+.HideClassName{display:none}
+.vHover{-moz-box-shadow:0px 0px 52px #fff;-webkit-box-shadow:0px 0px 52px #fff;box-shadow:0px 0px 52x #fff;-moz-border-radius:50%;-webkit-border-radius:50%;border-radius:50%}
+#portrait_orientation{display:none;position:absolute;top:0px;left:0px;width:100%;height:100%;background:#000;z-index:2}
+.GmcHTML5PlayerPortraitView.GmcHtml5PlayerFullScreen #portrait_orientation{display:block}
+#portrait_orientation p{margin:24px;font-weight:700;font-size:46px;line-height:120%}
+

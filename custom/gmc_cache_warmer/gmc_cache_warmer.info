@@ -1,0 +1,10 @@
+name = GMC cache warmer crons
+description = GMC cache warmer cron setup
+package = Custom
+version = VERSION
+core = 7.x
+files[] = gmc_cache_warmer.module
+dependencies[] = cache_warmer
+; Information added by drupal.org packaging script on 2013-02-20
+version = "7.custom"
+

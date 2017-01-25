@@ -1,0 +1,1551 @@
+<?php
+/**
+ * Implements hook_menu()
+ * @return $items
+ */
+function gmc_user_signup_menu() {
+  $items['signup'] = array(
+    'title' => '',
+    'description' => 'GMC User Signup',
+    'page callback' => 'user_signup',
+    'access callback' => TRUE,
+    'type' => MENU_LOCAL_TASK,
+  );
+  //Menu for instructor page detail
+  $items['instructor/%'] = array(
+    'title' => 'Instructor',
+    'description' => 'GMC instructor page',
+    'page callback' => 'instructor_detail_page',
+    'access callback' => TRUE,
+    'type' => MENU_LOCAL_TASK,
+  );
+
+  //User forum profile
+  $items['forum-profile/%'] = array(
+    'title' => '',
+    'description' => 'GMC User forum profile page',
+    'page callback' => 'gmc_user_forum_profile',
+    'access callback' => TRUE,
+    'type' => MENU_LOCAL_TASK,
+  );
+
+  //Menu for admin to generate key
+  $items['admin-generate-keys'] = array(
+    'title' => 'Admin Free Key',
+    'description' => 'Admin Free Key',
+    'page callback' => 'admin_free_key',
+    //'access callback' => TRUE,
+	'access arguments' => array('access administration pages'),
+    'type' => MENU_LOCAL_TASK,
+  );
+  //Menu for admin to generate key
+  $items['admin-delete-keys'] = array(
+    'title' => 'Admin Free Key Delete',
+    'description' => 'Admin Free Key Delete',
+    'page callback' => 'admin_delete_free_key',
+    //'access callback' => TRUE,
+	'access arguments' => array('access administration pages'),
+    'type' => MENU_LOCAL_TASK,
+  );
+  
+  //Menu for migrate free-key and signup-key data
+  $items['admin-check-url-data'] = array(
+    'title' => 'Admin Migrate Data',
+    'description' => 'Admin Migrate Data',
+    //'page callback' => 'admin_migrate_data',
+	  'page callback' => 'gmc_user_panel_posts',
+    'access callback' => TRUE,
+    'type' => MENU_LOCAL_TASK,
+  );
+  //Menu for user to change profile image
+  $items['user-avatar'] = array(
+    'title' => 'User Avatar',
+    'description' => 'Edit User avatar',
+	'page callback' => 'gmc_user_avatar',
+    'access callback' => 'user_is_logged_in',
+    'type' => MENU_LOCAL_TASK,
+  );
+  //Menu for user to change profile signature and other fields data
+  $items['forum-signature-profile-settings'] = array(
+    'title' => 'Forum Signature/Profile Settings',
+    'description' => 'Edit User signature profile fields',
+	'page callback' => 'user_signature_profile_settings',
+    'access callback' => 'user_is_logged_in',
+    'type' => MENU_LOCAL_TASK,
+  );
+  //Menu for admin to import user data from live site
+  $items['admin-migrate-data'] = array(
+    'title' => '',
+    'description' => 'admin-migrate-data',
+	  'page callback' => 'admin_migrate_data',
+    'access callback' => TRUE,
+    'type' => MENU_LOCAL_TASK,
+  );
+  $items['payment2/checkout/review'] = array(
+    'title' => 'Review an order before final submission.',
+	  'page callback' => 'payment_cart_checkout_review',
+    'access arguments' => array('access content'),
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK,
+  );
+  $items['welcome'] = array(
+    'title' => 'Welcome To GMC',
+	'page callback' => 'gmc_welcome_page',
+    'access arguments' => array('access content'),
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK,
+  );
+  
+  $items['admin/people/gmc-expiration'] = array(
+    'title' => 'GMC Role expiration',
+    'description' => 'Edit and view role expirations set by Ubercart',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('gmc_roles_expiration'),
+    'access arguments' => array('administer users'),
+    'type' => MENU_LOCAL_TASK,
+    'file' => 'gmc_roles.admin.inc',
+  );
+  return $items;
+}
+
+
+
+/**
+ * Allows a customer to review their order before finally submitting it.
+ *
+ * @see uc_cart_checkout_form()
+ */
+function payment_cart_checkout_review() {
+  drupal_add_js(drupal_get_path('module', 'uc_cart') . '/uc_cart.js');
+  if (empty($_SESSION['cart_order'])) {
+  //  drupal_goto('signup');
+  }
+  if ($_SESSION['user_email']) {
+    db_merge('uc_orders')
+      ->key(array('order_id' => $_SESSION['cart_order']))
+      ->fields(array(
+            'primary_email' => $_SESSION['user_email'],
+            'payment_method' => 'dibs',
+      ))
+      ->execute();
+  }
+  $order = uc_order_load($_SESSION['cart_order']);
+  if ($order === FALSE || uc_order_status_data($order->order_status, 'state') != 'in_checkout') {
+    unset($_SESSION['uc_checkout'][$order->order_id]['do_review']);
+    drupal_goto('cart/checkout');
+  }
+  elseif (!uc_order_product_revive($order->products)) {
+    drupal_set_message(t('Some of the products in this order are no longer available.'), 'error');
+    drupal_goto('cart');
+  }
+
+  $panes = _uc_checkout_pane_list();
+
+  // If the cart isn't shippable, bypass panes with shippable == TRUE.
+  if (!uc_order_is_shippable($order) && variable_get('uc_cart_delivery_not_shippable', TRUE)) {
+    $panes = uc_cart_filter_checkout_panes($panes, array('shippable' => TRUE));
+  }
+
+  foreach ($panes as $pane) {
+    if ($pane['enabled']) {
+      $func = $pane['callback'];
+      if (function_exists($func)) {
+        $return = $func('review', $order, NULL);
+        if (!is_null($return)) {
+          $data[$pane['title']] = $return;
+        }
+      }
+    }
+  }
+  if (($order_id = intval($_SESSION['cart_order'])) > 0) {
+      $order = uc_order_load($order_id);
+      $order->payment_method = 'dibs';
+      module_load_include('inc', 'dibs', 'dibs.frontend');
+
+      $payment = _uc_dibs_prepare_data($order);
+      $api_hash = dibs_payment_prepare($payment, FALSE);
+
+      $transaction = dibs_transaction_load($api_hash, 'hash');
+      $transaction['subtype'] = $order->order_total;
+      $settings = dibs_load_settings($transaction['api_module'], $transaction['api_delta']);
+  }
+  $build = array(
+    '#theme' => 'uc_cart_checkout_review',
+    '#panes' => $data,
+    '#form' => drupal_get_form('dibs_frontend_redirect_form', $settings, $transaction),
+  );
+
+  return $build;
+}
+
+
+/**
+ * Implements hook_theme()
+ * @return $themes
+ */
+function gmc_user_signup_theme($existing, $type, $theme, $path) {
+	$themes = array (
+			'user_signup' => array(
+			'variables' => array('body' => NULL),
+			'template' => 'template/gmc_user_signup',
+		),
+			'instructor_detail' => array(
+			'template' => 'template/instructor_detail',
+		),		
+			'user_forum_profile' => array(
+			'template' => 'template/user_forum_profile',
+		),		
+		'gmc_roles_expiration' => array(
+			'render element' => 'form',
+			'file' => 'gmc_roles.admin.inc',
+		),
+	);
+	return $themes;	
+}
+/**
+ * Implements hook_init()
+ */
+function gmc_user_signup_init(){
+	global $user;
+	if(arg(0) == 'signup' || arg(0) == 'forum-profile') {
+		drupal_add_js(drupal_get_path('module', 'gmc_user_signup') . '/js/gmc_user_signup.js');
+		$num = 0;
+		$free_key = 0;
+		$arg = arg(1);
+		if($arg){
+			$key_char_count = strlen($arg);
+			if($key_char_count == 12) {
+				$free_key = get_free_key_count($arg);
+			}
+			else if ($key_char_count == 7) {
+				$num = get_referer_key_count($arg);
+			}
+		}
+		drupal_add_js(array('referer_num' => $num), 'setting');
+		drupal_add_js(array('free_key' => $free_key), 'setting');
+	}
+	else if((arg(0) == 'instructor' && is_numeric(arg(1))) || arg(0) == 'membersonly' && arg(1) == 'backing_track') {
+		drupal_add_js(drupal_get_path('module', 'gmc_user_signup') . '/flash/wimpy_mp3.js');
+		//drupal_add_js(drupal_get_path('module', 'gmc_user_signup') . '/flash/wimpy_mp3o.js');
+	}
+	//add user id in Drupal.settings array of js
+    drupal_add_js(array('user_js_uid' => $user->uid), 'setting');
+	//add user role in Drupal.settings array of js
+	$user_detail = user_load($user->uid);
+	if(in_array("administrator", $user_detail->roles)) {
+		$user_js_role = 'administrator';
+	}
+	else if(in_array("moderator", $user_detail->roles)) {
+		$user_js_role = 'moderator';
+	}
+	else {
+		$user_js_role = 'member';
+	}
+    drupal_add_js(array('user_js_role' => $user_js_role), 'setting');
+}
+/**
+ * Callback function user_signup()
+ * @return theme
+ */
+function user_signup() {
+	$node_detail = node_load(114497);
+	$body = $node_detail->body['und']['0']['value'];
+	return theme('user_signup', array('body' => $body));
+}
+
+/**
+ * Callback function instructor_detail_page()
+ * to displayed instructor profile
+ * @return theme
+ */
+function instructor_detail_page() {
+  
+  global $base_url,$user;
+	$vars = array('ind' => "Instructor Detail");
+  if(is_numeric(arg(1))) {
+	  $uid = arg(1);
+  }
+  else {
+	  $name = str_replace("-", " ", arg(1));
+	  $uid = get_user_id($name);
+  }
+  $cid = 'instructor_result:lessons:'.md5($uid);
+  $cache = cache_get($cid);
+  if ($cache || (time() < $cache->expire)) {
+    $vars = $cache->data;
+  } else {
+    $vars['uid'] = $uid;
+    $user_detail = user_load($uid);
+    $vars['user_detail'] = $user_detail;
+    $path = '/sites/all/themes/gmc_v2/images/';
+    $vars['path'] = $path;
+    if(isset($user_detail->field_first_name['und']['0']['value'])) {
+	    $vars['first_name'] = $user_detail->field_first_name['und']['0']['value'];
+	    $vars['name'] =  $user_detail->field_first_name['und']['0']['value'] . ' ' . $user_detail->field_last_name['und']['0']['value'];
+    }
+    else {
+	  $vars['first_name'] = $user_detail->name;
+	  $vars['name'] = $user_detail->name;
+    }
+    //user video or image
+    if(isset($user_detail->field_video['und'])) {
+	  $srcFile = drupal_realpath($user_detail->field_video['und']['0']['uri']);
+	  $file_name = substr($user_detail->field_video['und']['0']['filename'], 0, -4);
+	  $mp4 = drupal_realpath("public://uploads/instructorvideos/mp4/$file_name.mp4");
+	  if (!file_exists($mp4)) {
+		  exec("/usr/local/bin/ffmpeg -i $srcFile -vcodec libx264 -preset fast -ab 256 -f mp4 $mp4 2>&1",$output);
+	  }
+	  $video_file = file_create_url("public://uploads/instructorvideos/mp4/$file_name.mp4");
+	
+	  //$vars['video_url'] = file_create_url($user_detail->field_video['und']['0']['uri']);
+	  $vars['video_url'] = $video_file;
+	  $vars['ios_video_url'] = $video_file;
+	  $vars['hasVideo'] = 'hasVideo';
+    }
+    else if (isset($user_detail->field_pictures['und'])) {
+	    foreach($user_detail->field_pictures['und'] as $images){
+		    $file_name = strtolower(str_replace(' ', '-', $user_detail->name)).'-w320-h320.png';
+		    if($images['filename'] == $file_name) {
+			    $vars['user_image'] = file_create_url($images['uri']);
+			    $vars['hasVideo'] = 'NoVideo';
+		    }
+	    }
+    }
+    else if(isset($user_detail->picture->uri)) {
+	    $vars['user_image'] = file_create_url($user_detail->picture->uri);
+	    $vars['hasVideo'] = 'NoVideo';
+    }
+    else {
+	    $vars['user_image'] = '/sites/default/files/pictures/default-user-image.png';
+	    $vars['hasVideo'] = 'NoVideo';
+    }
+    $vars['dfdf'] = $user_detail->field_pictures;
+    cache_set($cid, $vars, 'cache', time() + 3600);
+  }
+   $vars['total_count'] = number_format(get_lession_views_count($uid),  0, '.', "," );
+  drupal_set_title($vars['name'], $output = CHECK_PLAIN);
+ 
+	return theme('instructor_detail',$vars);
+}
+/**
+ * Callback function gmc_user_forum_profile()
+ * to displayed user forum profile
+ * @return theme
+ */
+function gmc_user_forum_profile() {
+	$vars = array("User forum profile");
+	return theme('user_forum_profile',$vars);
+}
+
+/**
+ * Implements hook_block_info().
+ */
+function gmc_user_signup_block_info() {
+  $blocks['login-user-panel'] = array(
+    'info' => t('Login User Panel'),
+    'cache' => DRUPAL_NO_CACHE,
+  );
+  $blocks['user-panel-visitors'] = array(
+    'info' => t('User Panel Visitors'),
+    'cache' => DRUPAL_NO_CACHE,
+  );
+  $blocks['my-topics'] = array(
+    'info' => t('User Page Topics'),
+    'cache' => DRUPAL_NO_CACHE,
+  );
+  $blocks['my-posts'] = array(
+    'info' => t('User Page Posts'),
+    'cache' => DRUPAL_NO_CACHE,
+  );
+  $blocks['my-friends'] = array(
+    'info' => t('User Page Friends'),
+    'cache' => DRUPAL_NO_CACHE,
+  );
+  $blocks['my-comments'] = array(
+    'info' => t('User Page Comments'),
+    'cache' => DRUPAL_NO_CACHE,
+  );
+  return $blocks;
+}
+ 
+/**
+ * Implements hook_block_view().
+ */
+function gmc_user_signup_block_view($delta = '') {
+  $block = array();
+  switch ($delta) {
+    case 'login-user-panel':
+      $block['subject'] = t('');
+      $block['content'] = gmc_login_user_panel();
+      break;
+    case 'user-panel-visitors':
+      $block['subject'] = t('');
+      $block['content'] = gmc_user_panel_visitors();
+      break;
+	case 'my-topics':
+      $block['subject'] = t('');
+      $block['content'] = gmc_user_panel_topics();
+      break;
+	case 'my-posts':
+      $block['subject'] = t('');
+      $block['content'] = gmc_user_panel_posts();
+      break;
+	case 'my-friends':
+      $block['subject'] = t('');
+      $block['content'] = gmc_user_friend_list();
+      break;
+	case 'my-comments':
+      $block['subject'] = t('');
+      $block['content'] = gmc_user_panel_comment_box();
+      break;
+	
+  }
+  return $block;
+}
+/**
+ * Callback function gmc_login_user_panel()
+ * to displayed user personal link
+ * @return $output
+ */
+function gmc_login_user_panel(){
+	global $user;
+	$new_message = privatemsg_unread_count();
+	if(in_array('instructor', $user->roles)) {
+		$seting_link = '/forum-signature-profile-settings';
+	}
+	else {
+		$seting_link = '/user-avatar';
+	}
+	if (!gmc_privatemsg_is_disabled($user)) {
+		$message_link = '&nbsp;&middot;&nbsp;<a href="/messages">'.$new_message.' New Messages</a>';
+	}
+	else {
+		$message_link = '&nbsp;';
+	}
+	$output = '<div id="userlinks" style="display: block;"><div class="ipb-top-left-link"><a href="/guitar_forum_topic/67971">Posting Guidelines</a></div>
+		<p>
+			<a href="'.$seting_link.'" title="Edit my settings, such as signature, avatar and more...">My Controls</a>&nbsp;&middot;&nbsp;<b><a href="/guitar_forum?showforum=new-posts">View New Posts</a></b>'.$message_link.'
+		</p>
+	</div>';
+	return $output;
+}
+/**
+ * Callback function gmc_user_panel_visitors()
+ * to displayed visitors list
+ * @return $output
+ */
+function gmc_user_panel_visitors($uid){
+	global $base_url,$user;
+	//$uid = arg(1);
+	$path = $base_url.'/sites/all/themes/gmc_v2/images/';
+	$output = '';
+	$visitor_uid = db_query("SELECT vuid, visit from user_visits where uid = :uid ORDER BY visit DESC", array(':uid' => $uid));
+	$num = $visitor_uid->rowCount();
+	if($num != 0){
+		foreach($visitor_uid as $vuid) {
+			$visitor_detail = user_load($vuid->vuid);
+			if(isset($visitor_detail->picture->uri)) {
+				$user_image = "/lm2_get_clips?d1=".$visitor_detail->picture->filename."&d2=1";
+			}
+			else {
+				$user_image = "/lm2_get_clips?d1=default-user-image.png&d2=1";
+			}
+			$gender_image = "/lm2_get_clips?d1=gender_mystery.png&d2=2";
+			if(isset($friend_detail->field_gender['und']['0']['value'])) {
+				if($friend_detail->field_gender['und']['0']['value'] == 'male') {
+					$gender_image = "/lm2_get_clips?d1=gender_male.png&d2=2";
+				}
+				else if($friend_detail->field_gender['und']['0']['value'] == 'female') {
+					$gender_image = "/lm2_get_clips?d1=gender_female.png&d2=2";
+				}
+				else {
+					$gender_image = "/lm2_get_clips?d1=gender_mystery.png&d2=2";
+				}
+			}
+			$online_url = gmc_user_online_offline($visitor_detail->uid);
+			$date = date('d/m/Y', $vuid->visit);
+			if($date == date('d/m/Y')) {
+				$day_name = 'Today, ' . date('H:i A', $vuid->visit);
+			} else if($date == date('d/m/Y',time() - (24 * 60 * 60))) {
+				$day_name = 'Yesterday, ' . date('H:i A', $vuid->visit);
+			}
+			else {
+				$day_name = date('d M Y - H:i A', $vuid->visit);
+			}
+			$output .= '<div class="pp-mini-content-entry">
+				<div class="pp-image-thumb-wrap-floatright">
+					<img src="'.$user_image.'" width="50" height="50" alt="">
+				</div>
+				<div style="position:absolute; z-index:2;">
+					<img src="'.$gender_image.'" id="pp-entry-gender-img-18646" alt="" border="0">
+					'.l($visitor_detail->name, $base_url.'/user/'.$visitor_detail->uid).'
+				</div>
+				<br><br>
+				<div class="pp-tiny-text"><img src="'.$online_url.'" alt="" border="0"> '.$day_name.'</div>
+			</div>';
+		}
+	}
+	return $output;
+}
+
+/**
+ * Callback function gmc_user_friend_list()
+ * to displayed friend list
+
+ * @return $output
+ */
+function gmc_user_friend_list($type){
+	global $base_url,$user;
+	$gender_image = '';
+	if(is_numeric(arg(1))) {
+	  $uid = arg(1);
+	}
+	else {
+	  $name = str_replace("-", " ", arg(1));
+	  $uid = get_user_id($name);
+	}
+	//$uid = arg(1);
+	$path = $base_url.'/sites/all/themes/gmc_v2/images/';
+	$output = '';
+	if($type == 'right') {
+		$friend_uid = db_query("SELECT requestee_id, created from user_relationships where requester_id = :uid and approved = :approved ORDER BY created ASC LIMIT 0, 4", array(':uid' => $uid, ':approved' => 1));
+	}
+	else if($type == 'center'){
+		$friend_uid = db_query("SELECT requestee_id, created from user_relationships where requester_id = :uid and approved = :approved ORDER BY created ASC", array(':uid' => $uid, ':approved' => 1));
+	}
+	$num = $friend_uid->rowCount();
+	if($num != 0){
+		foreach($friend_uid as $fuid) {
+			$friend_detail = user_load($fuid->requestee_id);
+			if(isset($friend_detail->picture->uri)) {
+				$user_image = "/lm2_get_clips?d1=".$friend_detail->picture->filename."&d2=1";
+			}
+			else {
+				$user_image = "/lm2_get_clips?d1=default-user-image.png&d2=1";
+			}
+			if(isset($friend_detail->field_gender['und']['0']['value'])) {
+				if($friend_detail->field_gender['und']['0']['value'] == 'male') {
+					$gender_image = "/lm2_get_clips?d1=gender_male.png&d2=2";
+				}
+				else if($friend_detail->field_gender['und']['0']['value'] == 'female') {
+					$gender_image = "/lm2_get_clips?d1=gender_female.png&d2=2";
+				}
+				else {
+					$gender_image = "/lm2_get_clips?d1=gender_mystery.png&d2=2";
+				}
+			}
+			$online_url = gmc_user_online_offline($friend_detail->uid);
+			$post = gmc_user_post_count($friend_detail->uid);
+			$date = date('jS F Y - H:i A', $fuid->created);
+			if($type == 'right') {
+				$output .= '<div class="pp-mini-content-entry">
+					<div class="pp-image-thumb-wrap-floatright">
+						<img src="'.$user_image.'" width="50" height="50" style="height: 50px; width: 50px;">
+					</div>
+					<div style="position:absolute;z-index:2;">
+						<img src="'.$gender_image.'" id="pp-entry-gender-img-3495" style="vertical-align:top" alt="" border="0">
+						<a href="/user/'.$friend_detail->uid.'">'.$friend_detail->name.'</a>
+					</div>
+					<br/>
+					<div class="pp-tiny-text">
+						'.$post.' posts<br>
+						<img src="'.$online_url.'" alt="" border="0"> '.$date.'</div>
+				</div>';
+			}
+			else if($type == 'center'){ 
+				$output .= '<div class="pp-contentbox-entry-noheight" id="pp-comment-entry-main-">
+					<div class="pp-tiny-text">
+						<div class="pp-image-thumb-wrap-floatright">
+							<img src="'.$user_image.'" width="50" height="50" alt=""/>
+						</div>
+						<img src="'.$gender_image.'" id="pp-entry-gender-img-3290" style="vertical-align:top" alt="" border="0"/>
+						<strong><a href="/user/'.$friend_detail->uid.'" target="_parent">'.$friend_detail->name.'</a></strong>
+						<div class="pp-tiny-text">
+						Members
+						<br>'.$post.' posts
+						<br>Active: '.$date.'
+						</div>
+					</div>
+				</div>';
+			}
+		}
+	}
+	return $output;
+}
+
+/**
+ * Callback function gmc_user_online_offline()
+ * to check user is online or offline
+ * @return $image_url
+ */
+function gmc_user_online_offline($user_uid){
+	global $base_url;
+	$uid = db_select('sessions', 's')
+	  ->fields('s', array('uid'))
+	  ->condition('s.uid', $user_uid, '=')
+	  ->execute()->fetchField();
+	if($uid == 0) {
+		$image_url = "/lm2_get_clips?d1=user-offline.png&d2=2";
+	}
+	else {
+		$image_url = "/lm2_get_clips?d1=user-online.png&d2=2";
+	}
+	return $image_url;
+}
+/**
+ * Callback function gmc_user_post_count()
+ * for user post count
+ * @return $count
+ */
+function gmc_user_post_count($uid){
+	$count = db_query("SELECT COUNT(*) from comment c INNER JOIN node n ON n.nid=c.nid where c.uid = :uid AND n.type = :type", array(':uid' => $uid, ':type' => 'forum'))->fetchField();
+	$now = time();
+	$join_date = db_query("SELECT created from users where uid = :uid", array(':uid' => $uid))->fetchField();
+	$datediff = $now - $join_date;
+	$days = floor($datediff/(60*60*24));	
+	$per_day_post = round($count / $days);
+	if($per_day_post == 0 && $count != 0) {
+		$per_day_post = 1;
+	}
+	$output = "$count posts ($per_day_post per day)";
+	return $output;
+}
+/**
+ * Callback function gmc_user_panel_topics()
+ * for user forum panel topic
+ * @return $ourput
+ */
+function gmc_user_panel_topics($uid){
+	$output = '';
+	$nids = db_query("SELECT nid from node where uid = :uid AND type = :type ORDER BY created ASC LIMIT 0, 5", array(':uid' => $uid, ':type' => 'forum'));
+	foreach($nids as $nid) {
+		$node_detail = node_load($nid->nid);
+		$cid = '';
+		$date = '';
+		$comment_body = '';
+		$cid = db_query("SELECT cid from comment where nid = :nid ORDER BY cid ASC LIMIT 0, 1", array(':nid' => $node_detail->nid))->fetchField();
+		if(!empty($cid)) {
+			$comment_detail = comment_load($cid);
+			//print "<pre>";print_r($comment_detail);exit;
+			$date_mon = date("d M", $comment_detail->created);
+			$date_yr = '<em>'.date("Y", $comment_detail->created).'</em>';
+			$date = $date_mon.' '.$date_yr;
+			$comment_body = $comment_detail->comment_body['und']['0']['value'];
+		}
+		$title = $node_detail->title;
+		if(isset($node_detail->body['und']['0']['value']) && $node_detail->body['und']['0']['value'] != '') {
+			$title .= ', '.$node_detail->body['und']['0']['value'];
+		}
+		$output .= '<div>
+				<div class="pp-contentbox-entry">
+					<div class="pp-datebox">'.$date.'
+						<div style="font-size:10px; font-weight:normal"><a href="/guitar_forum_topic/'.$node_detail->nid.'">Read Topic</a></div>
+					</div>
+					<div style="font-weight:bold;font-size:16px;border-bottom:1px solid #CCC; padding-bottom:5px;">
+						<a href="/guitar_forum_topic/'.$node_detail->nid.'" style="text-decoration:none">'.$title.'</a>
+					</div>
+					<div style="margin:5px">'.$comment_body.'</div>
+				</div>
+			</div>';
+	}
+	return $output;
+}
+/**
+ * Callback function gmc_user_panel_posts()
+ * for user forum panel posts
+ * @return $output
+ */
+function gmc_user_panel_posts($uid){
+	$output = '';
+	$cids = db_query("SELECT c.cid, c.nid from comment c INNER JOIN node n on n.nid = c.nid where c.uid = :uid AND n.type = :type ORDER BY c.created ASC LIMIT 0, 5", array(':uid' => $uid, ':type' => 'forum'));
+	foreach($cids as $cid) {
+		$comment_detail = comment_load($cid->cid);
+		$node_detail = node_load($cid->nid);
+		$date_mon = date("d M", $comment_detail->created);
+		$date_yr = '<em>'.date("Y", $comment_detail->created).'</em>';
+		$date = $date_mon.' '.$date_yr;
+		$output .= '<div>
+			<div class="pp-contentbox-entry">
+				<div class="pp-datebox">'.$date.'
+					<div style="font-size:10px; font-weight:normal"><a href="/guitar_forum_topic/'.$cid->nid.'#entry'.$cid->cid.'">Read Topic</a></div>
+				</div>
+				<div style="font-weight:bold;font-size:16px;border-bottom:1px solid #CCC; padding-bottom:5px;">
+					<a href="/guitar_forum_topic/'.$cid->nid.'#entry'.$cid->cid.'" style="text-decoration:none">In Topic: '.$node_detail->title.'</a>
+				</div>
+				<div style="margin:5px">'.$comment_detail->comment_body['und']['0']['value'].'</div>
+			</div>
+		</div>';
+	}
+	return $output;
+}
+/**
+ * Callback function total_lessons_view_count()
+ * @return total view count of lessons
+ */
+function total_lessons_view_count($uid){
+	/*$total_count = db_query("SELECT SUM(fmv.field_member_views_value + fgv.field_guest_views_value) AS total_view from field_data_member_views fmv INNER JOIN node n ON n.nid = fmv.entity_id INNER JOIN field_data_guest_views fgv ON n.nid = fgv.entity_id WHERE n.uid = :uid AND n.type = :type", array(':uid' => $uid, ':type' => "Lessons"))->fetchField();
+	if(is_null($total_count)) {
+		return 0;
+	}
+	else {
+		return $total_count;
+	}*/
+	return 12;
+}
+/*
+ * Implements form API
+ * @return $form
+ */
+function user_gmc_signup_form() {
+	global $user;
+	/*$order = uc_order_new($user->uid);
+	$order->products = uc_cart_get_contents();
+	print "<pre>";print_r($order);exit;*/
+	$arg = arg(1);
+	$free_key_count = 0;
+	$referer_key_count = 0;
+	unset($_SESSION['gmc_payment']);
+	if($arg) {
+		$free_key = $arg;
+		$key_char_count = strlen($free_key);
+		if($key_char_count == 12) {
+			$free_key_count = get_free_key_count($free_key);
+			$_SESSION['free_key'] = $free_key;
+		}
+		else if ($key_char_count == 7) {
+			$referer_key_count = get_referer_key_count($free_key);
+			$_SESSION['referer_key'] = $free_key;
+		}
+	}
+	else {
+		if(isset($_SESSION['free_key']) || isset($_SESSION['referer_key'])) {
+			unset($_SESSION['free_key']);
+			unset($_SESSION['referer_key']);
+		}
+	}
+	global $user;
+	if($user->uid != 0) {
+		$default_mail = $user->mail;
+		$mail_prefix = '<li class="mail" style="display:none">';
+		$resident_prefix = '<li class="resident" style=" margin-top: 15px !important;">';
+		$sub_title = '<h2><img src="/font/Renew/12/" alt="Renew"></h2>';
+		$_SESSION['renew_subscription'] = 'renew';
+	}
+	else {
+		$default_mail = '';
+		$mail_prefix = '<li class="mail">';
+		$resident_prefix = '<li class="resident" style=" margin-top: 0px !important;">';
+		$sub_title = '<h2><img src="/font/Signup/12/" alt="Signup"></h2>';
+	}
+	$form['email_tag'] = array(
+		'#markup' => '<div class="content-block">
+						'.$sub_title.'
+						<div class="top"></div>
+						<ul class="signup-list">'
+	);
+	$form['email'] = array(
+		'#type' => 'textfield', 
+		'#title' => t('E-mail'), 
+		'#size' => 60, 
+		'#maxlength' => 128,
+		'#default_value' => $default_mail,
+		'#required' => TRUE,
+		'#prefix' => $mail_prefix,
+		'#suffix' => '</li>', 
+	);
+	$form['re_email'] = array(
+		'#type' => 'textfield', 
+		'#title' => t('Re-enter E-mail'), 
+		'#size' => 60, 
+		'#maxlength' => 128,
+		'#default_value' => $default_mail,
+		'#prefix' => $mail_prefix,
+		'#suffix' => '</li>', 
+	);
+	if($user->uid == 0) {
+		$form['password'] = array(
+			'#type' => 'password', 
+			'#title' => t('Password'), 
+			'#size' => 60, 
+			'#maxlength' => 128,
+			'#required' => TRUE,
+			'#prefix' => $mail_prefix,
+			'#suffix' => '</li>', 
+		);
+		$form['re_password'] = array(
+			'#type' => 'password', 
+			'#title' => t('Re-enter password'), 
+			'#size' => 60, 
+			'#maxlength' => 128,
+			'#prefix' => $mail_prefix,
+			'#suffix' => '</li>', 
+		);
+	}
+	//Radio Button for Resident
+	$active = array('eu' => t('EU'), 'non-eu' => t('Non EU'));
+	$form['resident'] = array(
+		'#type' => 'radios',
+		'#title' => t('Resident'),
+		'#default_value' => 'non-eu',
+		'#options' => $active,
+		'#prefix' => $resident_prefix,
+		'#suffix' => '</li>', 
+	);
+
+	$form['terms'] = array(
+		'#type' => 'checkbox', 
+		'#title' => t('Terms'),
+		'#prefix' => '<li class="terms">',
+		'#suffix' => '<div class="terms-text">&nbsp;I have read and agree to the <a href="#" onclick="window.open(\'/terms_for_sign_up\', \'terms\', \'toolbar=0,scrollbars=1,location=0,statusbar=0,menubar=0,resizable=1,width=600,height=400\'); return false;"><u>Terms for Sign Up</u></a></div>
+					</li></ul></div>',
+	);
+	//Radio Button for subscriber
+	if($referer_key_count == 1 && !user_is_logged_in()) {
+		$active = array(1 => t('First month'), 6 => t('First month'), 12 => t('First month'));
+	}
+	else if($free_key_count == 1) {
+		$active = array(1 => t('1 Month Free'), 6 => t('1 Month Free'), 12 => t('1 Month Free'));
+	}
+	else {
+		$active = array(1 => t('1 month'), 6 => t('6 months'), 12 => t('12 months'));
+	}
+	$form['subscriber'] = array(
+		'#type' => 'radios',
+		'#title' => t(''),
+		'#default_value' => 0,
+		'#options' => $active,
+		'#prefix' => '<div class="content-block">
+				<div class="top"></div>
+				<ul class="tabs">
+					<li class="radioclicker current" data-radioclicker-id="billment_1_0" style="top: 0px;">Subscriber</li>
+					<li class="radioclicker" data-radioclicker-id="billment_2_0" style="top: 0px;">Pay Once</li>
+				</ul>
+				<div class="tab-content show" style="display: block;">
+					<ul class="signup-list signup-payment">
+						<li style="margin-bottom: -20px;">',
+		'#suffix' => '</li>
+					</ul>
+				</div>', 
+	);
+	//Radio Button for Pay Once
+	$active = array(12 => t('12 months'));
+	$form['pay_once'] = array(
+		'#type' => 'radios',
+		'#title' => t(''),
+		'#default_value' => 0,
+		'#options' => $active,
+		'#prefix' => '<div class="tab-content" style="display: none;">
+					<ul class="signup-list signup-payment">
+						<li data-type="static" data-p="140" data-l="12" style="margin-bottom: 0px;">',
+		'#suffix' => '</li>
+					</ul>
+				</div>
+			</div>',
+	);		
+
+	$form['actions']['submit'] = array(
+		'#type' => 'submit',
+		'#value' => t('paypal'),
+	);
+	$form['actions']['submit2'] = array(
+		'#type' => 'submit',
+		'#value' => t('dibs'),
+	);
+	$form['#validate'][] = 'user_gmc_signup_form_validate';
+	return $form;
+}
+
+/*
+ * Implements Hook_form_validate
+ */
+function user_gmc_signup_form_validate(&$form, &$form_state) {
+	//print "<pre>"; print_r($form_state['input']);exit;
+	global $user;
+	$email = $form_state['input']['email'];
+	$re_email = $form_state['input']['re_email'];
+	$password = trim($form_state['input']['password']);
+	$re_password = trim($form_state['input']['re_password']);
+	$terms = trim($form_state['input']['terms']);
+	if (!valid_email_address($email)) {
+		form_set_error('email', t('The email address appears to be invalid.'));
+	}
+	else if($email != $re_email) {
+		form_set_error('email', t('Email addresses don\'t match.'));
+		form_set_error('re_email', t(''));
+	}
+	else if($user->mail != $email) {
+		$user_email = db_query("SELECT uid from users where mail = :mail", array(':mail' => $email));
+		$num = $user_email->rowCount();
+		if ($num != 0) {
+			form_set_error('email', t('There is already a GMC account with this email address. Please log in first. If you cannot access your account please contact <a href="mailto:support@guitarmasterclass.net">support@guitarmasterclass.net</a>'));
+		}
+	}
+	if(isset($form_state['input']['password']) && $password != $re_password) {
+		form_set_error('password', t('Passwords don\'t match.'));
+		form_set_error('re_password', t(''));
+	}
+	if($terms != 1) {
+		form_set_error('terms', t('You must agree to the terms.'));
+	}
+}
+/*
+ * Implements Hook_submit
+ */
+function user_gmc_signup_form_submit(&$form, &$form_state) {
+	global $user;
+	$flag = 0;
+	$recurring_states = db_select('uc_roles_expirations', 'e')->fields('e', array('expiration'))->condition('uid', $user->uid)->condition('rid', 6)->execute()->fetchField();
+	
+	$rec_count = db_query("SELECT COUNT(rfid) FROM {uc_recurring_users} WHERE uid = :uid AND status = :status ORDER BY order_id DESC", array(':uid' => $user->uid, ':status' => 0))->fetchField();
+	
+	$dibs_count = db_query("SELECT COUNT(order_id) FROM {uc_orders} WHERE uid = :uid AND {payment_method} LIKE 'dibs'", array(':uid' => $user->uid))->fetchField();
+	
+	if($recurring_states > time() && ($rec_count != 0 || $dibs_count != 0)) {
+		drupal_goto('subscription/status');
+	}
+	else {
+		uc_cart_empty(uc_cart_get_id());
+		$_SESSION['user_email'] = $form_state['input']['email'];
+		$_SESSION['user_password'] = $form_state['input']['password'];
+		$user_name = explode("@", $form_state['input']['email']);
+		$_SESSION['user_name'] = $user_name[0];
+		$_SESSION['gmc_payment'] = trim($form_state['input']['op']);
+		$rec = 'cart/checkout';
+		if($form_state['input']['subscriber'] != ''){
+			if($form_state['input']['subscriber'] == '1') {
+				drupal_goto('cart/add/p46911_a1o1', array('query' => array('destination' => $rec)));
+			}
+			else if($form_state['input']['subscriber'] == '6') {
+				drupal_goto('cart/add/p46911_a1o2', array('query' => array('destination' => $rec)));
+			}
+			else if($form_state['input']['subscriber'] == '12') {
+				drupal_goto('cart/add/p46911_a1o4', array('query' => array('destination' => $rec)));
+			}
+		}
+		else if ($form_state['input']['pay_once'] != ''){
+			drupal_goto('cart/add/p46914', array('query' => array('destination' => $rec)));
+		}
+	}
+}
+
+/**
+ * Implements hook_form_alter()
+ */
+function gmc_user_signup_form_alter(&$form, &$form_state, $form_id){
+	global $user;
+	//print $form_id;exit;
+	if($form_id == 'uc_cart_checkout_form') {
+		$form['#attributes']['autocomplete'] = 'off';
+		$form['panes']['customer']['primary_email']['#default_value'] = $_SESSION['user_email'];
+		$form['panes']['customer']['new_account']['name']['#default_value'] = 'usernew___'.$_SESSION['user_name'];
+		$form['panes']['customer']['new_account']['pass']['#attributes']['value'] = $_SESSION['user_password'];
+		$form['panes']['customer']['new_account']['pass_confirm']['#attributes']['value'] = $_SESSION['user_password'];
+		$form['panes']['customer']['#prefix'] = '<div style="display:none">';
+		$form['panes']['customer']['#suffix'] = '</div>';
+		if(isset($_SESSION['gmc_payment']) && $_SESSION['gmc_payment'] == 'dibs') {
+			$form['panes']['payment']['#prefix'] = '<div style="display:none">';
+			$form['panes']['payment']['#suffix'] = '</div>';
+		}
+		//drupal_form_submit($form_id, $form_state);
+	}
+	if($form_id == 'pm_block_user_list') {
+		if(isset($_GET['uid'])) {
+			$user_detail = user_load($_GET['uid']);
+			$form['new']['name']['#default_value'] = $user_detail->name;
+		}
+	}
+	if($form_id == 'user_login') {
+		$form['#validate'][] = 'gmc_custom_login_validate';
+	}
+	if($form_id == 'user_pass') {
+		if($user->uid != 0) {
+			$form['gmc_email'] = array(
+				'#type' => 'textfield', 
+				'#title' => t('E-mail or forum username'), 
+				'#size' => 60, 
+				'#maxlength' => 254,
+				'#default_value' => $user->mail,
+				'#disabled' => TRUE, 
+			);
+		}
+		$form['#validate'][] = 'gmc_custom_password_validate';
+	}
+	if($form_id == 'user_profile_form') {
+		if(arg(0) == 'user-avatar' && $form_id == 'user_profile_form') {
+			$form['actions']['submit']['#value'] = t('Save avatar');
+			//$form['actions']['#weight'] = 3;
+			drupal_set_title(t('User Avatar'));
+		}
+		if(arg(0) == 'forum-signature-profile-settings' && $form_id == 'user_profile_form') {
+			//print "<pre>";print_r($form['field_user_signature']);exit;
+			if($user->uid != 1) {
+				if($form['field_user_signature']['und']['0']['#format'] != 'custom_profile_signature') {
+					$form['field_user_signature']['und']['0']['#format'] = 'profile_signature';
+				}
+			}
+			$form['actions']['submit']['#value'] = t('Update Profile');
+			unset($form['field_gender']['und']['#options']['_none']);
+			$form['field_gender']['und']['#default_value'] = 'mystery';
+			drupal_set_title(t('Forum Signature/Profile Settings'));
+			$form['#validate'][] = 'gmc_custom_profile_validate';
+		}
+		if((arg(0) == 'user' && arg(1) == $user->uid && arg(2) == 'edit') && ($user->uid != 1)) {
+			drupal_goto('forum-signature-profile-settings');
+		}
+		if(!in_array('instructor', $form['#user']->roles)) {
+			unset($form['field_enable_pm_link']);
+		}
+		//disabled="disabled"
+	}
+	if($form_id == 'uc_recurring_user_cancel_form') {
+		$form['description']['#markup'] = 'Do you really want to cancel your GMC subscription? Your membership will not be automatically renewed when your access to the site expires.';
+		unset($form['actions']['cancel']);
+		//print "<pre>";print_r($form);exit;
+	}
+	if($form_id == 'uc_cart_view_form') {
+		/*print "<pre>";
+		print_r($_SESSION);
+		print_r($form);
+		exit;*/
+	}
+	
+}
+/**
+ * Callback function to validate login form
+ * @redirect user after incorrect login credential
+ **/
+
+function gmc_custom_login_validate($form, &$form_state) {
+	$form = form_get_error($form['name']) . form_get_error($form['pass']);
+	if($form != '') {
+		//drupal_goto('wrong-username-password');
+		header("Location: /wrong-username-password");
+		die();
+	}
+}
+/**
+ * Callback function to validate reset password form
+ * @redirect user after incorrect login credential
+ **/
+
+function gmc_custom_password_validate($form, &$form_state) {
+	$form = form_get_error($form['name']);
+	if($form != '') {
+		drupal_goto('actions/restorepassword/send');    
+	}
+	else {
+		drupal_goto('passwordsent');    
+	}
+}
+/**
+ * Callback function to validate user profile form
+ * @redirect user after validate signature field
+ **/
+
+function gmc_custom_profile_validate($form, &$form_state) {
+	if($form['field_user_signature']['und']['0']['#format'] != 'custom_profile_signature') {
+		$signature = $form_state['input']['field_user_signature']['und']['0']['value'];
+		$signature = strip_tags($signature);
+		$signature_count = strlen($signature);
+		if($signature_count > 255) {
+			form_set_error('field_user_signature][und][0][value', t('Signature should be maximum 255 characters!'));
+		}
+	}
+}
+/**
+ * Callback function user_signup()
+ * @return $uid
+ */
+function get_user_id($text) {
+	$uid = db_query("SELECT uid from users where name = :name", array(':name' => $text))->fetchField();
+	return (int)$uid;
+}
+/**
+ * Callback function get_user_referred_count()
+ * to count all referred user
+ * @return $num
+ */
+function get_user_referred_count() {
+	global $user;
+	//$new_member = db_query("SELECT new_member_uid from gmc_referer where referer_uid = :uid", array(':uid' => $user->uid));
+	//$num = $new_member->rowCount();
+	$num = db_query("SELECT bonus_level FROM gmc_referer_key WHERE uid = :uid", array(':uid' => $user->uid))->fetchField();
+	return $num;
+}
+
+/**
+ * Callback function get_free_key_count()
+ * to check valid free key
+ * @return $num
+ */
+function get_free_key_count($key) {
+	global $user;
+	$date = strtotime(' -7 day');
+	$new_member = db_query("SELECT discount_key_id from gmc_discount_keys where key_value = :key_value AND used = :used AND (created >= :created OR never_expire = :never_expire)", array(':key_value' => $key, ':used' => 0, ':created' => $date, ':never_expire' => 1));
+	$num = $new_member->rowCount();
+	return $num;
+}
+/**
+ * Callback function get_referer_key_count()
+ * to check valid referer key
+ * @return $num
+ */
+function get_referer_key_count($key) {
+	global $user;
+	$referer_key = db_query("SELECT referer_key_id from gmc_referer_key where key_value = :key_value", array(':key_value' => $key));
+	$num = $referer_key->rowCount();
+	return $num;
+}
+/**
+ * Implements hook_uc_cart_alter(&$items)
+ * alter ubercart product price
+ */
+function gmc_user_signup_uc_cart_alter(&$items) {
+	//print "<pre>";print_r($items);exit;
+	if(isset($_SESSION['free_key']) && !user_is_logged_in()) {
+		$num = get_free_key_count($_SESSION['free_key']);
+		if($num != 0) {
+			foreach($items as $item) {
+				$item->sell_price = 00.00000;
+				$item->price = 00;
+			}
+		}
+	}
+	else if(isset($_SESSION['referer_key']) && !user_is_logged_in()) {
+		$num = get_referer_key_count($_SESSION['referer_key']);
+		if($num != 0) {
+			foreach($items as $item) {
+				$item->sell_price = 10.00000;
+				$item->price = 10;
+			}
+		}
+	}
+}
+/**
+ * Implements hook_uc_checkout_complete($order, $account)
+ * alter ubercart product price
+ */
+function gmc_user_signup_uc_checkout_complete($order, $account) {
+	global $user;
+	if(isset($_SESSION['referer_key'])) {
+		$referer = $_SESSION['referer_key'];
+		$referer_uid = db_query("SELECT uid from gmc_referer_key where key_value = :key_value", array(':key_value' => $referer))->fetchField();
+		if(!empty($referer_uid)) {
+			$insert = db_insert('gmc_referer')
+			->fields(array(
+				'referer_uid' => $referer_uid,
+				'new_member_uid' => $account->uid,
+				'signup_time' => time(),
+			))
+			->execute();
+			if($insert != '') {
+				db_update('gmc_referer_key')
+				->expression('bonus_level', 'bonus_level + 1')
+				->condition('key_value', $referer)
+				->execute();
+				unset($_SESSION['referer_key']);
+			}
+		}
+	}
+	else if(isset($_SESSION['free_key'])) {
+		$update = db_update('gmc_discount_keys')
+		->fields(array(
+			'uid' => $account->uid,
+			'used' => time(),
+		))
+		->condition('key_value', $_SESSION['free_key'], '=')
+		->execute();
+		if($update != '') {
+			unset($_SESSION['free_key']);
+		}
+	}
+}
+
+/**
+ * Callback function admin_free_key
+ * to generates a unique keystring
+ * for signup 1 month free access
+ */
+function admin_free_key($never_expire = 1) {
+	global $base_url;
+	$output = '';
+	if(isset($_SESSION['key_number']) && !empty($_SESSION['key_number'])) {
+		$key_number = $_SESSION['key_number'];
+		$keys = array();
+		$output .= '<div class="gmc-padding"><p style="margin:5px 0;">These keys never expire. Signup link using these are '.$base_url.'/signup/&lt;--key here--&gt;/</p><ul>';
+		for($i = 0; $i < $key_number; $i++) {
+			$key = insert_key_string(1);
+			$output .= '<li>'.$key.' ('.$base_url.'/signup/'.$key.')</li>';
+		}
+		$output .= '</ul></div>';
+		unset($_SESSION['key_number']);
+	}
+	else {
+		$output .= drupal_render(drupal_get_form('admin_free_key_form'));
+		//Table header	
+		$header = array(
+			array('data' => t('Serial No.')),
+			array('data' => t('Key Value')),
+			array('data' => t('Created Date'),'field'=>'created', 'sort'=>'asc'),
+			array('data' => t('URL')),
+			array('data' => t('Action')),
+		);
+		//fetch data from pm_draft table
+		$sql_query = db_select('gmc_discount_keys', 'dk');
+		$sql_query->fields('dk');
+		$sql_query->condition('used', 0, '=');
+		$sql_query->condition('uid', 0, '=');
+		$sql_query = $sql_query->extend('TableSort')->extend('PagerDefault')->limit(30);
+		$result = $sql_query->orderByHeader($header)->execute();
+		if(isset($_GET['page'])) {
+			$x = $_GET['page'] * 30 + 1;
+		}
+		else {
+			$x = 1;
+		}
+		foreach($result as $data){
+			$rows[] = array(
+				$x,
+				$data->key_value,
+				date("M d Y, h:m:s A", $data->created),
+				$base_url.'/signup/'.$data->key_value,
+				l('Delete', 'admin-delete-keys', array('query' => array('key_id' => $data->discount_key_id))),
+			);
+			$x++;
+		}
+		$output .= theme('table', array('header' => $header, 'rows' => $rows, 'attributes' => array('id' => 'gmc-keywords-table')));
+		$output .= theme('pager');
+	}
+	return $output;
+}
+
+/*
+ * Implements form API
+ * @return $form
+ */
+function admin_free_key_form() {
+	$form['key_message'] = array(
+		'#markup' => 'Keys generated here will never expire.'
+	);
+	$form['key_number'] = array(
+		'#type' => 'textfield', 
+		'#title' => t('Number of keys :'), 
+		'#size' => 60, 
+		'#maxlength' => 128,
+		'#required' => TRUE,
+	);
+	$form['submit'] = array(
+		'#type' => 'submit',
+		'#value' => t('Generate keys'),
+	);
+	return $form;
+}
+/*
+ * Implements Hook_submit
+ */
+function admin_free_key_form_submit(&$form, &$form_state) {
+	//print "<pre>";print_r($form_state['input']);exit;
+	$_SESSION['key_number'] = $form_state['input']['key_number'];
+}
+/**
+ * Callback function insert_key_string
+ * to generates a unique key string
+ * and insert to database table
+ */
+function insert_key_string($never_expire = 0) {
+	$length = 12;
+	$key = generated_key_exist($length);
+	$insert = db_insert('gmc_discount_keys')
+		->fields(array(
+			'uid' => 0,
+			'key_value' => $key,
+			'created' => time(),
+			'used' => 0,
+			'never_expire' => $never_expire,
+		))
+		->execute();
+	if($insert != '') {
+		return $key;
+	}
+}
+/**
+ * Callback function generated_key_exist
+ * to check the database table for unique key
+ */
+function generated_key_exist($length) {
+	if($length == 12) {
+		$key = strtoupper(generate_key_string($length));
+		$keu_id = db_query("SELECT discount_key_id from gmc_discount_keys where key_value = :key_value", array(':key_value' => $key));
+	}
+	else if($length == 7){
+		$key = generate_key_string($length);
+		$keu_id = db_query("SELECT referer_key_id from gmc_referer_key where key_value = :key_value", array(':key_value' => $key));
+	}
+	$num = $keu_id->rowCount();
+	if($num == 0){
+		return $key;
+	}
+	else {
+		generated_key_exist();
+	}
+}
+/**
+ * Callback function generate_key_string
+ * to generates a unique keystring
+ */
+function generate_key_string($chars = 30){
+	$possibleCharacters = '23456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+	$password = '';
+	for($i = 0; $i != $chars; $i++) {
+		$password.= $possibleCharacters{mt_rand(0, strlen($possibleCharacters) - 1) };
+	}
+	return $password;
+}
+/**
+* Callback function admin_delete_free_key
+* for delete admin generated key
+* @return '';
+*/
+function admin_delete_free_key() {
+	$key_id = $_GET['key_id'];
+	db_delete('gmc_discount_keys')
+	  ->condition('discount_key_id', $key_id)
+	  ->execute();
+	drupal_set_message("Key deleted successfully!", "status");
+	drupal_goto('admin-generate-keys');
+}
+/**
+* Callback function get_uid_by_id
+* for get uid id by referer_id and new_member_id
+* @return $user_uids;
+*/
+function get_uid_by_id($id){
+	$user_email = db_query("SELECT email FROM admin_gmc.gmc_user WHERE old_id = :ids", array(':ids' => $id))->fetchField();
+	$user_uids = get_uid_by_email_id($user_email);
+	return $user_uids;
+}
+/**
+* Callback function get_uid_by_email_id
+* for get uid by email id
+* @return $user_uids;
+*/
+function get_uid_by_email_id($user_email){
+	$user_uids = db_query("SELECT uid FROM dev_syn_drupal.users WHERE mail = :mail", array(':mail' => $user_email))->fetchField();
+	//print "<pre>";print_r($user_uids);exit;
+	return $user_uids;
+}
+
+/**
+* Callback function for quicktabs of profile page;
+*/
+function gmc_profile_tabs(){
+	$qtid = 'profile_main'; // write here your quicktabs id.
+	$quicktabs = quicktabs_load($qtid);
+	return theme('quicktabs', $quicktabs);
+}
+
+/**
+* Callback function gmc_user_avatar
+* to change user profile image
+* @return $output;
+*/
+function gmc_user_avatar(){
+	$output = '';
+	global $user;
+	$user_detail = user_load($user->uid);
+	if (user_is_logged_in() && !in_array('instructor', $user_detail->roles)) {
+		$account = user_load($user->uid);
+		module_load_include('inc', 'user', 'user.pages');
+		$form = drupal_get_form('user_profile_form', $account);
+		//print "<pre>";print_r($form['actions']);exit;
+		$form['picture']['select_avatar']['#title'] = t('');
+		$form['picture']['picture_upload']['#title'] = t('');
+		//$form['actions']['submit']['#value'] = t('Save avatar');
+		$form['picture']['picture_current']['#prefix'] = '<div class="formsubtitle">Your Current Avatar</div>
+			<div class="tablepad" align="center">';
+		$form['picture']['picture_current']['#suffix'] = '</div>';
+		$form['picture']['select_avatar']['#prefix'] = '<div class="formsubtitle">Choose an avatar from the gallery</div>';
+		$form['picture']['picture_upload']['#prefix'] = '<div class="formsubtitle">Upload a new image from your computer</div><span class="profile-submit-link">Save avatar</span>';
+		$output = '<div id="ucpcontent">';
+		$output .= drupal_render($form);
+		$output .= '</div>';
+	}
+	return $output;
+}
+
+/**
+* Callback function gmc_welcome_page
+* to displayed the welcome page for new user
+* @return '';
+*/
+function gmc_welcome_page(){
+	global $user;
+	if($user->uid != 0) {
+		if(isset($_SESSION['renew_subscription']) && $_SESSION['renew_subscription'] == 'renew') {
+			unset($_SESSION['renew_subscription']);
+			drupal_goto('renew/subscription');
+		}
+		else {
+			$output = '';
+			$new_user = explode("___", $user->name);
+			if($new_user[0] == 'usernew') {
+				$output .= '<div class="content-block choose-name-content-block"><div class="top"></div><h2><img src="/font/Welcome+To+GMC/12/" alt="Welcome To GMC"></h2>';
+				$form = drupal_get_form('community_display_name_form');
+				$output .= drupal_render($form);
+				$output .= '<var></var></div>';
+			}
+			else {
+				$block7 = module_invoke('block', 'block_view', 7);
+				$output .= $block7['content'];
+				$block8 = module_invoke('block', 'block_view', '8');
+				$output .= $block8['content'];
+				$block_404 = module_invoke('views', 'block_view', 'page_404_lessons_list-block');
+				$output .= '<div class="content-block more-lessons-to-check-out"><div class="top"></div><h2><img src="/font/More+Lessons+to+Check+Out/12/" alt="More Lessons to Check Out"></h2>';
+				$output .= drupal_render($block_404['content']);
+				$output .= '<var></var></div>';
+			}
+			return $output;
+		}
+	}
+	else {
+		drupal_goto('<front>');
+	}
+}
+
+/*
+ * Implements form API
+ * @return $form
+ */
+function community_display_name_form() {
+	$form['community_display'] = array(
+		'#markup' => 'You have successfully logged in, you now need to choose a community display name. The name you choose here will be visible to the public.'
+	);
+	$form['choose_name'] = array(
+		'#type' => 'textfield', 
+		'#title' => t('Choose a name:'), 
+		'#size' => 20, 
+		'#maxlength' => 128,
+		'#required' => TRUE,
+	);
+	$form['submit'] = array(
+		'#type' => 'submit',
+		'#value' => t('Create'),
+	);
+	return $form;
+}
+/*
+ * Implements Hook_submit
+ */
+function community_display_name_form_submit(&$form, &$form_state) {
+	global $user;
+	$user_detail = user_load($user->uid);
+	$choose_name = $form_state['input']['choose_name'];	
+	$user_detail->name = $choose_name;
+	$user_detail->roles[5] = 'member';
+	$user_detail->roles[6] = 'paid user';
+	user_save($user_detail);
+	drupal_goto('welcome');
+}
+
+/**
+* Callback function user_signature_profile_settings
+* to change user profile signature and other fields data
+* @return $output;
+*/
+function user_signature_profile_settings(){
+	$output = '';
+	global $user;
+	if (user_is_logged_in()) {
+		$account = user_load($user->uid);
+		module_load_include('inc', 'user', 'user.pages');
+		$form = drupal_get_form('user_profile_form', $account);
+		//print "<pre>";print_r($form['field_user_signature']);exit;
+		
+		$form['field_user_signature']['und']['0']['value']['#title'] = t('');
+		$form['field_user_signature']['#prefix'] = '<div class="formsubtitle">Your current Signature</div><div class="signature" style="padding: 5px;">'.$form['field_user_signature']['und']['0']['#default_value'].'</div><div class="formsubtitle">Edit your signature</div>';
+		$form['field_gender']['und']['#title'] = t('');
+		$form['field_gender']['#prefix'] = '<div class="formsubtitle">Gender</div>';
+		$form['field_your_interests']['#prefix'] = '<div class="formsubtitle">Your interests</div>';
+		$form['field_your_interests']['und']['0']['value']['#title'] = t('');
+		$form['field_personal_statement']['#prefix'] = '<div class="formsubtitle">Personal Statement</div>';
+		$form['field_personal_statement']['und']['0']['value']['#title'] = t('');
+		$form['field_address']['#prefix'] = '<div class="formsubtitle user-profile-details">Profile details</div><div class="formsubtitle">Location</div>';
+		$form['field_address']['und']['0']['value']['#title'] = t('');
+		$output = '<div id="ucpcontent">';
+		$output .= drupal_render($form);
+		$output .= '</div>';
+	}
+	return $output;
+}
+
+/*****************************************************************************************/
+
+
+/**
+* Callback function admin_migrate_data
+* for import live site data to drupal setup
+* @return ''; //admin-migrate-data
+*/
+function admin_migrate_data() {
+	//$query = db_query("SELECT * FROM uc_roles_expirations e INNER JOIN gmc_oldmember_subscription s ON s.uid = e.uid")->fetchAll();
+	/*$query = db_query("SELECT * FROM gmc_oldmember_subscription s WHERE live_date <> '' OR payment_method <> '' LIMIT 0, 500"); //->fetchAll();
+	//print "<pre>";print_r($query);exit;
+	$x = 0;
+	foreach($query as $result) {*/
+		//$num_deleted = db_delete('uc_roles_expirations')->condition('reid', $result->reid)->execute();
+		/*$timestamp = strtotime($result->live_date);
+		$rid = 6;
+		if(empty($result->payment_method)) {
+			$rid = 5;
+		}
+		if($result->uid != 58707) {
+			db_merge('uc_roles_expirations')
+			->key(array('uid' => $result->uid))
+			->fields(array(
+				'uid' => $result->uid,
+				'rid' => $rid,
+				'expiration' => $timestamp,
+			))
+			->execute();
+			$x++;
+		}*/
+		/*$user_detail = user_load($result->uid);
+		if(!empty($result->payment_method) && !empty($result->live_date)) {
+			$user_detail->roles[5] = 'member';
+			$user_detail->roles[6] = 'paid user';
+			user_save($user_detail);
+		}
+		else if(empty($result->payment_method) && !empty($result->live_date)) {
+			$user_detail->roles[5] = 'member';
+			unset($user_detail->roles[6]);
+			user_save($user_detail);
+		}
+		$x++;
+	}
+	print "<pre>";print_r($result);
+	print "Completed = $x";*/
+	//print "<pre>";print_r($query);exit;
+  $url = "http://www.guitarmasterclass.net/payment/subscriptions.json";
+  $request = drupal_http_request($url);
+  $json_response = drupal_json_decode($request->data);
+  $data = array();
+  if(!empty($json_response)) {
+	  unset($json_response[0]);
+	  $json_response = array_reverse($json_response);
+	  for($x=28008;$x<=28048;$x++) {
+		$data[$x] = $json_response[$x];
+	  }
+  }
+  print "<pre>";print_r($data);exit;
+  /*$i=1;
+  foreach ($json_response as $values) {
+    $operations[] = array('import_ldata_op_20', array($values, t('(Operation @operation)', array('@operation' => $i))));
+    $i++;
+  }
+  $batch = array(
+    'operations' => $operations,
+    'finished' => 'import_data_finished',
+  );
+  return $batch;*/
+
+}

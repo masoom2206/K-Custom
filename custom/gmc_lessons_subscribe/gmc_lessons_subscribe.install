@@ -1,0 +1,91 @@
+<?php
+
+/**
+ * @file Rules - Installation file.
+ */
+
+/**
+ * Implements hook_schema().
+ */
+function gmc_lessons_subscribe_schema() {
+	//Save subscribe user/instructor detail
+  $schema['gmc_user_subscribe'] = array(
+    'fields' => array(
+      'subscribe_id' => array(
+        'type' => 'serial',
+        'not null' => TRUE,
+        'description' => 'Subscription ID',
+      ),
+      'uid' => array(
+        'description'   => 'UID of the subscriber',
+        'type'          => 'int',
+        'not null'      => TRUE,
+      ),
+      'entity_id' => array(
+        'description'   => 'Subscribe id of Instructor uid, tid amd nid',
+        'type'          => 'int',
+        'not null'      => TRUE,
+      ),
+      'type' => array(
+        'description'   => 'Subscribe id type uid/tid/nid',
+        'type'          => 'varchar',
+        'length'        => 255,
+        'not null'      => TRUE,
+      ),
+      'notification_method' => array(
+        'description'   => 'Notification Method to send mail like daily or immediate',
+        'type'          => 'varchar',
+        'length'        => 255,
+        'not null'      => TRUE,
+      ),	  
+      'email' => array(
+        'description'   => 'Email of the subscriber',
+        'type'          => 'varchar',
+        'length'        => 255,
+        'not null'      => TRUE,
+      ),
+      'subscribe_date'     => array(
+        'description'   => 'Lesson Subscribe date',
+        'type'          => 'int',
+        'not null'      => TRUE,
+      ),
+    ),
+    'primary key' => array('subscribe_id'),
+    'indexes' => array(
+       'subscribe_id' => array('subscribe_id'),
+       'subscribe_date' => array('subscribe_date'),
+    ),
+  );
+	//Save subscribe node id
+  $schema['gmc_subscribe_node'] = array(
+    'fields' => array(
+      'serl_no' => array(
+        'type' => 'serial',
+        'not null' => TRUE,
+        'description' => 'Serial no of subscribe node',
+      ),
+      'entity_id' => array(
+        'description'   => 'Subscribe id of Instructor uid, tid amd nid',
+        'type'          => 'int',
+        'not null'      => TRUE,
+      ),
+      'type' => array(
+        'description'   => 'Subscribe id type uid/tid/nid',
+        'type'          => 'varchar',
+        'length'        => 255,
+        'not null'      => TRUE,
+      ),
+      'nid' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'description' => 'Subscribe node id',
+      ),
+    ),
+	'primary key' => array('serl_no'),
+    'indexes' => array(
+       'serl_no' => array('serl_no'),
+    ),
+  );
+  
+  return $schema;
+}

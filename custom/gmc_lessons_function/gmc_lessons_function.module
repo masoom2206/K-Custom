@@ -1,0 +1,1238 @@
+<?php
+/**
+* Implementation of hook_menu
+*/
+function gmc_lessons_function_menu() {
+  $items = array();
+  //Menu for Subscribe Lessons.
+  $items['admin/icp/lesson/%/%/xml/%'] = array(
+    'title' => 'Lesson XML',
+    'description' => 'Add / Edit / Delete Videos, Mp3s, Graphics, Notes & Statistics',
+    'page callback' => 'generateXML',
+	  'page arguments' => array(3,4,6),
+    'access callback' => TRUE,
+	  'file' => '/inc/lessonxml.inc',
+	  'type' => MENU_CALLBACK,
+  );
+  $items['admin/icp/mobilelesson/%/%/xml/%'] = array(
+    'title' => 'Lesson XML',
+    'description' => 'Add / Edit / Delete Videos, Mp3s, Graphics, Notes & Statistics',
+    'page callback' => 'generateXML',
+	  'page arguments' => array(3,4,6),
+    'access callback' => TRUE,
+	  'file' => '/inc/lessonxmlmobile.inc',
+	  'type' => MENU_CALLBACK,
+  );
+  $items['testimagecsd/%/%/%'] = array(
+    'title' => 'Lesson XML',
+    'description' => 'test/images/create/font',
+    'page callback' => 'test_images_create_font',
+    'access callback' => TRUE,
+	  'type' => MENU_CALLBACK,
+  );
+  $items['admin/icp/lessonrevision/%/%/xml/%'] = array(
+    'title' => 'Lesson XML',
+    'description' => 'Add / Edit / Delete Videos, Mp3s, Graphics, Notes & Statistics',
+    'page callback' => 'generateXML',
+	  'page arguments' => array(3,4,6),
+    'access callback' => TRUE,
+	  'file' => '/inc/lessonxmlrevision.inc',
+	  'type' => MENU_CALLBACK,
+  );
+  $items['font/%/%'] = array(
+    'title' => 'Fonts',
+    'description' => 'Fonts at Guitar Masterclass',
+	  'page callback' => 'test_images_create_font',
+	  'page arguments' => array(1,2),
+	  'access callback' => TRUE,
+  );
+  $items['font/%/%/%'] = array(
+    'title' => 'Fonts',
+    'description' => 'Fonts at Guitar Masterclass',
+	  'page callback' => 'test_images_create_font',
+	  'access callback' => TRUE,
+	  'page arguments' => array(1,2,3),
+  );
+  $items['lesson/tabs/%'] = array(
+    'title' => 'Lesson tabs',
+    'description' => 'Lesson tabs',
+    'page callback' => 'lessonTabs',
+	  'page arguments' => array(2),
+    'access callback' => TRUE,
+	  'file' => '/inc/tabs.inc',
+  );
+  $items['node/%/lessondata'] = array(
+    'title' => 'Lesson Data',
+    'page callback' => 'list_all_video_data',
+	  'page arguments' => array(1),
+    'access callback' => TRUE,
+    'weight' => 0,
+    'type' => MENU_LOCAL_TASK,
+    'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
+  );
+  $items['node/%/%/lessondata'] = array(
+    'title' => 'Lesson Maker',
+    'description' => 'Add / Edit / Delete Videos, Mp3s, Graphics, Notes & Statistics',
+    'page callback' => 'Maker',
+	  'page arguments' => array(1,2),
+  	'file' => 'lessonmaker.inc',
+    'type' => MENU_LOCAL_TASK,
+    'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
+  );
+  $items['backingtrack/%/%'] = array(
+    'title' => 'Download Backing Track at Guitar Masterclass',
+    'description' => 'Download Backing Track at Guitar Masterclass',
+	 'page callback' => 'playBackingTrack',
+	 'page arguments' => array(1,2),
+	 'access callback' => TRUE,
+	);
+ 
+  $items['backingtrack/%/%/download'] = array(
+   'title' => 'Download Backing Track at Guitar Masterclass',
+   'description' => 'Download Backing Track at Guitar Masterclass',
+	 'page callback' => 'downloadBackingTrack',
+	 'page arguments' => array(1,2),
+	 'access callback' => TRUE,
+	);
+  $items['admin/content/admintextlesson'] = array(
+   'title' => 'Admin Lesson Text',
+   'description' => 'Admin Lesson Text',
+	 'page callback' => 'admin_content_admintextlesson',
+	 'access arguments' => array('administer content types')
+	);
+  $items['admin/content/admintextlesson/%'] = array(
+   'title' => 'Admin Lesson Text',
+   'description' => 'Admin Lesson Text',
+	 'page callback' => 'admin_content_admintextlesson',
+   'page arguments' => array(3),
+	 'access arguments' => array('administer content types')
+	);  
+  $items['admin/content/admintextlesson/%/delete'] = array(
+    'title' => 'Admin Lesson Text',
+    'description' => 'Admin Lesson Text',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('admin_content_admintextlesson_delete'),
+    'access arguments' => array('administer content types')
+	);
+  $items['admintext/autocomplete'] = array(
+    'page callback' => '_admintext_name_autocomplete',
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK
+  );
+  $items['lm2_get_clip/%'] = array(
+    'page callback' => '_lm2_get_clip_autocomplete',
+    'page arguments' => array(1),
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK
+  );
+  $items['lm2_get_clips'] = array(
+    'page callback' => '_lm2_get_clips_autocomplete',
+    'page arguments' => array(1),
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK
+  );
+  $items['categories/lessons'] = array(
+    'page callback' => '_get_categories_lessons_post',
+    'page arguments' => array(1),
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK
+  );
+  $items['user_serach_list/%'] = array(
+    'page callback' => 'get_all_membes_list',
+    'page arguments' => array(1),
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK
+  ); 
+  $items['serach_serach_list'] = array(
+    'page callback' => 'get_all_serach_serach_list',
+    'page arguments' => array(1),
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK
+  );
+  return $items;
+}
+
+function admin_content_admintextlesson_delete() {
+ $nid = arg(3);
+  $form['nid'] = array(
+    '#type' => 'hidden',
+    '#required' => TRUE,
+    '#value' =>  $nid,
+  );
+  $form['submit'] = array(
+    '#prefix' => '<div>This action cannot be undone.</div>',
+    '#type' => 'submit',
+    '#value' => t('Submit'),
+  );
+  return $form;
+
+}
+
+function admin_content_admintextlesson_delete_submit($form, $form_state) {
+ $nid = $form['nid']['#value'];
+  db_delete('admin_lesson_text')
+    ->condition('nid', $nid)
+    ->execute();
+  drupal_goto('admin/content/admintextlesson');
+}
+
+function _admintext_name_autocomplete($string) {
+  $matches = array();
+ 
+  // Some fantasy DB table which holds cities
+  $query = db_select('node', 'n');
+ 
+  // Select rows that match the string
+  $return = $query
+    ->fields('n', array('title', 'nid'))
+    ->condition('n.title', '%' . db_like($string) . '%', 'LIKE')
+    ->range(0, 10)
+    ->execute();
+ 
+  // add matches to $matches  
+  foreach ($return as $row) {
+    $matches[$row->nid] = check_plain($row->title);
+  }
+ 
+  // return for JS
+  drupal_json_output($matches);
+
+}
+/**
+ * Callback function for lessons admin text
+ */
+function admin_content_admintextlesson() {
+  $nid = arg(3);
+  $html = '';
+  $header = array(
+              array('data' => 'id', 'field' => 'id', 'sort' => 'asc'), // sort by name by default, a-z order
+              array('data' => 'Body', 'field' => 'body'),
+              'Lesson Id', 
+              'UserID', 
+              'Operation'
+            );
+  $res = db_select('admin_lesson_text', 'n')
+    ->fields('n')
+    ->extend('PagerDefault')
+    ->limit(10)
+    ->execute()
+    ->fetchAll();
+  $data = array();
+  
+  foreach($res as $row) {
+    $data[] = array(
+                array('data' => $row->mid), 
+                array('data' => $row->body), 
+                array('data' => l('Lesson View', 'node/'.$row->nid).'<br />'.$row->nid), 
+                array('data' => $row->uid), 
+                l('Delete', 'admin/content/admintextlesson/'.$row->nid.'/delete').'    '.l('Edit', 'admin/content/admintextlesson/'.$row->nid)
+              );
+  }
+  $rform = drupal_get_form('lesson_text_admintext', $nid);
+  $html .= drupal_render($rform);
+  $html .= theme('table', array('header' => $header, 'rows'=> $data,'attributes' => array('class' => array('lesson-and-thumbnail-listing'))));
+  $html .= theme('pager');
+  return $html;
+}
+
+/**
+ * form on lessons admin text
+ */
+function lesson_text_admintext($form, &$form_state, $nid)  {
+
+  if (!empty($nid)) {
+    $result = db_select('admin_lesson_text', 'n')
+            ->fields('n')
+            ->condition('nid', $nid, '=')
+            ->execute()
+            ->fetchObject();
+   $body = $result->body;
+  } else {
+    $body = '';
+  }
+  $form['body'] = array(
+    '#type' => 'textarea',
+    '#title' => t('Admin Text'),
+    '#required' => TRUE,  
+    '#default_value' => $body
+  );
+  $form['nid'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Lesson'),
+    '#weight' => -1,
+    '#required' => TRUE,
+    '#default_value' =>  $nid,
+    '#autocomplete_path' => 'admintext/autocomplete',
+  );
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Submit'),
+  );
+  return $form;
+}
+
+/**
+ * Submit Callback function for lessons admin text
+ */
+function lesson_text_admintext_submit($form, $form_state, $nid) {
+  global $user;
+  $body = $form['body']['#value'];
+  $uid = $user->uid;
+  db_merge('admin_lesson_text') 
+    ->key(array('nid' => $nid))
+    ->fields(array(
+      'nid' => $nid,
+      'body' => $body,
+      'uid' => $uid,
+      'status' => 1
+    ))->execute();
+}
+/**
+ * Callback function for lessons comment load
+ */
+function loadComments($nid) {
+//	return db_query('SELECT * FROM {comment} inner join field_data_comment_body on (entity_id = cid) WHERE nid = :d order by created DESC', array(':d'=>$nid))->fetchAll();
+	return db_query('SELECT * FROM {lessons_comments_posts} WHERE nid = :d order by created DESC', array(':d'=>$nid))->fetchAll();
+}
+
+
+/**
+ * Callback function for lessons file load
+ */
+function load_files($nid) {
+	$files = db_query("SELECT * FROM {lesson_files} WHERE nid = :nid  AND publish = 1 order by weight", array(':nid' => $nid))->fetchAll();
+	return $files;
+}
+
+/**
+ * Callback function for lessons file load
+ */
+function load_revisonlesson_files($nid) {
+	$files = db_query("SELECT * FROM {gmc_files_review} WHERE nid = :nid  AND publish = 1 order by weight", array(':nid' => $nid))->fetchAll();
+	return $files;
+}
+
+
+function load_files_vid($nid) {
+	$files = db_query("SELECT * FROM {lesson_files} WHERE nid = :nid  AND publish = 1 AND weight < 100 order by weight", array(':nid' => $nid))->fetchAll();
+	return $files;
+}
+/**
+ * Callback function for lessons file load
+ */
+function load_file($fid) {
+	$files = db_query("SELECT * FROM {lesson_files} WHERE fid = :fid  AND publish = 1 order by weight", array(':fid' => $fid))->fetchAll();
+	return $files;
+}
+
+/**
+ * Callback function for lessons mp3 file load
+ */
+function load_files_mp3($nid) {	
+	$files = db_query("SELECT lf.* FROM {file_managed} fm, {lesson_files} lf WHERE fm.fid = lf.fid and filemime = 'audio/mpeg' AND nid = :nid AND lf.publish = 1  order by fm.filesize", array(':nid' => $nid))->fetchAll();
+	return $files;
+}
+
+/**
+ * Callback function for Revison lessons mp3 file load
+ */
+function _get_revision_files_mp3($nid) {	
+	$files = db_query("SELECT lf.* FROM {file_managed} fm, {gmc_files_review} lf WHERE fm.fid = lf.fid and filemime = 'audio/mpeg' AND nid = :nid AND lf.publish = 1  order by fm.filesize", array(':nid' => $nid))->fetchAll();
+	return $files;
+}
+
+function _get_revision_download_mp3($nid){
+ $result = db_select('gmc_node_backing_revision', 'n')
+          ->fields('n')
+          ->condition('nid', $nid, '=')
+          ->execute()
+          ->fetchObject();
+  return $result->fid;
+}
+/**
+ * Callback function bbcodeHtml
+ */
+function bbcodeHtml($str) {
+  // delete 'http://' because will be added when convert the code
+  $str = str_replace('[url=http://', '[url=', $str);
+  $str = str_replace('[url]http://', '[url]', $str);
+  $str = str_replace('[url href=http://', '[url=', $str);
+
+  // Array with RegExp to recognize the code thatf must be converted
+  $bbcode_smiles = array(
+    // RegExp for [b]...[/b], [i]...[/i], [u]...[/u], [block]...[/block], [color=code]...[/color], [br]
+    '/\[b\](.*?)\[\/b\]/is',
+    '/\[i\](.*?)\[\/i\]/is',
+    '/\[u\](.*?)\[\/u\]/is',
+    '/\[block\](.*?)\[\/block\]/is',
+    '/\[color=(.*?)\](.*?)\[\/color\]/is',
+    '/\[br\]/is',
+    // RegExp for [url=link_address]..link_name..[/url], or [url]..link_address..[/url]
+	'/\[url\=\"(.*?)\"\](.*?)\[\/url\]/is',
+    '/\[url\=(.*?)\](.*?)\[\/url\]/is',
+    '/\[url\](.*?)\[\/url\]/is',
+    // RegExp for [img=image_address]..image_title[/img], or [img]..image_address..[/img]
+    '/\[img\=(.*?)\](.*?)\[\/img\]/is',
+    '/\[img\](.*?)\[\/img\]/is',
+    // RegExp for sets of characters for smiles: :), :(, :P, :P, ...
+    //'/:\)/i', '/:\(/i', '/:P/i', '/:S/i', '/:O/i', '/=D\>/i', '/\>:D\</i', '/:D/i', '/:-\*/i'
+  );
+  // Array with HTML that will replace the bbcode tags, defined inthe same order
+  $html_tags = array(
+    // <b>...</b>, <i>...</i>, <u>...</u>, <blockquote>...</blockquote>, <span>...</span>, <br/>
+    '<b>$1</b>',
+    '<i>$1</i>',
+    '<u>$1</u>',
+    '<blockquote>$1</blockquote>',
+    '<span style="color:$1;">$2</span>',
+    '<br/>',
+    // a href...>...</a>, and <img />
+	'<a target="_blank" href="http://$1">$2</a>',
+    '<a target="_blank" href="http://$1">$2</a>',
+    '<a target="_blank" href="http://$1">$1</a>',
+    '<img src="$1" alt="$2" />',
+    '<img src="$1" alt="$1" />',
+    // The HTML to replace smiles. Here you must add the address of the images with smiles
+    '<img src="icos/1.gif" alt=":)" border="0" />',
+    '<img src="icos/2.gif" alt=":(" border="0" />',
+    '<img src="icos/3.gif" alt=":P" border="0" />',
+    '<img src="icos/4.gif" alt=":S" border="0" />',
+    '<img src="icos/5.gif" alt=":O" border="0" />',
+    '<img src="icos/6.gif" alt="=D&gt;" border="0" />',
+    '<img src="icos/7.gif" alt="&gt;: D&lt;" border="0" />',
+    '<img src="icos/8.gif" alt=": D" border="0" />',
+    '<img src="icos/9.gif" alt=":-*" border="0" />'
+  );
+  // replace the bbcode
+  $str = preg_replace($bbcode_smiles, $html_tags, $str);
+  return $str;
+}
+
+
+/**
+ * hook_nodeapi call back.
+ */
+function gmc_lessons_function_node_presave($node) {
+  if ($node->type == 'lesson_part') {
+    $nid = $node->nid;
+    $directory = "sites/default/files/uploads/".$nid;
+    if ( !file_exists($directory) ) drupal_mkdir($directory);
+    include 'pclzip/pclzip.lib.php';
+    //  print_r(get_included_files());
+    //  print '<pre>'; print_r($node); exit;
+    $furi = $node->original->field_upload_files['und'][0]['uri']; 
+	  $archiver = archiver_get_archiver($furi);
+	  if (!$archiver) {
+	    throw new Exception(t('Cannot extract %file, not a valid archive.', array('%file' => $file)));
+	  }
+     //exit;
+	  // Remove the directory if it exists, otherwise it might contain a mixture of
+	  // old files mixed with the new files (e.g. in cases where files were removed
+	  // from a later release).
+	  $files = $archiver->listContents();
+	  // Unfortunately, we can only use the directory name to determine the project
+	  // name. Some archivers list the first file as the directory (i.e., MODULE/)
+	  // and others list an actual file (i.e., MODULE/README.TXT).
+	  $project = strtok($files[0], '/\\');
+	  $extract_location = $directory;
+	  if (file_exists($extract_location)) {
+	    file_unmanaged_delete_recursive($extract_location);
+	  }
+	  $aa = $archiver->extract($directory);
+    $files = file_scan_directory($directory, '/.*\.mp4$/');
+    // print '<pre>';  
+    foreach ($files as $key => $data) {
+      $finfo = new finfo(FILEINFO_MIME);
+      $type = $finfo->file($data->filename);
+      if ($type == 'video/mp4' || $type = 'video/x-flv' || $type = 'video/mov' ) {
+        // print $data->uri;
+        $srcFile = drupal_realpath($data->uri);
+        $ff = new ffmpeg_movie(drupal_realpath($data->uri));
+        $low = "sites/default/files/uploads/".$nid."/".$data->name."_small.mp4";
+        $medium = "sites/default/files/uploads/".$nid."/".$data->name."_medium.mp4";
+        $high = "sites/default/files/uploads/".$nid."/".$data->name."_high.mp4";
+        $mobile = "sites/default/files/uploads/".$nid."/".$data->name."_mobile.mp4";
+        $srcWidth = $ff->getFrameWidth();
+        $srcWidth -= $srcWidth & 1;
+			  $srcHeight = $ff->getFrameHeight();
+        $srcHeight -= $srcHeight & 1;
+        $thumbname = "sites/default/files/uploads/".$nid."/".$data->name."_thumb.png";;
+        $srcsize = $srcWidth."x".$srcHeight;
+        if ($srcHeight == 1080) {
+          $rate = '8000k';	
+        } else {
+          $rate = '5000k';	
+        }
+        exec("/usr/local/bin/ffmpeg -i $srcFile -f image2 -vframes 1  $thumbname");
+        // print_r($high);
+        if (!file_exists($high."_qtfast.mp4")) {
+          //print $high;
+			    exec("/usr/local/bin/ffmpeg -i $srcFile -vcodec libx264 -preset fast -acodec copy -ab 256 -b:v $rate -s 960x720 -f mp4 $high 2>&1");
+          //  exec("ffmpeg -i $srcFile -ss 00:00:14.435 -f image2 -vframes 1 {$name}_thumb_out.png");
+			    exec("/usr/local/bin/qt-faststart ".drupal_realpath($high)." ".drupal_realpath($high)."_qtfast.mp4");
+			    //// unlink(drupal_realpath($high));
+			  }
+			  if (!file_exists($medium."_qtfast.mp4")) {
+			    exec("/usr/local/bin/ffmpeg -i $srcFile -vcodec libx264 -preset fast -acodec copy -ab 256 -b:v 900k -s 640x360 -f mp4 $medium 2>&1",$output);
+			    //  exec("/usr/bin/qt-faststart ".drupal_realpath($medium)." ".drupal_realpath($medium)."_qtfast.mp4");
+			    //  unlink(drupal_realpath($medium));
+			  }
+			  if (!file_exists($low."_qtfast.mp4")) {
+			    exec("/usr/local/bin/ffmpeg -i $srcFile -vcodec libx264 -preset fast -acodec copy -ab 256 -b:v 300k -s 512x288 -f mp4 $low 2>&1",$output);
+			    //exec("/usr/bin/qt-faststart ".drupal_realpath($low)." ".drupal_realpath($low)."_qtfast.mp4");
+			    //unlink(drupal_realpath($low));
+			  }
+      } 
+    }
+      //print_r($files); exit;
+  }
+}
+/**
+ * list_all_video_data function call back.
+ */
+function list_all_video_data($nid) { 
+  $f1 = drupal_get_form('lessondataform', $nid);
+  $f2 = drupal_get_form('list_data_fun', $nid);
+  return drupal_render($f1).'<br/>'.drupal_render($f2);
+}
+
+/**
+ * lessondataform function call back.
+ */
+function lessondataform($form, &$form_state) {
+  $form = array();
+  $form['file'] = array(
+    '#type' => 'managed_file',
+    '#title' => t('Zip'),
+    '#description' => t('Upload a file, allowed extensions: zip'),
+  );
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Submit'),
+  );
+  return $form;
+}
+
+/**
+ * list_all_video_data function call back.
+ */
+function lessondataform_validate($form, &$form_state) {
+  /*// @TODO restrict file types with something like
+  //   array('file_validate_extensions' => array('txt csv tsv')) in second argument.
+  $file = file_load($form_state['values']['file']->fid);
+  //print '<pre>';
+  ///print_r($file); exit;
+  if ($file) {
+    // Make it a permanent file so it doesn't get deleted by cron.
+    $file->status = 1;
+    file_save($file);
+    // Save file name for submit handler.
+    $form_state['values']['file'] = $file;
+    // @TODO check file content, and if no good
+    //    form_set_error('upload', t('File content is invalid.'));
+  }
+  else {
+    form_set_error('upload', t('File upload failed.'));
+  }*/
+}
+
+/**
+ * list_all_video_data function call back.
+ */  
+function lessondataform_submit($form, $form_state, $nid) {
+  ini_set('memory_limit', '-1');
+  drupal_set_time_limit(1000);
+  
+  $file = $form_state['values']['file'];
+  unset($form_state['values']['file']);
+  $file = file_load($file);
+  $file->status = 0;
+
+
+  file_save($file);
+  // if ($node->type == 'lesson_part') {
+  $nid = arg(1);
+  $directory = drupal_realpath("public://uploads/".$nid);
+  if ( !file_exists($directory) ) drupal_mkdir($directory);
+ // $directory = drupal_realpath("public://uploads/".$nid."/original/");
+ // if ( !file_exists($directory) ) drupal_mkdir($directory);
+  // include 'pclzip/pclzip.lib.php';
+  //  print_r(get_included_files());
+  $furi = $file->uri; 
+  $archiver = archiver_get_archiver($furi);
+	if (!$archiver) {
+	  throw new Exception(t('Cannot extract %file, not a valid archive.', array('%file' => $file)));
+	}
+  // Remove the directory if it exists, otherwise it might contain a mixture of
+	// old files mixed with the new files (e.g. in cases where files were removed
+	// from a later release).
+	$files = $archiver->listContents();
+	// Unfortunately, we can only use the directory name to determine the project
+	// name. Some archivers list the first file as the directory (i.e., MODULE/)
+	// and others list an actual file (i.e., MODULE/README.TXT).
+	$project = strtok($files[0], '/\\');
+	$extract_location = $directory;
+	if (file_exists($extract_location)) {
+	  file_unmanaged_delete_recursive($extract_location);
+	}
+  $aa = $archiver->extract($directory);
+	$dir = drupal_realpath("public://uploads/".$nid);
+	$all_files = file_scan_directory($dir,'/.*\.mp4|wmv|flv|pdf|doc|jpg|png|JPG|PNG|gp5|mp3$/');
+	foreach ($all_files as $allfile) {
+    $uri =  "public://uploads/".$nid."/". $allfile->filename;
+		save_all_lessons($uri, $allfile->name, $nid);
+	}
+  $files = file_scan_directory($directory, '/.*\.mp4$/');
+  /*   // print '<pre>';  */
+  $videodirectory = drupal_realpath("public://uploads/".$nid."/scaledvideo/");
+  if ( !file_exists($videodirectory) ) drupal_mkdir($videodirectory);
+  foreach ($files as $key => $data) {
+    _get_video_files_scale($data->uri, $data->name, $nid);
+  }
+  // }
+  drupal_set_message(t('The form has been submitted and the zip files has been saved, filename: @filename.', array('@filename' => $file->filename)));
+}
+
+/**
+ * _get_video_files_scale function for genrated video with diffrent rate.
+ */
+function _get_video_files_scale($datauri, $dataname, $nid) {
+  drupal_set_time_limit(1000);
+  $finfo = new finfo(FILEINFO_MIME);
+  $type = $finfo->file($datauri);
+  if ($type == 'video/mp4' || $type = 'video/x-flv' ) {
+    $srcFile = drupal_realpath($datauri); 
+    $ff = new ffmpeg_movie(drupal_realpath($datauri));
+    $low = drupal_realpath("public://uploads/".$nid."/scaledvideo/".$dataname."_small.mp4");
+    $medium = drupal_realpath("public://uploads/".$nid."/scaledvideo/".$dataname."_medium.mp4");
+    $high =drupal_realpath( "public://uploads/".$nid."/scaledvideo/".$dataname."_high.mp4");
+    $mobile = drupal_realpath("public://uploads/".$nid."/scaledvideo/".$dataname."_mobile.mp4");
+    $srcWidth = $ff->getFrameWidth();
+    $srcWidth -= $srcWidth & 1;
+    $srcHeight = $ff->getFrameHeight();
+    $srcHeight -= $srcHeight & 1;
+    $thumbname = drupal_realpath("public://uploads/".$nid."/".$dataname."_thumb.png");
+    if ($srcHeight == 1080) {
+      $rate = '5000k';	
+      $srcsize = $srcWidth.'x'.$srcHeight;
+    }
+    elseif ($srcHeight == 720) {
+      $rate = '5000k';	
+      $srcsize = $srcWidth.'x'.$srcHeight;
+    } else {
+      $srcsize = '720x560';
+      $rate = '3000k';
+    }
+    exec("/usr/local/bin/ffmpeg -i $srcFile -f image2 -vframes 1  $thumbname");
+    // print_r($high);
+    if (!file_exists($high."_qtfast.mp4")) {
+      exec("/usr/local/bin/ffmpeg -i $srcFile -vcodec libx264 -preset fast -acodec copy -ab 256 -b:v $rate -s $srcsize -f mp4 $high 2>&1");
+      //  exec("ffmpeg -i $srcFile -ss 00:00:14.435 -f image2 -vframes 1 {$name}_thumb_out.png");
+	    //  exec("qt-faststart ".drupal_realpath($high)." ".drupal_realpath($high)."_qtfast.mp4");
+	    //// unlink(drupal_realpath($high));
+	  }
+	  if (!file_exists($medium."_qtfast.mp4")) {
+	    exec("/usr/local/bin/ffmpeg -i $srcFile -vcodec libx264 -preset fast -acodec copy -ab 256 -b:v 900k -s 640x360 -f mp4 $medium 2>&1",$output);
+	    //  exec("/usr/bin/qt-faststart ".drupal_realpath($medium)." ".drupal_realpath($medium)."_qtfast.mp4");
+	    //  unlink(drupal_realpath($medium));
+	  }
+	  if (!file_exists($low."_qtfast.mp4")) {
+	    exec("/usr/local/bin/ffmpeg -i $srcFile -vcodec libx264 -preset fast -acodec copy -ab 256 -b:v 300k -s 512x288 -f mp4 $low 2>&1",$output);
+	    //   exec("/usr/bin/qt-faststart ".drupal_realpath($low)." ".drupal_realpath($low)."_qtfast.mp4");
+	    //   unlink(drupal_realpath($low));
+	  }
+  } 
+}
+
+/**
+ * save_all_lessons function for save video files to database.
+ */
+function save_all_lessons($datauri, $dataname, $nid) {
+		global $user;
+		$mimetype	=	file_get_mimetype($datauri, $mapping = NULL);
+		$file            = new stdClass();
+		$file->filename  = $dataname;
+		$file->uri       = $datauri;
+		$file->filesize  = filesize($datauri);
+		$file->uid       = $user->uid;
+		$file->timestamp = time();
+		$file->status = 1;
+		file_save($file);
+    $type = 'lessondata'; // A string used by your module to identify this type of file entry
+    $id = $nid; // An identifier used by your module to identify this particular file    
+    file_usage_add($file, 'lesson_data', $type, $id);
+	  $save_lesson_data 
+				= db_insert('file_all_lessons') 
+				->fields(array(
+				  'nid' => $nid,
+				  'uid' => $user->uid,
+				  'filename' => $dataname,
+				  'uri' =>$datauri,
+				  'filemime' => $mimetype,
+				  'access' => 1,
+				  'ffid' => $file->fid,
+				))
+			->execute();
+}
+
+/*
+ * function display the listed files. 
+ */
+function list_data_fun($form, &$form_state, $nid) {
+  global $user;
+  //print 'ererer'.$nid; exit;
+  $files = get_load_files($nid);
+  // print '<pre>';  print_r($files); exit;
+  $title = "Lessons";
+  foreach ($files as $key => $v) {
+	  $file = file_load($v->fid);
+	  if (!is_object($file)) continue;
+	  if ($file->filemime != 'video/mp4' && $file->filemime != 'video/x-flv') continue;
+	  $data = $file;
+	  if ( !file_exists(drupal_realpath($data->uri)."_small.mp4_qtfast.mp4") || !file_exists(drupal_realpath($data->uri)."_medium.mp4_qtfast.mp4") || !file_exists(drupal_realpath($data->uri)."_high.mp4_qtfast.mp4") ) {
+		  if ( !file_exists(drupal_realpath(str_replace(".mp4",".flv",$data->uri))) && !file_exists(drupal_realpath('sites/default/files/uploads/'.$nid."/high_".$file->filename)) ) {
+			  //generateThumbs($data->fid,$nid);
+		  }
+    }
+	  $red_dwarf[] = array("thumbnail"=>"<img src='" . file_create_url(file_build_uri("uploads/" . $nid . "/big_" . $file->fid . ".jpg"))."'>", 'name'=>$file->filename, "type"=>$file->filemime, "st"=>$v->status, "rank"=>$v->weight, 'id'=>$file->fid, 'opr' =>  l(t("Edit"),'admin/icp/' . $nid . '/' .$title . '/lm2/' . $v->fid . '/' . $key . '/edit') . " | " . l(t("Delete"),'admin/icp/' . $nid . '/' . $title . '/lm2/' . $v->fid . '/lesson_parts_/delete') . " | " . l(t("Re-genrate Thumbails"),'admin/icp/' . $nid . '/' . $title . '/lm2/' . $v->fid . '/regenerate'));  
+  }
+  $options = array(
+    0 => 'Free',
+    1 => 'Members Only',
+  );
+  $form['characters'] = array(
+    '#prefix' => '<div id="red-dwarf">',
+    '#suffix' => '</div>',
+    '#tree' => TRUE,
+    '#theme' => 'form_table_theme_name'
+  );
+ 	if (empty($red_dwarf)) return $form;
+  foreach ($red_dwarf as $key => $characters) {
+    $form['characters'][$key]['thumb'] = array(
+      '#markup' => $characters['thumbnail'],
+    );
+	  $form['characters'][$key]['operations'] = array (
+		  '#markup' => $characters['opr']
+	  );
+	  $form['characters'][$key]['name'] = array(
+      '#markup' => $characters['name'],
+    );
+	  $form['characters'][$key]['id'] = array(
+      '#type' => 'hidden',
+	    '#value'=> $characters['id'],
+    );
+    $form['characters'][$key]['type'] = array(
+      '#markup' => $characters['type'],
+    );
+	  if ( in_array('administrator',$user->roles) ) {
+	    $form['characters'][$key]['access'] = array (
+		    '#type'=>'select',
+		    '#options'=>$options,
+		    '#default_value'=>$characters['st'],
+		  );
+	  }
+    $form['characters'][$key]['weight'] = array(
+      '#type' => 'textfield',
+      '#default_value' => $characters['rank'],
+      '#size' => 3,
+      '#attributes' => array('class' => array('rank-weight')),
+    );
+  }
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Submit'),
+	  '#submit' => array('form_table_example_form_submit'),
+  );
+  return $form;
+}
+
+/*
+ * get_load_files function LOAD ALL FILES DATA. 
+ */
+function get_load_files($nid) {
+	$files = db_query("SELECT * FROM {lesson_files} WHERE nid = :nid AND publish = 1 ", array(':nid' => $nid))->fetchAll();
+	return $files;
+}
+
+/*
+ * playBackingTrack function for plsy bscking trsck. 
+ */
+function playBackingTrack($nid,$fid) {
+	$f = file_load($fid);
+	drupal_goto(file_create_url($f->uri));
+}
+
+/*
+ * downloadBackingTrack function call back. 
+ */
+function downloadBackingTrack($nid,$fid) {   
+	$f = file_load($fid);
+	$node = node_load($nid);
+	header('Content-disposition: attachment; filename="'.$node->title.' '.$node->music_category['und'][0]['value'].' backing track in '.$node->scales_and_key['und'][0]['value']);
+	header('Content-type: '.$f->filemime,true);
+	readfile(drupal_realpath($f->uri));
+}
+
+function get_admintext($nid) {
+  $result = db_select('admin_lesson_text', 'n')
+              ->fields('n')
+              ->condition('nid', $nid, '=')
+              ->execute()
+              ->fetchObject();
+  if (!empty($result))  
+    return '<a class="app_lesson_intro_avatar" ><img src="/lm2_get_clips?d2=5&d1=av-17394.jpg" /></a>'.$result->body;
+  else 
+    return '';
+}
+
+function test_images_create_font() {
+  /* Text to write */
+  $text = arg(1);
+  //replaced token to symbol in text
+  $text = str_replace('_and_','&', $text);
+  $text = str_replace('_slash_','/', $text);
+  $text = str_replace('_hash_','#', $text);
+  $imgcheck = file_get_contents(drupal_realpath('sites/all/modules/custom/gmc_lessons_function/images/').'/'.md5($text).'.PNG');
+  if(!$imgcheck) {
+  /*  $imgfile = drupal_realpath('sites/all/modules/custom/gmc_lessons_function/images/').md5($text).'.PNG';
+    header('Content-Type: image/png');
+    header('Content-Length: ' . filesize($imgfile));
+    echo readfile(drupal_realpath($imgfile));
+  }*/
+  
+    $size = ((arg(2) / 72) * 96);
+    $color = arg(3);
+    /* Create Imagick objects */
+	  $font = drupal_get_path("module","gmc_lessons_function")."/fonts/viper.ttf";
+    $image = new Imagick();
+    $draw = new ImagickDraw();
+    if (!empty($color)) {
+      $color = new ImagickPixel('#'.$color);
+    } else {
+      $color = new ImagickPixel('#000000');
+    }
+    $background = new ImagickPixel('none'); // Transparent
+
+    /* Font properties */
+    
+	  $draw->setGravity(Imagick::GRAVITY_SOUTHWEST);
+	  $draw->setFont($font);
+	  $draw->settextkerning(1);
+	  $draw->setFontSize($size);
+	  $draw->setFillColor($color);
+    $draw->setStrokeAntialias(true);
+    $draw->setTextAntialias(true);
+
+    /* Get font metrics */
+	  $metrics = $image->queryFontMetrics($draw, $text);
+
+    /* Create text */
+    //$draw->annotation(0, $metrics['ascender'], $text);
+
+    /* Create image */
+	  $image->newImage(intval($metrics['textWidth']), intval($metrics['textHeight']), new ImagickPixel('transparent'));
+	  $image->annotateImage($draw, 0, 0, 0, $text);
+	  $image->setImageFormat('png');
+    $image->drawImage($draw);
+    /* Save image */
+    ob_clean();
+    file_put_contents(drupal_realpath('sites/all/modules/custom/gmc_lessons_function/images/').'/'.md5($text).'.PNG', $image);
+	  header("Content-Type: image/png");
+	  echo $image;
+  }
+  else {
+    ob_clean();
+    $file = drupal_realpath('sites/all/modules/custom/gmc_lessons_function/images/').'/'.md5($text).'.PNG';
+    header("Content-Type: image/PNG");
+    echo readfile($file);
+  }
+}
+
+
+function file_get_width_height($nid, $filename) {
+  $command = '/opt/local/bin/ffprobe -v quiet -show_streams ' . escapeshellarg(drupal_realpath('sites/default/files/uploads/'.$nid."/".$filename));
+  $dimensions = array();
+  exec($command,$output,$status);
+  //var_dump($output);
+  if (!preg_match('/width=[0-9]*/',implode('/n',$output),$matches)) {
+      preg_match('/Could not find codec parameters \(Video: (?P<videocodec>.*) (?P<width>[0-9]*)x(?P<height>[0-9]*)\)/',implode('/n',$output),$matches);
+  } else {
+    $wid = explode('=',$matches[0]);
+    $srcWidth = $wid[1];
+  }
+  if (!preg_match('/height=[0-9]*/',implode('/n',$output),$matches)) {
+      preg_match('/Could not find codec parameters \(Video: (?P<videocodec>.*) (?P<width>[0-9]*)x(?P<height>[0-9]*)\)/',implode('/n',$output),$matches);
+  } else {
+    $hei = explode('=',$matches[0]);
+    $srcHeight = $hei[1];
+  }
+  $dimensions['srcWidth'] = $srcWidth;
+  $dimensions['srcHeight'] = $srcHeight;
+}
+
+/**
+* Implements hook_block_info().
+*/
+function gmc_lessons_function_block_info() {
+  $blocks = array();
+  $blocks['HOME_BLOCK_RECENT'] = array(
+    'info' => t('Home Block Recent'),
+  );
+
+  return $blocks;
+}
+
+/**
+* Implements hook_block_view().
+*/
+function gmc_lessons_function_block_view($delta = '') {
+  $block = array();
+  switch ($delta) {
+    case 'HOME_BLOCK_RECENT':
+      $block['subject'] = '';
+      $block['content'] = _YOUR_MODULE_BLOCK_ABC_CONTENT();
+      break;
+  }
+  return $block;
+}
+
+function _YOUR_MODULE_BLOCK_ABC_CONTENT() {
+
+  return 'dilip';
+}
+
+function _lm2_get_clip_autocomplete($nid) {
+    ob_clean();
+    global $base_url;
+    $filepath = '/sites/default/files/uploads/'.$nid.'/big_'.$nid.'.jpg';    
+    $file = drupal_realpath('sites/default/files/styles/120x90/public/uploads/').'/'.$nid.'/'.'big_'.$nid.'.jpg';
+    if (!file_exists($file)) {
+      $imageinfo = getimagesize($base_url.$filepath);
+      if ($imageinfo[1] > 120) {
+        $config = array(
+          "style_name" => '120x90',
+          "path" => "public://uploads/".$nid."/big_".$nid.".jpg",
+          "height" => NULL,
+          "width" => NULL,
+          "title" => ''
+        );
+        theme_image_style($config);
+        $file = drupal_realpath('sites/default/files/styles/120x90/public/uploads/').'/'.$nid.'/'.'big_'.$nid.'.jpg';
+      } else {
+        $file = drupal_realpath('sites/default/files/uploads/').'/'.$nid.'/'.'big_'.$nid.'.jpg';
+      }
+    }
+    header("Content-Type: image/PNG");
+    echo readfile($file); 
+}
+
+function _lm2_get_clips_autocomplete() {
+  ob_clean();
+  $image = $_GET['d1'];
+  $path = $_GET['d2'];
+  if ($path == 1) {
+    $filepath = drupal_realpath('sites/default/files/pictures/').'/'.$image;
+  } else if($path == 2 ) {
+    $filepath = drupal_realpath('sites/all/themes/gmc_v2/images/').'/'.$image;
+  } else if ($path == 3) {
+    $filepath = drupal_realpath('sites/default/files/styles/50x50/public/pictures/').'/'.$image;
+  } else if ($path == 4) {
+    $filepath = drupal_realpath('sites/default/files/generatescaleimage/scales/').'/'.$image;
+  }  else if($path == 5 ) {
+    $filepath = drupal_realpath('sites/all/themes/gmc_v2/css/images/').'/'.$image;
+  } else if ($path == 6) {
+    $filepath = drupal_realpath('sites/default/files/styles/75x75/public/pictures/').'/'.$image;
+    if (!file_exists($filepath)) {
+      $imageinfo = getimagesize($filepath);
+      if ($imageinfo[1] > 75) {
+        $config = array(
+          "style_name" => '75x75',
+          "path" => $filepath,
+          "height" => NULL,
+          "width" => NULL,
+          "title" => ''
+        );
+        theme_image_style($config);
+        $filepath = drupal_realpath('sites/default/files/styles/75x75/public/pictures/').'/'.$image;
+      } else {
+        $filepath = drupal_realpath('sites/default/files/pictures/').'/'.$image;
+      }
+    }
+  }
+  header("Content-Type: image/PNG");
+  echo readfile($filepath); 
+}
+
+
+function _get_categories_lessons($filter, $val, $start, $rows, $sorttype, $order, $category, $type, $filset) {
+  $acc = explode("+", $val);
+  $fil = array();
+  foreach($acc as $bcc) {
+    $fil[] = $filter.':'.$bcc;
+  }
+  $fills = implode(' OR ', $fil);
+  $query = apachesolr_drupal_query("custom", array('q' => $fills), ' ', 'search/path');
+  $query->removeFilter('bundle');
+  $query->addParam('fq', "bundle:(lessons)");
+  $query->addParam('wt' , 'json');
+  $query->addParam('sort' , $sorttype.' '.$order);
+  $query->addParam('start' , $start);
+  if (!empty($filset)) {
+    $query->addParam('fq' , $filset);
+  }
+  $query->addParam('fl', 'label, entity_id, teaser, sm_vid_Tags, ts_body_lesson, ss_name, is_uid, sm_field_difficulty_level, is_view_freelesson, is_published_at, ss_one_day_view');
+  $query->addParam('rows' , $rows);
+  $resp = $query->search();
+
+  $document = $resp->response->docs;
+  $numFound = $resp->response->numFound;
+  $count = count($document);
+  $data = '<div class="lesseon"><div class="view"><div class="view-content"><div class="item-list"><ul id="'.$type.'-lessons-list">';
+  foreach ($document as $key => $value) {
+    $freeparts = '';
+    if ($value->is_view_freelesson == 1) {
+      $freeparts = '<div class="free100bg"></div>';
+    }
+    if (isset($value->sm_vid_Tags)) {
+      $tagss = array();
+      $i =0;
+      foreach ($value->sm_vid_Tags as $tagvalue) {
+        if ($i < 6) {   
+          $tagss[] = l($tagvalue, 'search/'.$tagvalue); 
+        }  
+        $i++;
+      }
+      $tags = implode(', ', $tagss);
+    } else {
+      $tags = 'N/A';
+    }
+    $tsd = $value->label;
+    $title = str_replace('&#039;', "'", $tsd);
+    $title = html_entity_decode($title);
+    $data .= $_GET['fullname'].'<li><div class="cover  lesson_id_'.$value->entity_id.'">
+      <div style="display: none;" class="hardness-bg"></div>
+      <div style="display: none;" class="hardness"><span>Difficulty </span>'.$value->sm_field_difficulty_level[0].'</div>
+        '.$freeparts.'
+        <div class="overlay"></div>
+        <div class="overlay-bottom"></div>
+        <img title="'.$title.'" src="/lm2_get_clip/'.$value->entity_id.'">
+      </div>
+      <div class="info">
+        <h2>'.l(t($title), 'node/'.$value->entity_id).'</h2>
+        <span class="by">by '.l($value->ss_name, 'user/'.$value->is_uid).'</span>
+        <p>'.$value->ts_body_lesson.'</p>
+        <span class="pre-genres">Tags:  </span><span class="genres">'.$tags.'</span>
+      </div></li>';
+  }
+  $type = ($type == 'latest') ? 'latest' : 'most popular';
+  $type2 = ($type == 'latest') ? 'latest' : 'rated';
+  $category = str_replace("Guitar lessons", "", $category);
+  $data .= '</ul></div></div></div></div><div title="Click to see more from the '.$type.'  '.strtolower($category).' guitar lessons ('.$numFound.' in total)." data-max-lesson="'.$numFound.'" data-limit="8" data-offset="'.$rows.'" data-otherfilter="'.$filset.'" data-type="'.$type2.'"  data-val="'.$val.'" data-sorttype="'.$sorttype.'" data-order="'.$order.'" data-category="'.$filter.'" class="show-more">Click to see more from the '.$type.'  '.strtolower($category).' guitar lessons ('.$numFound.' in total).</div>';
+  return $data;
+}
+
+
+function _get_categories_lessons_post() {
+  $filter = $_POST['category'];
+  $sorttype = $_POST['sorttype'];
+  $order = $_POST['order'];
+  $val = $_POST['val'];
+  $start = $_POST['offset'];
+  $rows = $_POST['limit'];
+  $filset = $_POST['filset'];
+  $acc = explode("+", $val);
+  $fil = array();
+  foreach($acc as $bcc) {
+    $fil[] = $filter.':'.$bcc;
+  }
+  $fills = implode(' OR ', $fil);
+  $query = apachesolr_drupal_query("custom", array('q' => $fills ), ' ', 'search/path');
+  $query->removeFilter('bundle');
+  $query->addParam('fq', "bundle:(lessons)");
+  $query->addParam('wt' , 'json');
+  $query->addParam('sort' , $sorttype.' '.$order);
+  $query->addParam('start' , $start);
+  if (!empty($filset)) {
+    $query->addParam('fq' , $filset);
+  }
+  $query->addParam('fl', 'label, entity_id, teaser, sm_vid_Tags, ts_body_lesson, ss_name, is_uid, sm_field_difficulty_level, is_view_freelesson');
+  $query->addParam('rows' , $rows);
+  $resp = $query->search();
+  $document = $resp->response->docs;
+  $numFound = $resp->response->numFound;
+  $count = count($document);
+  $data = '';
+  foreach ($document as $key => $value) {
+    $freeparts = '';
+      if ($value->is_view_freelesson == 1) {
+        $freeparts = '<div class="free100bg"></div>';
+      }
+      if (isset($value->sm_vid_Tags)) {
+        $tagss = array();
+        $i =0;
+        foreach ($value->sm_vid_Tags as $tagvalue) {
+           if ($i < 6) { 
+             $tagss[] = l($tagvalue, 'search/'.$tagvalue); 
+           }  
+           $i++;
+        }
+        $tags = implode(', ', $tagss);
+      } else {
+        $tags = 'N/A';
+      }
+    if ($value->is_view_freelesson == 1) {
+      $freeparts = '<div class="free100bg"></div>';
+    }
+    $tsd = $value->label;
+    $title = str_replace('&#039;', "'", $tsd);
+    $title = html_entity_decode($title);
+    $data .= '<li><div class="cover  lesson_id_'.$value->entity_id.'">
+          <div style="display: none;" class="hardness-bg"></div>
+          <div style="display: none;" class="hardness"><span>Difficulty </span>'.$value->sm_field_difficulty_level[0].'</div>
+          '.$freeparts.'
+          <div class="overlay"></div>
+          <div class="overlay-bottom"></div>
+          <img title="'.$title.'" src="/lm2_get_clip/'.$value->entity_id.'">
+    </div>
+    <div class="info">
+      <h2>'.l($title, 'node/'.$value->entity_id).'</h2>
+      <span class="by">by '.l($value->ss_name, 'user/'.$value->is_uid).'</span>
+      <p>'.$value->ts_body_lesson.'</p>
+      <span class="pre-genres">Tags:  </span><span class="genres">'.$tags.'</span>
+    </div></li>';
+  }
+  print json_encode($data);
+}
+
+function forum_serach_list($key = 'kris', $start = 0, $rows = 9, $state = 0) {
+  $key = arg(1);
+	global $user;
+	$account = $user;
+	if (!empty($key)) {
+		$search_key = $key;
+
+		$query = db_select('node', 'n');
+		$query->distinct();
+		$query->fields('n', array('nid', 'uid', 'title'));
+		$query->condition('n.status', 1, '=');
+		$query->condition('n.type', 'forum', '=');
+		if ($key != '') {
+			if (preg_match_all('/ ("[^"]+"|[^" ]+)/i', ' ' . $key, $matches)) {
+				$subjids =  $matches[1];
+			  $db_or = db_or();
+			  $db_or->condition('n.title', $key.'%','LIKE');
+        foreach($subjids as $subjid){
+          $db_or->condition('n.title', '% '.$subjid.'%','LIKE');
+        }
+			  $query->condition($db_or);
+			} else {
+			  $query->condition('n.title', '% '.$key.'%', 'LIKE');
+			}
+		}
+		//$query->addTag('node_access');
+		
+		//$query->searchExpression($key, 'node');
+		//$query->setOption('type', 'n.type');
+		//$query->setOption('language', 'n.language');
+		$rows = 10;
+		$division = 5;
+		if (isset($_SESSION['loadmore_forum'])) {
+      $start = 0;
+      $rows = $_SESSION['loadmore_forum']*10; 
+      $division = $rows/2;
+      unset($_SESSION['loadmore_forum']);
+    }
+		//Check forum view access for user
+		$query->join('field_data_taxonomy_forums', 'tf', 'n.nid = tf.entity_id');
+		$query->fields('tf', array('taxonomy_forums_tid'));
+		$query->join('forum_access', 'fa', 'fa.tid = tf.taxonomy_forums_tid');
+		$query->condition("fa.grant_view", 1, '>=');
+		$query->condition('fa.rid', array_keys($account->roles), 'IN');
+		$query->condition('tf.taxonomy_forums_tid', 4758, '<>');
+		$query->orderBy('n.title', 'DESC');
+    $totaldata = $query->execute()->rowCount();
+		$find = $query->range($start, $rows)->execute();
+	  $output = '<ul class="forum-search-list">';	
+	  $x = 0;
+	  $left_list = '';
+	  $right_list = '';
+	  $stateone = array();
+	  $p = 10;
+	  $xx = 5;
+    while($record = $find->fetchObject()) {
+      if ($state == 0) {
+        $uid = $record->uid;
+        $forum_name = user_load($uid)->name;
+			  if($x < $xx) {
+				  $left_list .= '<li><a class="name" href="/guitar_forum_topic/'.$record->nid.'">'.html_entity_decode($record->title).'</a>';
+				  $left_list .= '<a class="forum" href="/guitar_forum_topic/'.$record->nid.'">'.html_entity_decode($forum_name).'</a></li>';
+			  }
+			  else {
+				  $right_list .= '<li><a class="name" href="/guitar_forum_topic/'.$record->nid.'">'.html_entity_decode($record->title).'</a>';
+				  $right_list .= '<a class="forum" href="/guitar_forum_topic/'.$record->nid.'">'.html_entity_decode($forum_name).'</a></li>';
+			  }
+			  $x++;    
+			  if ($x == $p) {
+				   $p = $x+10; 
+				   $xx = $x+5;
+				}
+			}  else {
+			   $stateone[] = $record;
+			}
+    }
+    $output .= '<li class="child first-child"><ul>'.$left_list.'</ul></li>';
+		$output .= '<li class="child"><ul>'.$right_list.'</ul></li>';
+    $output .= '<ul>';
+
+		//print "<pre>";print_r($results); exit;
+	}
+	if ($state == 0) {
+	  $result = array();
+	  $result[] = $output;
+	  $result[] = $totaldata;
+	  return $result;  
+	} else {
+	  return $stateone;
+	}
+}
+
+
+function get_all_membes_list($arg) {
+  $query = db_select('users', 'u');
+  $query->fields('u');
+  $query->condition('name', $arg.'%','LIKE');
+  $query->condition('status', 1,'=');
+  $query->orderBy('u.name', 'ASC');
+  $find = $query->execute();
+  $output = '<ul class="student-search-list">';
+  while($record = $find->fetchObject()) {
+    $splitname = explode("@", $record->name);
+    $img =  gmc_search_instructor_picture($record->uid, 'member');
+    $output .= '<li><a class="forum" href="'.$splitname[0].'">'.$splitname[0].'</a>
+        <a href="/user/'.$record->uid.'" class="cover">
+        <div class="overlay"></div>
+	        '.$img.'
+        </a></li>';
+  }
+  $totaldata = $find->rowCount();
+  $output .= '</ul>';
+  if ( $totaldata != 0) {
+    return $output;
+  } else {
+    return NULL;
+  }
+}
+
+function get_all_serach_serach_list() {
+  $type = $_POST['type'];
+  $page = $_POST['page']; 
+  $offset = $_POST['offset'];
+  $limit = $_POST['limit'];
+  $args = $_POST['args'];
+  if ($type == 'lesson') {
+    
+  } else {
+    
+  }
+  print_r($args);
+}

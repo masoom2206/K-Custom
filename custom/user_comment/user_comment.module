@@ -1,0 +1,335 @@
+<?php
+
+function user_comment_init() {
+	//	drupal_add_js(drupal_get_path('module', 'user_comment') . '/user_comment.js');
+    drupal_add_css(drupal_get_path('module', 'user_comment') . '/css/user_comment.css');
+}
+
+
+function user_comment_menu() {
+  $items = array();
+  $items['gmc/comment/save/data'] = array(
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('comment_save_data'),
+    'type' => MENU_NORMAL_ITEM,
+    'access arguments' => array('access content'),
+  );
+  $items['gmc-user-comment-delete'] = array(
+    'title' => '',
+    'description' => 'GMC User Comment Delete',
+    'page callback' => 'gmc_user_comment_delete',
+    'access callback' => TRUE,
+    'type' => MENU_LOCAL_TASK,
+  );
+  
+  return $items;
+}
+
+
+/*function comment_save_data() {
+  $data = $_POST;
+  $data = db_merge('user_comment')
+      ->key(array('comment_id' => comment_id))
+      ->fields(array(
+          'comment_for_member_id' => $uid,
+          'comment_by_member_id'  => $data['id'],
+          'comment_date'  => $data['pass_hash'],
+          'comment_content' => $data['body'],
+          'comment_ip_address'  => $data['ip'],
+        ))  
+    ->execute();
+}?*/
+
+
+function comment_save_data($form, &$form_state) {
+	global $user;
+	if(is_numeric(arg(1))) {
+	  $uid = arg(1);
+	}
+	else {
+	  $name = str_replace("-", " ", arg(1));
+	  $uid = get_user_id($name);
+	}
+    $form['markup'] = array(
+        '#suffix' => user_comment_block_content()
+    );
+	if($user->uid != 0) {
+		$form['comment-box-start'] = array(
+		  '#markup' => '<div class="profile-comment-box">',
+		);
+		$form['comment'] = array(
+		  '#type' => 'textarea',
+		  '#title' => t('Enter your Comment'),
+		  '#description' => t(''),
+		  '#required' => TRUE,
+		  '#attributes' => array(
+			'placeholder' => t('Enter your Comment '),
+		  ),
+		);
+		$form['accountid'] = array(
+		  '#type' => 'hidden',
+		  '#title' => t('account id'),
+		  '#required' => TRUE,
+		  '#value' => $uid,
+		  '#attributes' => array(
+			'placeholder' => t('Enter your Comment '),
+		  ),
+		);
+		$form['submit'] = array(
+		  '#type' => 'submit',
+		  '#value' => t('Save'),
+		  '#prefix' => '<span class="pp-tiny-text">(Max 400 chars)</span>',
+		  '#ajax' => array(
+			'callback' => 'comment_save_ajax_submit',
+			'wrapper' => 'comment-save-data .item-list ul#my-list',
+			'method' => 'prepend',
+			'effect' => 'fade',
+		  ),
+		);
+		$form['comment-box-end'] = array(
+		  '#markup' => '</div>',
+		);
+	}
+	return $form;
+}
+
+/**
+ * Ajax callback function.
+ */
+function comment_save_ajax_submit($form, $form_state) {
+  global $user;
+   
+  // Dummy/dumb validation for demo purpose.
+  if (!empty($form_state['input']['comment'])) {
+    $data = array(
+        'comment_for_member_id' => $form_state['input']['accountid'],
+        'comment_by_member_id'  => $user->uid,
+        'comment_date'  => time(),
+        'comment_ip_address' => ip_address(),
+        'comment_content'  => $form_state['input']['comment'],
+        'comment_approved'  => 0,
+      );
+    drupal_write_record('user_comment', $data);
+    $com = new stdClass();
+    $com->comment_by_member_id = $user->uid;
+    $com->comment_id = $data['comment_id'];
+    $com->comment_content = $form_state['input']['comment'];
+    $com->comment_date = $data['comment_date'];
+	//$form_state = form_state_defaults();
+    return '<li id="comment-id-'.$data['comment_id'].'">'.theme('usercomment', array($com)).'</li>';
+
+  }
+  else {
+    return '';
+  }
+}
+/**
+ * Callback function gmc_user_comment_delete
+ * to delete comment from user profile.
+ */
+function gmc_user_comment_delete(){
+	$id = $_POST['id'];
+	$uid = $_POST['uid'];
+	global $user;
+	if($uid == $user->uid || $user->uid == 1) {
+		$count = db_query("SELECT COUNT(comment_id) FROM user_comment WHERE comment_id = :id AND comment_for_member_id = :uid", array(':id' => $id, ':uid' => $uid))->fetchField();
+		if($count == 1) {
+			$comment_deleted = db_delete('user_comment')
+			  ->condition('comment_id', $id)
+			  ->condition('comment_for_member_id', $uid)
+			  ->execute();
+			print 'true';
+		}
+		else {
+			print 'false';
+		}
+	}
+}
+/*
+ * Implement hook_block_info().
+ */
+function user_comment_block_info() {
+  $blocks = array();
+  $blocks['user_comment'] = array(
+    'info' => t('User Comments'),
+  );
+  $blocks['user_comment_approve'] = array(
+    'info' => t('My Content'),
+  );
+  return $blocks;
+}
+
+/*
+* Implement hook_block_view().
+*/
+function user_comment_block_view($delta=''){
+  switch($delta){
+      case 'user_comment':
+          $block['subject'] = t('Comments');
+		  $form = drupal_get_form('comment_save_data');
+          $block['content'] = render($form);
+       break;
+      case 'user_comment_approve':
+          $block['subject'] = t('Comments');
+          $block['content'] = user_comment_approve_block_content();
+       break;           
+      }
+  return $block;
+}
+
+function user_comment_block_content() {
+	global $user;
+	if(is_numeric(arg(1))) {
+	  $uid = arg(1);
+	}
+	else {
+	  $name = str_replace("-", " ", arg(1));
+	  $uid = get_user_id($name);
+	}
+	//$uid = arg(1);
+	$title = t('');
+	$type = 'ul';
+	$attributes = array(
+		'id' => 'my-list',
+		'class' => 'custom-class another-custom-class',
+	);
+	$result = db_select('user_comment', 'uc')
+		->fields('uc')
+		->condition('comment_for_member_id', $uid,'=')
+		->orderBy('comment_date', 'DESC')
+		->range(0,10)
+		->execute();
+	$items = array();
+	$output = '';
+	$output .= '<div id="pp-comments-wrap">';
+	foreach ($result as $com) {
+		//print_r($com); exit;
+		$items[] = array(
+			'data' =>  theme('usercomment', array($com)),
+			'id' => 'comment-id-'.$com->comment_id
+		);
+		$output .= theme('usercomment', array($com));
+	}
+	$items[] = array(
+		'data' =>  '<div class="popmenubutton-new" id="pp-comment-wrap" style="margin: 2px; cursor: pointer;"><img src="/sites/all/themes/gmc_v2/images/comment_add.png" alt="" border="0"> Add Comment</div>',
+		'id' => 'add-comment'
+	);
+	$output .= '</div>';
+	if($user->uid != 0) {
+		$output .= '<div class="popmenubutton-new" id="pp-comment-wrap" style="margin: 2px; cursor: pointer;"><img src="/sites/all/themes/gmc_v2/images/comment_add.png" alt="" border="0"> Add Comment</div>';
+	}
+	//print_r($data); exit;
+	return theme_item_list(array('items' => $items, 'title' => $title,'type' => $type, 'attributes' => $attributes));;
+	//return $output;
+}
+
+
+function user_comment_approve_block_content() {
+	if(is_numeric(arg(1))) {
+	  $uid = arg(1);
+	}
+	else {
+	  $name = str_replace("-", " ", arg(1));
+	  $uid = get_user_id($name);
+	}
+  //$uid = arg(1);
+  $title = t('');
+  $type = 'ul';
+  $attributes = array(
+      'id' => 'my-list',
+      'class' => 'custom-class another-custom-class',
+    );
+  $result = db_select('user_comment', 'uc')
+            ->fields('uc') 
+            ->condition('comment_for_member_id', $uid,'=')
+            ->orderBy('comment_date', 'DESC')
+            ->execute();
+   $items = array();
+   foreach ($result as $com) {
+       //print_r($com); exit;
+     $items[] = array(
+        'data' => theme('usercomment', $com->comment_content),
+        'id' => $com->comment_id
+      );
+   } 
+  
+ //print_r($data); exit;
+  return theme_item_list(array('items' => $items, 'title' => $title,'type' => $type, 'attributes' => $attributes));
+}
+
+/*
+ * implemeted the theme function.
+ */
+function user_comment_theme($existing, $type, $theme, $path) {
+  return array(
+    'usercomment' => array(
+        'variables' => array('profilesloaded' => array()),
+        'template' => 'usercomment',
+     ),
+  );
+}
+/*
+ * Callback function gmc_user_panel_comment_box()
+ * to display comment list in seperate box
+ * @return $form
+ */
+function gmc_user_panel_comment_box($uid){
+	global $base_url,$user;
+	//$uid = arg(1);
+	$result = db_select('user_comment', 'uc')
+		->fields('uc')
+		->condition('comment_for_member_id', $uid,'=')
+		->orderBy('comment_date', 'DESC')
+		->execute();
+	$output = '';
+	foreach ($result as $com) {
+		$gender_image = '';
+		$name = '';
+		$user_detail = user_load($com->comment_by_member_id);
+		if(isset($user_detail->field_first_name['und'][0]['value'])) {
+			if(isset($user_detail->field_last_name['und'][0]['value'])) {
+				$name = $user_detail->field_first_name['und'][0]['value'].' '.$user_detail->field_last_name['und'][0]['value'];
+			}
+			else {
+				$name = $user_detail->field_first_name['und'][0]['value'];
+			}
+		}
+		if (empty($name)) {
+			$name = $user_detail->name;
+		}
+		if(isset($visitor_detail->picture->uri)) {
+			$user_image = file_create_url($visitor_detail->picture->uri);
+		}
+		else {
+			$user_image = $base_url.'/sites/default/files/pictures/default-user-image.png';
+		}
+		if(isset($friend_detail->field_gender['und']['0']['value'])) {
+			if($friend_detail->field_gender['und']['0']['value'] == 'male') {
+				$gender_image = $path.'gender_male.png';;
+			}
+			else if($friend_detail->field_gender['und']['0']['value'] == 'female') {
+				$gender_image = $path.'gender_female.png';;
+			}
+			else {
+				$gender_image = $path.'gender_mystery.png';;
+			}
+		}
+		$date = date('jS F Y - H:i A', $com->comment_date);
+		$output .= '<div class="pp-contentbox-entry-noheight" id="pp-comment-entry-main-4334">
+			<div class="pp-tiny-text">
+				<div class="pp-image-thumb-wrap-floatright">
+					<img src="'.$user_image.'" width="50" height="50" alt=""/>
+				</div>
+				<input type="checkbox" class="input-checkbox" id="pp-checked-4334" name="pp-checked[4334]" value="1">
+				<img src="'.$gender_image.'" id="pp-entry-gender-img-18469" style="vertical-align:top" alt="" border="0"/>
+				<strong><a href="http://www.guitarmasterclass.net/guitar_forum/index.php?showuser=18469" target="_parent">'.$name.'</a></strong>
+				<br>
+				'.$com->comment_content.'
+				<br>
+				<strong>'.$date.'</strong>
+			</div>
+		</div>';
+	}
+	return $output;
+}
+

@@ -1,0 +1,9 @@
+name = GMC Insert Image
+description = A custom module to embed external Image in editor.
+core = 7.x
+
+; Information added by drupal.org packaging script on 2012-05-11
+version = VERSION
+core = "7.x"
+project = "support"
+

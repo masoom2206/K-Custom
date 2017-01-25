@@ -1,0 +1,9 @@
+name = Support
+description = Supoprt for GMC.
+package = Custom
+version = VERSION
+core = 7.x
+files[] = support.module
+; Information added by drupal.org packaging script on 2013-02-20
+version = "7.custom"
+project = support

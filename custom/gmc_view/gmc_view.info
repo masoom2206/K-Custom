@@ -1,0 +1,12 @@
+name = GMC view
+description = Create a views field for GMC views.
+package = Custom
+version = VERSION
+core = 7.x
+files[] = gmc_view.module
+files[] = views/gmc_view.views.inc
+; files[] = views/includes/views_handler_custom_handler2.inc
+; files[] = views/gmc_view_handler_node_view_count_field.inc
+; Information added by drupal.org packaging script on 2013-08-09
+version = "7.custom"
+project = gmc_view

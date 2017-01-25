@@ -1,0 +1,1663 @@
+<?php
+/**
+* Implementation of hook_menu
+*/
+function gmc_private_message_menu() {
+  $items = array();
+  //Menu for private message draft page.
+  $items['messages/drafts'] = array(
+    'title' => 'My Drafts',
+    'description' => 'User Drafts List',
+	'page callback' => 'gmc_private_message_drafts_list',
+    'access callback' => TRUE,
+  );
+  
+  //Menu for private message draft page.
+  $items['messages/empty'] = array(
+    'title' => 'Empty Messages',
+    'description' => 'Empty Messages',
+	'page callback' => 'empty_gmc_private_message_folder',
+    'access callback' => TRUE,
+  );
+  //Menu for private message draft page.
+  $items['messages/storage/folders'] = array(
+    'title' => 'Create/Edir/Delete Storage Folders',
+    'description' => 'Create/Edir/Delete Storage Folders',
+	'page callback' => 'gmc_user_storage_folders',
+    'access callback' => TRUE,
+  );
+  //Menu for display private message from user custom folder.
+  $items['messages/folder/%'] = array(
+    'title' => 'Custom private message list',
+    'description' => 'Display private message from user custom folder',
+	'page callback' => 'messages_folder_list',
+    'access callback' => TRUE,
+  );
+
+  //Menu for private message archive.
+  $items['messages/archive'] = array(
+    'title' => 'Messages Archive Page',
+    'description' => 'Messages Archive Page',
+	'page callback' => 'user_messages_archive',
+    'access callback' => TRUE,
+  );
+
+  //Menu for private message archive.
+  $items['messages/archive/complete'] = array(
+    'title' => 'Messages Archive Complete',
+    'description' => 'Messages Archive Complete',
+	'page callback' => 'gmc_archive_complete',
+    'access callback' => TRUE,
+  );
+
+  //Menu for display private Message Tracker.
+  $items['messages/tracker'] = array(
+    'title' => 'Custom private message list',
+    'description' => 'Display private message from user custom folder',
+	'page callback' => 'user_messages_tracker',
+    'access callback' => TRUE,
+  );
+  //Menu for display New private Message in popup at forum page.
+  $items['new-messages'] = array(
+    'title' => '',
+    'description' => 'New Message in Popup',
+	'page callback' => 'gmc_new_messages',
+    'access callback' => TRUE,
+  );
+
+ return $items;
+}
+
+/**
+ * Implements hook_init()
+ */
+function gmc_private_message_init(){
+	global $user;
+	if(arg(0) == 'messages') {
+		drupal_add_js(drupal_get_path('module', 'gmc_private_message') . '/js/draft.js');
+		if (gmc_privatemsg_is_disabled($user)) {
+			drupal_access_denied();//print 'FALSE';exit;
+		}
+	}
+}
+/**
+ * Implements hook_theme()
+ * @return $themes
+ */
+function gmc_private_message_theme($existing, $type, $theme, $path) {
+	$themes = array (
+		'messages_empty' => array(
+			'template' => 'template/messages_empty',
+		),
+		'storage_folders' => array(
+			'template' => 'template/storage_folders',
+		),
+		'user_messages_list' => array(
+			'template' => 'template/user_messages_list',
+		),
+		'user_messages_archive' => array(
+			'template' => 'template/user_messages_archive',
+		),		
+		'user_messages_tracker' => array(
+			'template' => 'template/user_messages_tracker',
+		),
+		'messages_archive' => array(
+			'variables' => array('messages' => NULL),
+			'template' => 'template/messages_archive',
+		),
+	);
+	return $themes;	
+}
+
+/**
+ * Implements hook_block_info()
+ * @return $themes
+ */
+function gmc_private_message_block_info() {
+	$blocks['private-message-menu'] = array(
+		'info' => t('Private Message Menu'),
+	);
+	return $blocks;
+}
+
+/**
+* Implementation of hook_block_view().
+*/
+function gmc_private_message_block_view($delta='') {
+	$block = array();
+	switch ($delta) {
+		case 'private-message-menu':
+			$block['content'] = private_message_menu();
+		break;
+	}
+	return $block;
+}
+
+/**
+* custom html block
+* @return string
+*/
+function private_message_menu() {
+	global $base_url, $user;
+	$user_detail = user_load($user->uid);
+	$path = $base_url.'/sites/all/themes/gmc_v2/css/images/';
+	$output = '';
+	$output .= '<div id="ucpmenu">
+	  <div class="maintitle">Menu</div>';
+	if (!gmc_privatemsg_is_disabled($user)){
+		$output .= '<div class="formsubtitle">Messenger</div>
+		  <p><img src="'.$path.'nav_m_dark.gif" border="0" alt=".">&nbsp;';
+		$output .= l(t('Compose New Message'), 'messages/new');
+		$output .= '<br/>&nbsp;&nbsp; <img src="'.$path.'msg_folder.gif" border="0" alt="-">&nbsp;';
+		$output .= l(t('Inbox'), 'messages');
+		$output .= '<br>&nbsp;&nbsp; <img src="'.$path.'msg_folder.gif" border="0" alt="-">&nbsp;';
+		$output .= l(t('Sent Items'), 'messages/sent');
+		
+		$folders = db_select('pm_folder_name', 'fn')
+		  ->fields('fn', array('folder_id', 'folder_name'))
+		  ->condition('fn.uid', $user->uid, '=')
+		  ->execute();
+		foreach($folders as $folder) {
+			$mail_count = user_mail_count($folder->folder_id);
+			$folder_url = str_replace(" ", "-", $folder->folder_name);
+			$output .= '<br>&nbsp;&nbsp; <img src="'.$path.'msg_folder.gif" border="0" alt="-">&nbsp;';
+			$output .= l(t($folder->folder_name), 'messages/folder/'.$folder_url).' ('.$mail_count.')';
+		}
+		$output .= '<br>&nbsp;&nbsp; <img src="'.$path.'msg_folder.gif" border="0" alt="-">&nbsp;';
+		$output .= l(t('Saved (Unsent) PMs'), 'messages/drafts');
+		$output .= '<br><img src="'.$path.'nav_m_dark.gif" border="0" alt=".">&nbsp;';
+		$output .= l(t('Empty PM Folders'), 'messages/empty');
+		$output .= '<br><img src="'.$path.'nav_m_dark.gif" border="0" alt=".">&nbsp;';
+		$output .= l(t('Edit Storage Folders'), 'messages/storage/folders');
+		$output .= '<br><img src="'.$path.'nav_m_dark.gif" border="0" alt=".">&nbsp;';
+		$output .= l(t('PM Block List'), 'messages/blocked');
+		$output .= '<br><img src="'.$path.'nav_m_dark.gif" border="0" alt=".">&nbsp;';
+		$output .= l(t('Archive Messages'), 'messages/archive');
+		$output .= '<br><img src="'.$path.'nav_m_dark.gif" border="0" alt=".">&nbsp;';
+		$output .= l(t('Message Tracker'), 'messages/tracker');
+		$output .= '<br></p>';
+	}
+	$output .= '<div class="formsubtitle">Subscriptions</div>';
+	$output .= '<p><img src="'.$path.'nav_m_dark.gif" border="0" alt=".">&nbsp;';
+	$output .= l(t('View Topics'),'subscribed-topic');
+	$output .= '<br/><img src="'.$path.'nav_m_dark.gif" border="0" alt=".">&nbsp;';
+	$output .= l(t('View Forums'),'subscribed-forum');
+	$output .= '<br></p>';
+	$output .= '<div class="formsubtitle">Personal Profile</div>';
+	$output .= '<p>';
+	if(!in_array('instructor', $user_detail->roles)) {
+		$output .= '<img src="'.$path.'nav_m_dark.gif" border="0" alt=".">&nbsp;';
+		$output .= l(t('Edit Avatar Settings'),'user-avatar').'<br/>';
+	}
+	$output .= '<img src="'.$path.'nav_m_dark.gif" border="0" alt=".">&nbsp;';
+	$output .= l(t('Forum signature/profile settings'),'forum-signature-profile-settings');
+	$output .= '<br></p>';
+	$output .= '</div>';
+	return $output;
+}
+/**
+* Callback function user_mail_count
+* for count user mail in user created folder
+* @return $count
+*/
+function user_mail_count($folder_id) {
+	global $user;
+	$user_thread = db_select('pm_folder_index', 'fi')
+	  ->fields('fi', array('index_id'))
+	  ->condition('uid', $user->uid)
+	  ->condition('folder_id', $folder_id)
+	  ->execute();
+	$count = $user_thread->rowCount();
+	return $count;
+}
+
+/**
+ * Implements hook_form_alter()
+ */
+function gmc_private_message_form_alter(&$form, &$form_state, $form_id){
+	global $user;
+	if($form_id == 'privatemsg_new') {
+		if(!in_array('administrator', $user->roles)) {
+			$form['body']['#format'] = "general_full_html_admin";
+		}
+		$form['field_download_files']['#prefix'] = '<div style="display:none">';
+		$form['field_download_files']['#suffix'] = '</div>';
+		$form['field_counter']['#prefix'] = '<div style="display:none">';
+		$form['field_counter']['#suffix'] = '</div>';
+		$form['field_bb_code_help']['#prefix'] = '<div style="display:none">';
+		$form['field_bb_code_help']['#suffix'] = '</div>';
+		$form['field_mail_attachment']['#prefix'] = '<div style="display:none">';
+		$form['field_mail_attachment']['#suffix'] = '</div>';
+		
+		if(isset($_GET['draft_id'])) {
+			$data = db_query("SELECT * FROM pm_draft where draft_id = :draft_id", array('draft_id' => $_GET['draft_id']))->fetchAll();
+			$files = db_query("SELECT * FROM pm_draft_attachment where draft_id = :draft_id", array('draft_id' => $_GET['draft_id']))->fetchAll();
+			//print "<pre>";print_r($data);exit;
+			if($data['0']->author == $user->uid) {
+				$form['recipient']['#default_value'] = $data['0']->recipients;
+				$form['subject']['#default_value'] = $data['0']->subject;
+				$form['body']['#default_value'] = $data['0']->body;
+				$x = 1;
+				$form['file_attach_label'] = array(
+					'#markup' => '<label for="edit-field-file-attach-label">Attached File</label>',
+					'#weight' => 3,
+				);
+				foreach($files as $file) {
+					// Display File at edit page.
+					$form['file_attach'.$x] = array(
+					  '#title' => t(''),
+					  '#type' => 'managed_file',
+					  '#description' => t(''),
+					  '#default_value' => $file->attachment_fid,
+					  '#upload_location' => 'public://mail_attachment/',
+					  '#weight' => 3,
+					);
+					$x++;
+				}
+			}
+		}
+		$form['recipient']['#title'] = 'Recipient\'s Name';
+		$form['recipient']['#description'] = '';
+		$form['subject']['#title'] = 'Message Title';
+		$form['body']['#title'] = '';
+		$form['field_mail_attachment']['und']['#title'] = '';
+		$form['field_mail_attachment']['und']['#file_upload_description'] = '';
+		$form['field_mail_attachment']['und']['#file_upload_title'] = 'Select a file';
+		//Options
+		$form['message_track'] = array(
+			'#type' => 'checkbox', 
+			'#title' => t('&nbsp;<b>Track this message?</b>'),
+			'#field_prefix' => 'Options&nbsp;',
+			'#weight' => 10,
+		);
+		//Draft Button
+		$form['actions']['submit']['#weight'] = 51;
+		$form['actions']['preview']['#weight'] = 52;
+		$form['actions']['submit']['#prefix'] = '<div class="private-message-button"><div class="message-buttons">';
+		$form['actions']['draft'] = array(
+				'#type' => 'submit',
+				'#value' => t('Save (Send later)'),
+				'#weight' => 53,
+				'#suffix' => '</div></div>',
+				//'#prefix' => '<div class="private-message-button"><div class="message-buttons">',
+			);
+		//$form['actions']['submit']['#suffix'] = '</div></div>';
+		$form['#validate'][] = 'gmc_private_message_validate';
+		//print "<pre>";print_r($form['actions']);exit;
+	}
+	else if($form_id == 'privatemsg_list' && arg(1) != 'sent' || $form_id == 'user_messages_folder_list') {
+		//print "<pre>";print_r($form);exit;
+		//$form['updated']['actions']['#prefix'] = '<div style="display:none">';
+		//$form['updated']['actions']['#suffix'] = '</div>';
+		$form['actions']['move'] = array(
+			'#type' => 'submit',
+			'#value' => t('move to'),
+			'#prefix' => '<div class="private-message-button"><div class="message-buttons">',
+		);
+		$options = array('inbox' => t('Inbox'));
+		$folders = db_select('pm_folder_name', 'fn')
+		  ->fields('fn', array('folder_id', 'folder_name'))
+		  ->condition('fn.uid', $user->uid, '=')
+		  ->execute();
+		foreach($folders as $folder) {
+			$options[$folder->folder_id] = $folder->folder_name;
+		}
+		$folder_name = str_replace("-", " ", arg(2));
+		$folder_id = array_search($folder_name, $options);
+		$form['actions']['folders'] = array(
+			'#type' => 'select',
+			'#title' => t(''),
+			'#options' => $options,
+			'#default_value' => $folder_id,
+		);
+		$form['actions']['custom_delete'] = array(
+			'#type' => 'submit',
+			'#value' => t('delete'),
+			'#prefix' => '<div class="custom-delete-text">',
+			'#suffix' => ' the selected messages</div></div></div>',
+		);
+		$form['#validate'][] = 'gmc_private_message_list_validate';
+	}
+	if($form_id == 'privatemsg_delete') {
+		$form['delete_options']['#disabled'] = TRUE;
+		$form['delete_options']['#prefix'] = '<div style="display:none;">';
+		$form['delete_options']['#suffix'] = '</div>';
+	}
+	if($form_id == 'user_profile_form') {
+		if(in_array('administrator', $user->roles)) {
+			// Create array to be able to merge in fieldset and avoid overwriting
+			// already added options.
+			if (!isset($form['gmc_privatemsg'])) {
+				$form['gmc_privatemsg'] = array();
+			}
+
+			// Always create the fieldset in case other modules want to add
+			// Privatemsg-related settings through hook_form_alter(). If it's still
+			// empty after the build process, the after build function will remove it.
+			$form['gmc_privatemsg'] += array(
+				'#type' => 'fieldset',
+				'#title' => t('Private messages access'),
+				'#collapsible' => TRUE,
+				'#collapsed' => FALSE,
+				'#weight' => 3,
+			);
+			$form['gmc_privatemsg']['pm_gmc_allow'] = array(
+				'#type' => 'checkbox',
+				'#title' => t('Allow private messages'),
+				'#default_value' => !gmc_privatemsg_is_disabled($form['#user']),
+				'#description' => t('Allowing private messages access for this user.'),
+				'#weight' => 1,
+			);
+		}
+	}
+}
+
+/**
+ * Checks the status of private messaging for provided user.
+ *
+ * @param user object to check
+ * @return TRUE if user has disabled private messaging, FALSE otherwise
+ */
+function gmc_privatemsg_is_disabled($account) {
+	if (!$account || !isset($account->uid) || !$account->uid) {
+		return FALSE;
+	}
+	if (!isset($account->privatemsg_allowed)) {
+		// Make sure we have a fully loaded user object and try to load it if not.
+		if ((!empty($account->roles) || $account = user_load($account->uid))) {
+			$account->privatemsg_allowed = (bool)db_query('SELECT 1 FROM {pm_gmc_disable} WHERE uid = :uid ', array(':uid' => $account->uid))->fetchField();
+		}
+		else {
+			$account->privatemsg_allowed = FALSE;
+		}
+	}
+	return $account->privatemsg_allowed;
+}
+
+/**
+ * Implements hook_user_update().
+ */
+function gmc_private_message_user_update(&$edit, $account, $category) {
+	if (isset($edit['pm_gmc_allow'])) {
+		$current = gmc_privatemsg_is_disabled($account);
+		$disabled = (!$edit['pm_gmc_allow']);
+		$edit['pm_gmc_allow'] = NULL;
+
+		$account->privatemsg_allowed = $disabled;
+
+		// only perform the save if the value has changed
+		if ($current != $disabled) {
+			if ($disabled) {
+				db_insert('pm_gmc_disable')
+				->fields(array('uid' => $account->uid))
+				->execute();
+				db_insert('pm_disable')
+				->fields(array('uid' => $account->uid))
+				->execute();
+			}
+			else {
+				db_delete('pm_gmc_disable')
+				->condition('uid', $account->uid)
+				->execute();
+				db_delete('pm_disable')
+				->condition('uid', $account->uid)
+				->execute();
+			}
+		}
+	}
+}
+
+/**
+ * Hook_Validate function for private message
+ * Checkin for draft message
+ */
+function gmc_private_message_validate(&$form, $form_state) {
+	if (form_get_errors())
+		return;
+	else if($form_state['input']['op'] == 'Save (Send later)') {
+		$draft_id = '0';
+		$address = 'messages';
+		$message = t('Your draft has been saved.');
+		if(isset($_GET['draft_id'])) {
+			$draft_id = $_GET['draft_id'];
+			$address = 'messages/drafts';
+			$message = t('Your draft has been updated.');
+		}
+		gmc_private_message_draft_save($form_state['input'], $draft_id);
+		drupal_set_message($message);
+		drupal_goto($address);
+	}
+}
+/**
+ * Callback function for saving draft data
+ */
+function gmc_private_message_draft_save($draft_message, $draft_id) {
+	global $user;
+	if($draft_id != '0') {
+		$id = db_update('pm_draft') // Table name no longer needs {}
+		  ->fields(array(
+				'author' => $user->uid,
+				'subject' => $draft_message['subject'],
+				'recipients' => $draft_message['recipient'],
+				'body' => $draft_message['body']['value'],
+				'format' => 'filtered_html',
+				'timestamp' => time(),
+		  ))
+		  ->condition('draft_id', $draft_id, '=')
+		  ->execute();
+		if(isset($draft_message['field_mail_attachment']['und'])) {
+			foreach($draft_message['field_mail_attachment']['und'] as $fids) {
+				if($fids['fid'] != 0) {
+					db_insert('pm_draft_attachment')
+						->fields(array('draft_id' => $draft_id, 'attachment_fid' => $fids['fid']))
+						->execute();
+
+					db_insert('file_usage')
+						->fields(array('fid' => $fids['fid'], 'module' => 'file', 'type' => 'privatemsg_message_draft', 'id' => $draft_id, 'count' => 1))
+						->execute();
+
+						$file = file_load($fids['fid']);
+						// Change status to permanent.
+						$file->status = FILE_STATUS_PERMANENT;
+						// Save.
+						file_save($file);
+				}
+			}
+		}
+	}
+	else {
+		$id = db_insert('pm_draft')
+			->fields(array(
+				'author' => $user->uid,
+				'subject' => $draft_message['subject'],
+				'recipients' => $draft_message['recipient'],
+				'body' => $draft_message['body']['value'],
+				'format' => 'filtered_html',
+				'timestamp' => time(),
+			))
+			->execute();
+		foreach($draft_message['field_mail_attachment']['und'] as $fids) {
+			if($fids['fid'] != 0) {
+				db_insert('pm_draft_attachment')
+					->fields(array('draft_id' => $id, 'attachment_fid' => $fids['fid']))
+					->execute();
+
+					db_insert('file_usage')
+						->fields(array('fid' => $fids['fid'], 'module' => 'file', 'type' => 'privatemsg_message_draft', 'id' => $id, 'count' => 1))
+						->execute();
+
+					$file = file_load($fids['fid']);
+					// Change status to permanent.
+					$file->status = FILE_STATUS_PERMANENT;
+					// Save.
+					file_save($file);
+			}
+		}
+	}
+}
+/**
+ * Hook_Validate function for private message list
+ * Checkin for move/delete mails
+ */
+function gmc_private_message_list_validate(&$form, $form_state) {
+	global $user;
+	if($form_state['input']['op'] == 'move to') {
+		$folder_name = str_replace("-", " ", arg(2));
+		$folder_id = db_select('pm_folder_name', 'fn')
+		  ->fields('fn', array('folder_id'))
+		  ->condition('fn.uid', $user->uid, '=')
+		  ->condition('fn.folder_name', db_like(trim($folder_name)), 'LIKE')
+		  ->execute()->fetchField();
+		if (!array_filter($form_state['input']['list'])) {
+			$message = t('You must first select one (or more) messages before you can take that action.');
+			drupal_set_message($message, 'warning');
+		}
+		else if ($form_state['input']['folders'] == $folder_id) {
+			$message = t('Select folder name.');
+			drupal_set_message($message, 'warning');
+		}
+		else if ($form_state['input']['folders'] == 'inbox' && arg(1) != 'folder') {
+			$message = t('Select folder name.');
+			drupal_set_message($message, 'warning');
+		}
+		else {
+			$message = t('Moved successfully.');
+			gmc_private_message_list_save($form_state['input']);
+			drupal_set_message($message);
+		}
+	}
+	else if($form_state['input']['op'] == 'delete') {
+		if (!array_filter($form_state['input']['list'])) {
+			$message = t('You must first select one (or more) messages before you can take that action.');
+			drupal_set_message($message, 'warning');
+		}
+		else {
+			$message = t('Deleted successfully.');
+			gmc_private_message_list_delete($form_state['input']);
+			drupal_set_message($message);
+		}
+	}
+}
+/**
+ * Callback function for saving mail in user folder or inbox
+ */
+function gmc_private_message_list_save($user_messages) {
+	global $user;
+	if($user_messages['folders'] != 'inbox') {
+		foreach($user_messages['list'] as $thread) {
+			if($thread != ''){
+				//Select thread id from folder index
+				$user_thread = db_select('pm_folder_index', 'fi')
+				  ->fields('fi', array('index_id'))
+				  ->condition('uid', $user->uid)
+				  ->condition('thread_id', $thread)
+				  ->execute();
+				$count = $user_thread->rowCount();
+				if($count == 0){
+					db_insert('pm_folder_index')
+					  ->fields(array('folder_id' => $user_messages['folders'], 'uid' => $user->uid, 'thread_id' => $thread))
+					  ->execute();
+					db_delete('pm_tags_index')
+					  ->condition('uid', $user->uid)
+					  ->condition('thread_id', $thread)
+					  ->condition('tag_id', variable_get('privatemsg_filter_inbox_tag', ''), '=')
+					  ->execute();
+				}
+				else {
+					db_update('pm_folder_index')
+					  ->fields(array('folder_id' => $user_messages['folders']))
+					  ->condition('uid', $user->uid)
+					  ->condition('thread_id', $thread)
+					->execute();
+				}
+			}
+		}
+	}
+	else {
+		foreach($user_messages['list'] as $thread) {
+			if($thread != ''){
+				db_delete('pm_folder_index')
+				  ->condition('uid', $user->uid)
+				  ->condition('thread_id', $thread)
+				  ->execute();
+				db_insert('pm_tags_index')
+				  ->fields(array('uid' => $user->uid, 'thread_id' => $thread, 'tag_id' => variable_get('privatemsg_filter_inbox_tag', '')))
+				  ->execute();
+			}
+		}
+	}
+}
+/**
+ * Callback function for delete mail from user folder or inbox
+ */
+function gmc_private_message_list_delete($user_messages) {
+	global $user;
+	foreach($user_messages['list'] as $thread) {
+		if($thread != ''){
+			db_update('pm_index')
+			  ->fields(array('deleted' => time()))
+			  ->condition('mid', $thread)
+			  ->condition('recipient', $user->uid)
+			  ->condition('type', array('user', 'hidden'))
+			->execute();
+			db_delete('pm_folder_index')
+			  ->condition('uid', $user->uid)
+			  ->condition('thread_id', $thread)
+			->execute();
+		}
+	}
+}
+/**
+ * Callback function draft list page
+ * Return $output;
+ */
+function gmc_private_message_drafts_list() {
+	$form = drupal_get_form('delete_drafts');
+	$output = '<div id="ucpcontent">'.drupal_render($form).'</div>';
+	return $output;
+}
+/**
+ * Form API for delete draft and render draft list.
+ * @return form
+ */
+function delete_drafts(){
+	global $user, $base_url;
+	$output = '';
+	//Table header	
+	$header = array(
+		array('data' => t('&nbsp;'), 'width' => array('5%')),
+		array('data' => t('Message Title'), 'width' => array('30%')),
+		array('data' => t('Message For'), 'width' => array('30%')),
+		array('data' => t('Saved Date'),'field'=>'timestamp', 'sort'=>'desc', 'width' => array('20%')),
+		array('data' => t('CC Users?'), 'width' => array('10%')),
+		array('data' => '<input type="checkbox" name="all" value="all" id="select-all"/>', 'width' => array('5%')),
+	);
+	//fetch data from pm_draft table
+	$sql_query = db_select('pm_draft', 'pd');
+	$sql_query->fields('pd', array('draft_id', 'author', 'subject', 'recipients', 'timestamp'));
+	$sql_query->condition('author', $user->uid, '=');
+	$sql_query = $sql_query->extend('TableSort')->extend('PagerDefault')->limit(5);
+	$result = $sql_query->orderByHeader($header)->execute();
+	$rows = array();
+	foreach($result as $data){
+		$recipients_explode = explode(',', $data->recipients);
+		$recipients_link = '';
+		foreach($recipients_explode as $recipients_name) {
+			$name = trim($recipients_name);
+			if($name != ''){
+				$recipients_link .= l($name, 'users/'.$name).', ';
+			}
+		}
+		/*$offset = intval($_COOKIE['offset']);
+		$timezone = timezone_name_from_abbr('', $offset * 60, false);
+		date_default_timezone_set($timezone);*/
+		$date = date('d/m/Y', $data->timestamp);
+		if($date == date('d/m/Y')) {
+			$day_name = 'Today, ' . date('H:i A', $data->timestamp);
+		} else if($date == date('d/m/Y',time() - (24 * 60 * 60))) {
+			$day_name = 'Yesterday, ' . date('H:i A', $data->timestamp);
+		}
+		else {
+			$day_name = date('M d Y - H:i A', $data->timestamp);
+		}
+		$rows[] = array(
+			'<img src="'.$base_url.'/sites/all/themes/gmc_v2/images/f_norm_no.gif" border="0" alt="Read Msg">',
+			l($data->subject, 'messages/new', array('query' => array('draft_id' => $data->draft_id))),
+			$recipients_link,
+			$day_name,
+			'No',
+			'<input type="checkbox" name="list[]" class="check_draft" value="'.$data->draft_id.'"/>',
+		);
+	}
+	if(count($rows)) {
+		$output .= theme('table', array('header' => $header, 'rows' => $rows, 'attributes' => array('id' => 'message-draft-table')));
+		$output .= theme('pager');
+
+		$today_date = date('jS F Y - H:i A');
+		$form['saved_unsent_messages'] = array(
+			'#markup' => '<div class="formsubtitle">Saved Unsent Messages<div id="gfooter_time">Time is now: '.$today_date.'</div></div>'
+		);
+
+		//Attach table data in form
+		$form['draft'] = array(
+			'#markup' => $output
+		);
+
+		$form['actions']['submit'] = array(
+			'#type' => 'submit',
+			'#value' => t('delete'),
+			'#prefix' => '<div class="submit-button">',
+			'#suffix' => 'the selected messages</div>',
+		);
+	}
+	else {
+		$output .= t('You do not have any saved drafts at this time.');
+		$form['draft'] = array(
+			'#markup' => $output
+		);
+	}
+	return $form;
+}
+/**
+ * hook_submit for delete drafts.
+ * @return form
+ */
+function delete_drafts_submit(&$form, &$form_state) {
+	//print "<pre>";print_r($form_state);exit;
+	foreach($form_state['input']['list'] as $list){
+		$draft_deleted = db_delete('pm_draft')
+		  ->condition('draft_id', $list)
+		  ->execute();
+		//Select fid to delete files
+		$fid_select = db_select('pm_draft_attachment', 'pa')
+		  ->fields('pa', array('attachment_fid'))
+		  ->condition('draft_id', $list)
+		  ->execute();
+		foreach($fid_select as $fid) {
+			$file = file_load($fid->attachment_fid);
+			file_delete($file, $force = TRUE);
+		}
+		$file_deleted = db_delete('pm_draft_attachment')
+		  ->condition('draft_id', $list)
+		  ->execute();
+	}
+	 drupal_set_message('The selected drafts have been deleted.');
+	 drupal_goto('messages/drafts');
+}
+/**
+ * Implements hook_privatemsg_message_presave_alter()
+ * Change the message before it is stored.
+ */
+function gmc_private_message_privatemsg_message_presave_alter(&$message) {
+	//print "<pre>";print_r($message);exit;
+	if(isset($_GET['draft_id'])) {
+		$files = db_query("SELECT * FROM pm_draft_attachment where draft_id = :draft_id", array('draft_id' => $_GET['draft_id']));
+		$num = $files->rowCount();
+		if($num != 0) {
+			foreach($files as $file) {
+				$count = count($message->field_mail_attachment['und']);
+				$file_data = array(
+					'fid' => $file->attachment_fid,
+					'display' => 1,
+					'description' => '',
+					'upload_button' => 'Upload',
+					'remove_button' => 'Remove',
+					'upload' => '',
+				);
+				$message->field_mail_attachment['und'][$count] = $file_data;
+			}
+			$draft_deleted = db_delete('pm_draft_attachment')
+			  ->condition('draft_id', $_GET['draft_id'])
+			  ->execute();
+		}
+		$draft_deleted = db_delete('pm_draft')
+		  ->condition('draft_id', $_GET['draft_id'])
+		  ->execute();
+		$draft_deleted = db_delete('file_usage')
+		  ->condition('type', 'privatemsg_message_draft')
+		  ->condition('id', $_GET['draft_id'])
+		  ->execute();
+	}
+	if(isset($message->field_mail_attachment['und']['0'])) {
+		$message->field_counter['und']['0']['value'] = 0;
+	}
+}
+
+/**
+ * Implements hook_privatemsg_message_insert()
+ * Save in pm_tracker for message tracking.
+ */
+function gmc_private_message_privatemsg_message_insert($message) {
+  //print "<pre>";print_r($message);exit;
+	global $user;
+	if($message->message_track != 0) {
+	db_insert('pm_tracker')
+		->fields(array('mid' => $message->mid, 'uid' => $user->uid, 'message_track' => $message->message_track))
+		->execute();
+	}
+}
+
+/**
+ * Callback function empty_gmc_private_message_folder
+ * for delete mail from folders.
+ */
+function empty_gmc_private_message_folder() {
+	$empty = array("Empty Folder");
+	return theme('messages_empty', $empty);
+}
+
+/**
+ * Form API for delete draft and render draft list.
+ * @return form
+ */
+function empty_folder_mail(){
+	global $user, $base_url;
+
+	/*$query_inbox = _privatemsg_assemble_query('list', $user, 'all');
+	$query_sent = _privatemsg_assemble_query('list', $user, 'sent');
+	$num_index = $query_inbox->execute()->rowCount();
+	$num_sent = $query_sent->execute()->rowCount();
+	print $num_index;exit;*/
+	
+	$num_index = db_query("SELECT COUNT(thread_id) FROM pm_tags_index WHERE uid = :uid", array(':uid' => $user->uid))->fetchField();
+	$num_sent = db_query("SELECT COUNT(DISTINCT(pi.thread_id)) FROM pm_message pm INNER JOIN pm_index pi ON pi.thread_id = pm.mid WHERE pm.author = :author AND pi.deleted = 0 AND pi.recipient != :author", array(':author' => $user->uid))->fetchField();
+	
+	$num_draft = db_query("SELECT COUNT(draft_id)FROM pm_draft WHERE author = :author", array(':author' => $user->uid))->fetchField();
+	$output = '';
+	//Table header	
+	$header = array(
+		array('data' => t('Folder'), 'class' => array('folder')),
+		array('data' => t('No. PMs'), 'class' => array('mail-count')),
+		array('data' => t('Empty?'), 'class' => array('select-check')),
+	);
+	$rows[] = array(
+		t('<b>Unsent PMs</b>'),
+		$num_draft,
+		'<input type="checkbox" name="list[]" class="check_draft" value="1"/>',
+	);
+	$rows[] = array(
+		t('<b>Inbox</b>'),
+		$num_index,
+		'<input type="checkbox" name="list[]" class="check_draft" value="2"/>',
+	);
+	$rows[] = array(
+		t('<b>Sent Items</b>'),
+		$num_sent,
+		'<input type="checkbox" name="list[]" class="check_draft" value="3"/>',
+	);
+	$folders = db_select('pm_folder_name', 'fn')
+	  ->fields('fn', array('folder_id', 'folder_name'))
+	  ->condition('fn.uid', $user->uid, '=')
+	  ->execute();
+	foreach($folders as $folder) {
+		$mail_count = user_mail_count($folder->folder_id);
+		$rows[] = array(
+			t('<b>'.$folder->folder_name.'</b>'),
+			$mail_count,
+			'<input type="checkbox" name="list[]" class="check_draft" value="f-'.$folder->folder_id.'"/>',
+		);
+	}
+	$rows[] = array(
+		array('data' => '<input type="checkbox" name="list[]" class="check_draft" value="4" checked="checked"> <b>Keep Unread PMs?</b>', 'class' => array('row1'), 'colspan' => array("3"), 'align' => array("center")),
+	);
+	$output .= theme('table', array('header' => $header, 'rows' => $rows, 'attributes' => array('id' => 'empty-folder-mail-table')));
+
+	//Attach table data in form
+	$form['draft'] = array(
+		'#markup' => $output
+	);
+	$today_date = date('jS F Y - H:i A');
+	$form['actions']['submit'] = array(
+		'#type' => 'submit',
+		'#value' => t('Continue'),
+		'#prefix' => '<div class="formsubtitle">',
+		'#suffix' => '<div id="gfooter_time">Time is now: '.$today_date.'</div></div>',
+	);
+	return $form;
+}
+/**
+ * hook_submit for delete drafts.
+ * @return form
+ */
+function empty_folder_mail_submit(&$form, &$form_state) {
+	global $user;
+	//print "<pre>";print_r($form_state['input']);exit;
+	foreach($form_state['input']['list'] as $list){
+		if($list == 1) {
+			$draft_id_select = db_select('pm_draft', 'pd')
+			  ->fields('pd', array('draft_id'))
+			  ->condition('author', $user->uid)
+			  ->execute();
+			foreach($draft_id_select as $draft_id) {
+				$fid_select = db_select('pm_draft_attachment', 'pa')
+				  ->fields('pa', array('attachment_fid'))
+				  ->condition('draft_id', $draft_id->draft_id)
+				  ->execute();
+				foreach($fid_select as $fid) {
+					$file = file_load($fid->attachment_fid);
+					file_delete($file, $force = TRUE);
+				}
+				$file_deleted = db_delete('pm_draft_attachment')
+				  ->condition('draft_id', $draft_id->draft_id)
+				  ->execute();
+				$draft_deleted = db_delete('pm_draft')
+				  ->condition('draft_id', $draft_id->draft_id)
+				  ->execute();
+			}
+		}
+		else if($list == 2) {
+			$query_inbox = _privatemsg_assemble_query('list', $user, 'inbox');
+			$mail_index = $query_inbox->execute();
+			foreach($mail_index as $inbox) {
+				if($list == 4 && $inbox->is_new == 1) {
+					continue;
+				}
+				else {
+					$mid = db_select('pm_index', 'pi')
+					  ->fields('pi', array('mid'))
+					  ->condition('thread_id', $inbox->thread_id)
+					  ->execute()->fetchField();
+					privatemsg_message_change_delete($mid, 1, $user);
+				}
+			}
+		}
+		else if($list == 3) {
+			$query_sent = _privatemsg_assemble_query('list', $user, 'sent');
+			$mail_sent = $query_sent->execute();
+			foreach($mail_sent as $sent) {
+				$mid = db_select('pm_index', 'pi')
+				  ->fields('pi', array('mid'))
+				  ->condition('thread_id', $sent->thread_id)
+				  ->execute()->fetchField();
+				privatemsg_message_change_delete($mid, 1, $user);
+			}
+		}
+		elseif(substr($list, 0, 2) == 'f-') {
+			$folder_id = str_replace("f-", " ", $list);
+			$thread_id = db_select('pm_folder_index', 'pfi')
+			  ->fields('pfi', array('thread_id'))
+			  ->condition('folder_id', trim($folder_id))
+			  ->condition('uid', $user->uid)
+			  ->execute();
+			foreach($thread_id as $id) {
+				$mid = db_select('pm_index', 'pi')
+				  ->fields('pi', array('mid'))
+				  ->condition('thread_id', $id->thread_id)
+				  ->condition('recipient', $user->uid)
+				  ->condition('is_new', 1, '!=')
+				  ->execute()->fetchField();
+				if(!empty($mid)) {
+					privatemsg_message_change_delete($mid, 1, $user);
+					db_delete('pm_folder_index')
+					  ->condition('uid', $user->uid)
+					  ->condition('thread_id', $id->thread_id)
+					->execute();
+				}
+			}
+		}
+	}
+	 drupal_set_message('The selected item have been deleted.');
+}
+
+/**
+ * Submit API for delete drafts.
+ * @return form
+ */
+function gmc_user_storage_folders() {
+	$folder = array("Create Folder");
+	return theme('storage_folders', $folder);
+}
+
+/**
+ * Form API for Create/Edir/Delete Storage Folders.
+ * @return form
+ */
+function gmc_user_storage(){
+	global $user, $base_url;
+	$folders = db_select('pm_folder_name', 'fn')
+	  ->fields('fn', array('folder_id', 'folder_name'))
+	  ->condition('fn.uid', $user->uid, '=')
+	  ->execute();
+	$form['addeddir'] = array(
+	  '#tree' => TRUE,
+	);
+	$form['addeddir']['inbox'] = array(
+		'#type' => 'textfield', 
+		'#title' => t(''), 
+		'#default_value' => 'Inbox',
+		'#size' => 20, 
+		'#maxlength' => 128, 
+		//'#disabled' => TRUE,
+		'#field_suffix' => t('&nbsp;&nbsp;( Inbox - Cannot Remove )')
+	);
+	$form['addeddir']['sent_items'] = array(
+		'#type' => 'textfield', 
+		'#title' => t(''), 
+		'#default_value' => 'Sent Items',
+		'#size' => 20, 
+		'#maxlength' => 128, 
+		//'#disabled' => TRUE,
+		'#field_suffix' => t('&nbsp;&nbsp;( Sent Items - Cannot Remove )')
+	);
+	$form['userdir'] = array(
+	  '#tree' => TRUE,
+	);
+	foreach($folders as $folder) {
+		//print "<pre>";print_r($name_exp);exit;
+		$form['userdir'][$folder->folder_id] = array(
+			'#type' => 'textfield', 
+			'#title' => t(''), 
+			'#default_value' => $folder->folder_name,
+			'#size' => 20, 
+			'#maxlength' => 128, 
+		);
+	}
+	$form['newdir'] = array(
+	  '#tree' => TRUE,
+	);
+	//Attach table data in form
+	$form['newdir']['addnew'] = array(
+		'#markup' => '<div class="formsubtitle">Add New Virtual Directories</div><p>You may add extra directories. You do not have to use all the input boxes.</p>',
+	);
+	$form['newdir']['newdir1'] = array(
+		'#type' => 'textfield', 
+		'#title' => t(''), 
+		'#size' => 20, 
+		'#maxlength' => 128, 
+	);
+	$form['newdir']['newdir2'] = array(
+		'#type' => 'textfield', 
+		'#title' => t(''), 
+		'#size' => 20, 
+		'#maxlength' => 128, 
+	);
+	$form['newdir']['newdir3'] = array(
+		'#type' => 'textfield', 
+		'#title' => t(''), 
+		'#size' => 20, 
+		'#maxlength' => 128, 
+	);
+		
+
+	$today_date = date('jS F Y - H:i A');
+	$form['actions']['submit'] = array(
+		'#type' => 'submit',
+		'#value' => t('Submit Changes'),
+		'#prefix' => '<div class="formsubtitle" align="center">',
+		'#suffix' => '<div id="gfooter_time">Time is now: '.$today_date.'</div></div>',
+	);
+	return $form;
+}
+/**
+ * Submit API for Delete/Insert/Update User Folder.
+ * @return ''
+ */
+function gmc_user_storage_submit(&$form, &$form_state) {
+	global $user;
+	foreach($form_state['input']['addeddir'] as $key => $added_dir) {
+		if($added_dir == '') {
+			$name = '';
+			$key_exp = explode("_", $key);
+			foreach($key_exp as $name_exp) {
+				$name .= $name_exp.' ';
+			}
+			form_set_error('addeddir]['.$key, t(ucwords($name).' Cannot Remove'));
+		}
+	}
+	//Update/Delete user directory
+	foreach($form_state['input']['userdir'] as $key => $user_dir) {
+		if($user_dir == ''){
+			$mail_count = user_mail_count($key);
+			$folder_name = db_select('pm_folder_name', 'fn')
+			  ->fields('fn', array('folder_name'))
+			  ->condition('fn.uid', $user->uid, '=')
+			  ->condition('fn.folder_id', $key, '=')
+			  ->execute()->fetchField();
+			if($mail_count == 0) {
+				$draft_deleted = db_delete('pm_folder_name')
+				  ->condition('folder_id', $key, '=')
+				  ->execute();
+				drupal_set_message(t($folder_name.' folder deleted successfully'), 'status');
+			}
+			else {
+				form_set_error('userdir]['.$key, t($folder_name.' folder contains messages, you can\'t delete '.$folder_name.' folder'));
+			}
+		}
+		else {
+			$sql_query = db_select('pm_folder_name', 'fn')
+			  ->fields('fn', array('folder_name'))
+			  ->condition('fn.uid', $user->uid, '=')
+			  ->condition('fn.folder_id', $key, '=')
+			  ->execute()->fetchField();
+			if($sql_query != $user_dir) {
+				$num_updated = db_update('pm_folder_name')
+				  ->fields(array(
+					'folder_name' => $user_dir,
+				  ))
+				->condition('folder_id', $key, '=')
+				->execute();
+			}
+		}
+	}
+	//New directory added by user
+	foreach($form_state['input']['newdir'] as $key => $new_dir) {
+		if($new_dir != '') {
+			$sql_query = db_select('pm_folder_name', 'fn')
+			  ->fields('fn', array('folder_name'))
+			  ->condition('fn.uid', $user->uid, '=')
+			  ->condition('fn.folder_name', '%' . db_like($new_dir) . '%', 'LIKE')
+			  ->execute()->fetchField();
+			  //print $sql_query;exit;
+			if($sql_query) {
+				form_set_error('newdir]['.$key, t($new_dir.' folder exist'));
+			}
+			else {
+				db_insert('pm_folder_name')
+					->fields(array('folder_name' => $new_dir, 'uid' => $user->uid, 'originaluid' => 0))
+					->execute();
+				drupal_set_message(t($new_dir.' folder created successfully'), 'status');
+			}
+		}
+	}
+}
+/**
+ * Callback function messages_folder_list()
+ * to display message list from user custom folder
+ * return $message_list
+ */
+function messages_folder_list() {
+	$folder = array("Message List");
+	return theme('user_messages_list', $folder);
+	//return drupal_get_form('user_messages_folder_list');
+}
+/**
+ * Form API to display message list from user folder.
+ * @return $form
+ */
+function user_messages_folder_list($form, &$form_state) {
+	global $user;
+	$account = $user;
+	drupal_add_css(drupal_get_path('module', 'privatemsg') . '/styles/privatemsg-list.css');
+
+	// Load the table columns.
+	$columns = array_merge(array('subject', 'last_updated'), array_filter(variable_get('privatemsg_display_fields', array('participants'))));
+
+	// Load the themed list headers based on the available data.
+	$headers = _privatemsg_list_headers($columns);
+	$headers['subject']['data'] = 'Message Title';
+	$headers['participants']['data'] = 'Message For';
+	$headers['last_updated']['data'] = 'Date Sent';
+
+	$form['updated']['list'] = array(
+		'#type' => 'tableselect',
+		'#header' => $headers,
+		'#options' => array(),
+		'#attributes' => array('class' => array('privatemsg-list')),
+		'#empty' => t('No messages available.'),
+		'#weight' => 5,
+		'#pre_render' => array('_privatemsg_list_thread'),
+	);
+
+	//$query = _privatemsg_assemble_query('list', $account, $argument);
+	$folder_name = str_replace("-", " ", arg(2));
+	$folder_id = db_select('pm_folder_name', 'fn')
+	  ->fields('fn', array('folder_id'))
+	  ->condition('fn.uid', $user->uid, '=')
+	  ->condition('fn.folder_name', db_like($folder_name). '%', 'LIKE')
+	  ->execute()->fetchField();
+	$query = db_query("SELECT DISTINCT(pfi.thread_id), pm.subject, pm.timestamp as last_updated, pm.has_tokens, pi.is_new, CONCAT(pi.type, '_', pm.author) as participants FROM pm_message pm INNER JOIN pm_folder_index pfi on pfi.thread_id = pm.mid INNER JOIN pm_index pi on pi.thread_id = pm.mid WHERE pfi.uid = :uid AND pfi.folder_id = :folder_id AND pi.recipient = :uid ORDER BY pm.timestamp DESC", array(':uid' => $user->uid, 'folder_id' => $folder_id));
+	$i = 0;
+	foreach ($query as $row) {
+		// Store the raw row data.
+		$form['updated']['list']['#options'][$row->thread_id] = (array)$row;
+		// Tableselect sorts the options, set a weight so that the order doesn't get
+		// changed.
+		$form['updated']['list']['#options'][$row->thread_id]['#weight'] = $i++;
+	}
+	// Save the currently active account, used for actions.
+	$form['account'] = array('#type' => 'value', '#value' => $account);
+
+	// Define checkboxes, pager and theme
+	$form['updated']['pager'] = array('#markup' => theme('pager'), '#weight' => 20);
+	return $form;
+}
+
+/**
+ * Submit API for delete drafts.
+ * @return form
+ */
+function user_messages_archive() {
+	//$folder = array("User Messages Archive");
+	//return theme('user_messages_archive', $folder);
+	$output = '<div id="ucpcontent">
+	<div class="maintitle">Welcome to your messenger</div>
+	<div class="formsubtitle">Archive Messages</div>
+		<p>Please select the archive criteria.<br>The archived messages will be compiled into a single file and emailed to your address as an attachment of your choice.</p>';
+	$form = drupal_get_form('gmc_messages_archive');
+	$output .= drupal_render($form);
+	$output .= '</div>';
+	return $output;
+}
+
+/**
+ * Form API for Create/Edir/Delete Storage Folders.
+ * @return form
+ */
+function gmc_messages_archive(){
+	global $user, $base_url;
+	$folders = db_select('pm_folder_name', 'fn')
+	  ->fields('fn', array('folder_id', 'folder_name'))
+	  ->condition('fn.uid', $user->uid, '=')
+	  ->execute();
+	//Attach table data in form
+	$form['table_start'] = array(
+		'#markup' => '<table class="ipbtable" cellspacing="0"><tbody>',
+	);
+	$form['tr_1'] = array(
+		'#markup' => '<tr><td><b>Archive from which folder?</b></td><td>',
+	);
+	$options = array('inbox' => t('Inbox'), 'sent-items' => t('Sent Items'));
+	foreach($folders as $folder) {
+		$options[$folder->folder_id] = $folder->folder_name;
+	}
+	$form['folders'] = array(
+		'#type' => 'select',
+		'#title' => t(''),
+		'#options' => $options,
+	);
+	$form['tr_2'] = array(
+		'#markup' => '</td></tr>',
+	);
+	$form['tr_3'] = array(
+		'#markup' => '<tr><td><b>Archive messages received in the last</b></td><td>',
+	);
+	$options = array('1' => 1, '7' => 7, '30' => 30, '90' => 90, '365' => 365, 'all' => 'all');
+	$form['messages_time'] = array(
+		'#type' => 'select',
+		'#title' => t(''),
+		'#options' => $options,
+		'#default_value' => 30,
+		'#field_suffix' => '&nbsp;&nbsp;days',
+		//'#prefix' => '<span>',
+		//'#suffix' => '&nbsp;&nbsp;days</span>',
+	);
+	$options = array('newer' => 'and newer', 'older' => 'and older');
+	$form['newer_older'] = array(
+		'#type' => 'select',
+		'#title' => t(''),
+		'#options' => $options,
+		'#default_value' => 'newer',
+	);
+	$form['tr_4'] = array(
+		'#markup' => '</td></tr>',
+	);
+	$form['tr_5'] = array(
+		'#markup' => '<tr><td><b>Number of messages to archive</b></td><td>',
+	);
+	$options = array('5' => 5, '10' => 10, '20' => 20, '30' => 30, '40' => 40, '50' => 50);
+	$form['messages_count'] = array(
+		'#type' => 'select',
+		'#title' => t(''),
+		'#options' => $options,
+		'#default_value' => 20,
+	);
+	$form['tr_6'] = array(
+		'#markup' => '</td></tr>',
+	);
+	$form['tr_7'] = array(
+		'#markup' => '<tr><td><b>Delete messages after archiving?</b></td><td>',
+	);
+	$options = array('yes' => 'Yes', 'no' => 'No');
+	$form['delete_message'] = array(
+		'#type' => 'select',
+		'#title' => t(''),
+		'#options' => $options,
+		'#default_value' => 'no',
+	);
+	$form['tr_8'] = array(
+		'#markup' => '</td></tr>',
+	);
+	$form['tr_9'] = array(
+		'#markup' => '<tr><td><b>Compile datafile as</b></td><td>',
+	);
+	$options = array('xls' => 'Importable MS Excel datafile', 'html' => 'HTML page');
+	$form['mail_import'] = array(
+		'#type' => 'select',
+		'#title' => t(''),
+		'#options' => $options,
+		'#default_value' => 'xls',
+	);
+	$form['tr_10'] = array(
+		'#markup' => '</td></tr>',
+	);
+	$form['table_end'] = array(
+		'#markup' => '</tbody></table>',
+	);
+
+	$today_date = date('jS F Y - H:i A');
+	$form['submit'] = array(
+		'#type' => 'submit',
+		'#value' => t('Process'),
+		'#prefix' => '<div class="formsubtitle" align="center">',
+		'#suffix' => '<div id="gfooter_time">Time is now: '.$today_date.'</div></div>',
+	);
+	return $form;
+}
+/**
+ * Submit API for Delete/Insert/Update User Folder.
+ * @return ''
+ */
+function gmc_messages_archive_submit(&$form, &$form_state) {
+	global $user;
+	$data = $form_state['input'];
+	if($data['folders'] == 'inbox') {
+		$query = _privatemsg_assemble_query('list', $user, 'inbox');
+		$query = $query->execute();
+		foreach($query as $result) {
+			$query = db_query("Select DISTINCT(pm.mid), pm.author, pm.subject, pm.body, pm.timestamp FROM pm_message pm INNER JOIN pm_index pi ON pi.mid = pm.mid WHERE pi.thread_id = :thread_id AND pi.recipient = :recipient AND pi.deleted = :deleted", array(':thread_id' => $result->thread_id, ':recipient' => $user->uid, ':deleted' => '0'))->fetchAll();
+			$messages[] = $query['0'];
+		}
+	}
+	else if($data['folders'] == 'sent-items') {
+		$query = _privatemsg_assemble_query('list', $user, 'sent');
+		$query = $query->execute();
+		foreach($query as $result) {
+			$query = db_query("Select DISTINCT(pm.mid), pm.author, pm.subject, pm.body, pm.timestamp FROM pm_message pm INNER JOIN pm_index pi ON pi.mid = pm.mid WHERE pi.thread_id = :thread_id AND pi.recipient = :recipient AND pi.deleted = :deleted", array(':thread_id' => $result->thread_id, ':recipient' => $user->uid, ':deleted' => '0'))->fetchAll();
+			$messages[] = $query['0'];
+		}
+	}
+	else {
+		$query = db_query("Select DISTINCT(pm.mid), pm.author, pm.subject, pm.body, pm.timestamp FROM pm_message pm INNER JOIN pm_folder_index pfi ON pfi.thread_id = pm.mid WHERE pfi.folder_id = :folder_id AND pfi.uid = :uid ORDER BY pm.timestamp DESC", array('folder_id' => $data['folders'], ':uid' => $user->uid))->fetchAll();
+		$messages = $query;
+	}
+	$count = count($messages);
+	if($data['mail_import'] == 'xls') {
+		$content = '';
+		foreach($messages as $message) {
+			$user_detail = user_load($message->author);
+			$date = date('d/m/Y', $message->timestamp);
+			if($date == date('d/m/Y')) {
+				$post_date = 'Today, ' . date('H:i A', $message->timestamp);
+			} else if($date == date('d/m/Y',time() - (24 * 60 * 60))) {
+				$post_date = 'Yesterday, ' . date('H:i A', $message->timestamp);
+			}
+			else {
+				$post_date = date('M d Y, H:i A', $message->timestamp);
+			}
+			$content .= '"'.$message->subject.'","'.$post_date.'","'.ucwords($user_detail->name).'","'.$message->body.'"'."\n";
+		}
+			$path =  getcwd().'/sites/all/modules/custom/gmc_private_message/attachment/xls_importable.txt';
+			$fp = fopen($path, "w") or exit("Unable to open file!");
+			fwrite($fp, $content);
+			fclose($fp);
+			$filename = 'xls_importable.txt';
+	}
+	else {
+		$theme = theme('messages_archive', array('messages' => $messages));
+		$path =  getcwd().'/sites/all/modules/custom/gmc_private_message/attachment/pm_archive.html';
+		$fp = fopen($path, "w") or exit("Unable to open file!");
+		fwrite($fp, $theme);
+		fclose($fp);
+		$filename = 'pm_archive.html';
+	}
+	$mailto = $user->mail;
+	$subject = 'Personal Message Archive Attached ( GMC Forum )';
+	//Mail Message
+	$message = ucwords($user->name).",\n\n";
+	$message .= "This email has been sent from http://admin.prod.gmc.my/.\n";
+	$message .= "Your archived messages have been compiled into a single file and has been attached to this message.\n\n";
+	$message .= "Regards,\n";
+	$message .= "The GMC Forum team.\n";
+	$message .= "http://admin.prod.gmc.my\n\n";
+	//Geting File
+    $file = $path;
+    $file_size = filesize($file);
+    $handle = fopen($file, "r");
+    $content = fread($handle, $file_size);
+    fclose($handle);
+    $content = chunk_split(base64_encode($content));
+    $random_hash = md5(uniqid(time()));
+    $name = basename($file);
+	//Mail Header
+    $header = "From: GMC <support@guitarmasterclass.net>\r\n";
+    $header .= "Reply-To: support@guitarmasterclass.net\r\n";
+    $header .= "MIME-Version: 1.0\r\n";
+    $header .= "Content-Type: multipart/mixed; boundary=\"".$random_hash."\"\r\n\r\n";
+    $header .= "This is a multi-part message in MIME format.\r\n";
+    $header .= "--".$random_hash."\r\n";
+    $header .= "Content-type:text/plain; charset=iso-8859-1\r\n";
+    $header .= "Content-Transfer-Encoding: 7bit\r\n\r\n";
+    $header .= $message."\r\n\r\n";
+    $header .= "--".$random_hash."\r\n";
+    $header .= "Content-Type: application/octet-stream; name=\"".$filename."\"\r\n"; // use different content types here
+    $header .= "Content-Transfer-Encoding: base64\r\n";
+    $header .= "Content-Disposition: attachment; filename=\"".$filename."\"\r\n\r\n";
+    $header .= $content."\r\n\r\n";
+    $header .= "--".$random_hash."--";
+    if (mail($mailto, $subject, "", $header)) {
+		$_SESSION['messages_count'] = $count;
+		drupal_goto('messages/archive/complete');
+    } else {
+		drupal_set_message(t("Enable to send message try again"), 'error');
+		drupal_goto('messages/archive');
+    }
+}
+
+/**
+ * Callback function gmc_messages_tracker()
+ * to display message list from user message tracker
+ * return $message_list
+ */
+function user_messages_tracker() {
+	$folder = array("Message tracker");
+	return theme('user_messages_tracker', $folder);
+	//return drupal_get_form('user_messages_folder_list');
+}
+/**
+ * Form API to display message list from user folder.
+ * @return $form
+ */
+function user_messages_unread_tracker_list($form, &$form_state) {
+	global $user;
+	$account = $user;
+	drupal_add_css(drupal_get_path('module', 'privatemsg') . '/styles/privatemsg-list.css');
+
+	// Load the table columns.
+	$columns = array_merge(array('subject', 'last_updated'), array_filter(variable_get('privatemsg_display_fields', array('participants'))));
+
+	// Load the themed list headers based on the available data.
+	$headers = _privatemsg_list_headers($columns);
+	$headers['subject']['data'] = 'Message Title';
+	$headers['participants']['data'] = 'Message For';
+	$headers['last_updated']['data'] = 'Date Sent';
+
+	$form['updated']['list'] = array(
+		'#type' => 'tableselect',
+		'#header' => $headers,
+		'#options' => array(),
+		'#attributes' => array('class' => array('privatemsg-list')),
+		'#empty' => t('No messages available.'),
+		'#weight' => 5,
+		'#pre_render' => array('_privatemsg_list_thread'),
+	);
+
+	//$query = _privatemsg_assemble_query('list', $account, $argument);
+	$query = db_query("SELECT pi.thread_id, pm.subject, pm.timestamp as last_updated, pm.has_tokens, pi.is_new, CONCAT(pi.type, '_', pi.recipient) as participants FROM pm_index pi INNER JOIN pm_message pm on pm.mid = pi.mid INNER JOIN pm_tracker pt on pt.mid = pi.mid WHERE pm.author = :uid AND pi.recipient <> :uid AND pi.is_new = :new AND pt.message_track = :track ORDER BY pm.timestamp DESC", array(':uid' => $user->uid, ':new' => '1', ':track' => '1'));
+	$i = 0;
+	foreach ($query as $row) {
+		// Store the raw row data.
+		$form['updated']['list']['#options'][$row->thread_id] = (array)$row;
+		// Tableselect sorts the options, set a weight so that the order doesn't get
+		// changed.
+		$form['updated']['list']['#options'][$row->thread_id]['#weight'] = $i++;
+	}
+	// Save the currently active account, used for actions.
+	$form['account'] = array('#type' => 'value', '#value' => $account);
+	$form['delete'] = array(
+		'#type' => 'submit',
+		'#value' => t('delete'),
+		'#prefix' => '<div align="center">',
+		'#suffix' => '&nbsp;the selected messages</div>',
+	);
+
+	// Define checkboxes, pager and theme
+	$form['updated']['pager'] = array('#markup' => theme('pager'), '#weight' => 20);
+	return $form;
+}
+/**
+ * Implements hook_submit
+ * to delete tracking for any message.
+ */
+function user_messages_unread_tracker_list_submit(&$form, &$form_state) {
+	global $user;
+	if (!array_filter($form_state['input']['list'])) {
+		$message = t('You must first select one (or more) messages before you can take that action.');
+		drupal_set_message($message, 'warning');
+	}
+	else {
+		foreach($form_state['input']['list'] as $del_mid) {	
+			if($del_mid != ''){
+				db_delete('pm_tracker')
+				  ->condition('uid', $user->uid)
+				  ->condition('mid', $del_mid)
+				->execute();
+				db_delete('pm_tags_index')
+				  ->condition('thread_id', $del_mid)
+				  ->execute();
+				db_update('pm_index')
+				  ->fields(array('deleted' => time()))
+				  ->condition('mid', $del_mid)
+				  ->condition('type', array('user', 'hidden'))
+				->execute();
+			}
+		}
+		drupal_set_message(t('Tracking end for selected messages'));
+	}
+}
+
+/**
+ * Form API to display message list from user folder.
+ * @return $form
+ */
+function user_messages_read_tracker_list($form, &$form_state) {
+	global $user;
+	$account = $user;
+	drupal_add_css(drupal_get_path('module', 'privatemsg') . '/styles/privatemsg-list.css');
+
+	// Load the table columns.
+	$columns = array_merge(array('subject', 'last_updated'), array_filter(variable_get('privatemsg_display_fields', array('participants'))));
+
+	// Load the themed list headers based on the available data.
+	$headers = _privatemsg_list_headers($columns);
+	$headers['subject']['data'] = 'Message Title';
+	$headers['participants']['data'] = 'Message For';
+	$headers['last_updated']['data'] = 'Date Sent';
+
+	$form['updated']['list'] = array(
+		'#type' => 'tableselect',
+		'#header' => $headers,
+		'#options' => array(),
+		'#attributes' => array('class' => array('privatemsg-list')),
+		'#empty' => t('No messages available.'),
+		'#weight' => 5,
+		'#pre_render' => array('_privatemsg_list_thread'),
+	);
+
+	//$query = _privatemsg_assemble_query('list', $account, $argument);
+	$query = db_query("SELECT pi.thread_id, pm.subject, pm.timestamp as last_updated, pm.has_tokens, pi.is_new, CONCAT(pi.type, '_', pi.recipient) as participants FROM pm_index pi INNER JOIN pm_message pm on pm.mid = pi.mid INNER JOIN pm_tracker pt on pt.mid = pi.mid WHERE pm.author = :uid AND pi.recipient <> :uid AND pi.is_new = :new AND pt.message_track = :track ORDER BY pm.timestamp DESC", array(':uid' => $user->uid, ':new' => '0', ':track' => '1'));
+	$i = 0;
+	foreach ($query as $row) {
+		// Store the raw row data.
+		$form['updated']['list']['#options'][$row->thread_id] = (array)$row;
+		// Tableselect sorts the options, set a weight so that the order doesn't get
+		// changed.
+		$form['updated']['list']['#options'][$row->thread_id]['#weight'] = $i++;
+	}
+	// Save the currently active account, used for actions.
+	$form['account'] = array('#type' => 'value', '#value' => $account);
+	$form['endtrack'] = array(
+		'#type' => 'submit',
+		'#value' => t('End tracking with'),
+		'#prefix' => '<div align="center">',
+		'#suffix' => '&nbsp;the selected messages</div>',
+	);
+
+	// Define checkboxes, pager and theme
+	$form['updated']['pager'] = array('#markup' => theme('pager'), '#weight' => 20);
+	return $form;
+}
+/**
+ * Implements hook_submit
+ * to delete tracking for any message.
+ */
+function user_messages_read_tracker_list_submit(&$form, &$form_state) {
+	global $user;
+	if (!array_filter($form_state['input']['list'])) {
+		$message = t('You must first select one (or more) messages before you can take that action.');
+		drupal_set_message($message, 'warning');
+	}
+	else {
+		foreach($form_state['input']['list'] as $del_mid) {
+			if($del_mid != ''){
+				db_delete('pm_tracker')
+				  ->condition('uid', $user->uid)
+				  ->condition('mid', $del_mid)
+				->execute();
+			}
+		}
+		drupal_set_message(t('Tracking end for selected messages'));
+	}
+}
+/**
+ * Callback function for archive complete message
+ * This message will display after send the archive mail.
+ */
+function gmc_archive_complete(){
+	$count = $_SESSION['messages_count'];
+	unset($_SESSION['messages_count']);
+	$today_date = date('jS F Y - H:i A');
+	$output = '<div id="ucpcontent">
+	<div class="maintitle">Welcome to your messenger</div>
+	<div class="formsubtitle">Archive Complete<div id="gfooter_time">Time is now: '.$today_date.'</div></div>
+	<p>The archiving process has completed.<br>You should receive your email shortly with an attachment containing '.$count.' archived messages.</p>
+	</div>';
+	return $output;
+}
+/**
+ * hook_download_download()
+ * hook from download module
+ * Callback function for download file count
+ * update field table and revision table with new count.
+ */
+function gmc_private_message_download_download($files, $entity) {
+	$count = db_select('field_data_field_counter', 'fc')
+	  ->fields('fc', array('field_counter_value'))
+	  ->condition('fc.entity_id', $entity->mid, '=')
+	  ->execute()->fetchField();
+	$count = $count + 1;
+	//Update counter field
+	$id = db_update('field_data_field_counter')
+	  ->fields(array(
+		'field_counter_value' => $count,
+	  ))
+	  ->condition('entity_id', $entity->mid, '=')
+	  ->execute();
+	//Update counter revision field
+	$id = db_update('field_revision_field_counter')
+	  ->fields(array(
+		'field_counter_value' => $count,
+	  ))
+	  ->condition('entity_id', $entity->mid, '=')
+	  ->execute();
+	drupal_flush_all_caches();  
+}
+/**
+ * Callback function gmc_new_messages
+ * to display new message at forum page in popup.
+ * URL: new-messages
+ */
+function gmc_new_messages(){
+	global $user;
+	$name = str_replace(" ", "_", $user->name);
+	$name = $name.'_last_message_mid';
+	$show_popup = 0;
+	$output = '';
+	$last_mid = db_query("SELECT MAX(pm.mid) from pm_message pm INNER JOIN pm_index pi ON pm.mid = pi.mid WHERE pi.recipient = :recipient AND pi.is_new = 1 AND pi.deleted = 0", array(':recipient' => $user->uid))->fetchField();
+	if(!empty($last_mid)) {
+		$last_seen_mid = variable_get($name);
+		if(empty($last_seen_mid)) {
+			variable_set($name, $last_mid);
+			$show_popup = 1;
+		}
+		else {
+			if($last_seen_mid != $last_mid) {
+				$show_popup = 1;
+				variable_set($name, $last_mid);
+			}
+			else {
+				$show_popup = 0;
+			}
+		}
+		$new_messages = db_query("SELECT pm.mid,pm.subject,pm.body,pm.author,pi.thread_id from pm_message pm INNER JOIN pm_index pi ON pm.mid = pi.mid WHERE pi.recipient = :recipient AND pi.is_new = 1 AND pi.deleted = 0 ORDER BY pm.mid DESC", array(':recipient' => $user->uid));
+		if(!empty($new_messages) && $show_popup == 1) {
+			$output = '<div class="forum-message-popup"><div class="borderwrap"><div class="maintitle" style="padding:4px">Your New Messages</div><span class="button b-close"><span>X</span></span>';
+			$output .= '<table class="ipbtable" style="height: 100%; width: 100%;"><tr><th>Sender</th><th>Message</th><th>&nbsp;</th></tr>';
+			foreach($new_messages as $new_message) {
+				$user_detail = user_load($new_message->author);
+				$name = '';
+				if(isset($user_detail->field_first_name['und'][0]['value'])) {
+					$name = $user_detail->field_first_name['und'][0]['value'].' '.$user_detail->field_last_name['und'][0]['value'];
+				}
+				else if (empty($name)) {
+					$name = $user_detail->name;
+				}
+				$body = str_replace("\n", " ", $new_message->body);
+				$body = strip_tags($body);
+				if(strlen($body) > 50){
+					$body = substr($body, 0, 50).'...';
+				}
+				$subject = $new_message->subject;
+				if(strlen($subject) > 50){
+					$subject = substr($subject, 0, 50).'...';
+				}
+				$message = 'Subject: '.$subject.'<br/>Message: '.$body;
+				$link = '';
+				if($new_message->mid == $new_message->thread_id) {
+					$link = '<a href="/messages/view/'.$new_message->thread_id.'" class="view-message-from-popup">View</a>';
+				}
+				else {
+					$link = '<a href="/messages/view/'.$new_message->thread_id.'#privatemsg-mid-'.$new_message->mid.'" class="view-message-from-popup">View</a>';
+				}				 
+				$output .= '<tr><td>'.ucwords($name).'</td><td>'.$message.'</td><td>'.$link.'</td></tr>';
+			}
+			$output .= '</table></div></div>';
+		}
+	}
+	return $output;
+}
+
+
+
+
+
+

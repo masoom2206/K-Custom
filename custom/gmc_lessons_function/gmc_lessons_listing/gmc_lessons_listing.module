@@ -1,0 +1,1693 @@
+<?php
+/**
+* Implementation of hook_init
+*/
+function gmc_lessons_listing_init() {
+  drupal_add_library('system', 'ui.sortable');
+  drupal_add_js(drupal_get_path('module', 'gmc_lessons_listing') .'/js/gmc_lessons_listing.js');
+  drupal_add_js(drupal_get_path('module', 'gmc_lessons_listing') .'/js/jquery.bpopup.min.js');
+}
+
+/**
+* Implementation of hook_menu
+*/
+function gmc_lessons_listing_menu() {
+  $items = array();
+ /* $items['node/%/all-lessons'] = array(
+    'title' => t('Manage Lessons'),
+    'page callback' => 'list_lesson_data',
+	  'page arguments' => array(1),
+    'access callback' => TRUE,
+    'weight' => 0,
+    'type' => MENU_LOCAL_TASK,
+    'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
+  );*/
+  $items['node/%/all-parts'] = array(
+    'title' => t('Manage Lessons'),
+    'page callback' => 'list_lesson_data',
+	  'page arguments' => array(1),
+    'access callback' => TRUE,
+    'weight' => 0,
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
+  );
+ /* $items['node/%/all-lessons/upload/thumbnail'] = array(
+    'title' => t('Manage Lessons Thumbnail'),
+    'page callback' => 'drupal_get_form',
+	  'page arguments' => array('list_lesson_data_upload_thumbnail'),
+    'access callback' => TRUE,
+    'type' => MENU_LOCAL_TASK,
+    'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
+  );*/
+  $items['node/%/all-parts/upload/thumbnail'] = array(
+    'title' => t('Manage Lessons Thumbnail'),
+    'page callback' => 'drupal_get_form',
+	  'page arguments' => array('list_lesson_data_upload_thumbnail'),
+    'access callback' => TRUE,
+    'type' => MENU_LOCAL_TASK,
+    'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
+  );
+  $items['lesson/%/part/%/edit/%'] = array(
+     'title' => t(''),
+    'page callback' => 'lesson_data_fid_edit',
+    'page arguments' => array(3),
+    'access callback' => TRUE,
+  );
+  $items['node/%/all-parts/%/edit/%'] = array(
+    'title' => t('Manage Lessons note and description'),
+    'page callback' => 'lesson_data_fid_edit',
+    'page arguments' => array(3),
+    'access callback' => TRUE,
+    'type' => MENU_LOCAL_TASK,
+  );
+  $items['update/weight/data'] = array(
+    'title' => t('Update Weight Data'),
+    'page callback' => 'update_weight_data',
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK
+  );
+  $items['update/uup/data'] = array(
+    'title' => t('Update Weight Data'),
+    'page callback' => 'update_uup_data',
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK
+  );
+  $items['update/gppdf/data'] = array(
+    'title' => t('Update Weight Data'),
+    'page callback' => 'update_gppdf_data',
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK
+  );
+  $items['update/mp3w/data'] = array(
+    'title' => t('Update Weight Data'),
+    'page callback' => 'update_mp3w_data',
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK
+  );
+  $items['delete/lesson-files'] = array(
+    'title' => t('Delete Lessons'),
+    'page callback' => 'delete_lesson_files',
+    'access callback' => TRUE,
+  );
+  $items['lesson/preview/%'] = array(
+    'title' => t('Lessons Preview'),
+    'page callback' => 'preview_lesson_data',
+	  'page arguments' => array(2),
+    'access callback' => TRUE,
+    'type' =>  MENU_CALLBACK,
+  );
+  $items['revisionlesson/preview/%'] = array(
+    'title' => t('Revision Lessons Preview'),
+    'page callback' => 'preview_lesson_data',
+	  'page arguments' => array(2),
+    'access callback' => TRUE,
+    'type' =>  MENU_CALLBACK,
+  );
+  $items['listtrack/%'] = array(
+    'title' => t('Lessons Preview'),
+    'page callback' => 'make_copy_to_revision',
+	  'page arguments' => array(1),
+    'access callback' => TRUE,
+    'type' =>  MENU_CALLBACK,
+  );
+  return $items;
+}
+
+
+function gmc_lessons_listing_menu_alter(&$items) {
+  $items['lesson/%/part/%/edit/%'] = $items['node/add/all-parts'];
+  unset($items['node/add/all-parts']);
+}
+
+function gmc_lessons_listing_form_node_form_alter(&$form,&$form_state,$form_id) {
+  global $user;
+
+  if ($form['#node']->type=="all_parts") {
+      drupal_set_title('');
+    $nid = arg(1);
+    
+    $revisionstatus = _get_review_status($nid);
+    if ($revisionstatus == 0) {
+      $databasename = 'lesson_files';
+    } else {
+      $databasename = 'gmc_files_review';
+    }
+    $img_query = db_select($databasename, 'a');
+    $img_query->fields('a');
+    $img_query->join('file_managed', 'f', 'f.fid = a.fid');
+    $img_query->fields('f'); 
+    $img_query->condition('a.nid',$nid);
+    $or = db_or()->condition('f.filemime','image/jpeg')->condition('f.filemime','image/png')->condition('f.filemime','image/gif');
+    $img_query->condition($or);
+    $img_records = $img_query->execute();
+    $option = array();
+    foreach ($img_records as $img_data) {
+       $option[$img_data->fid] = $img_data->filename;
+    }
+    $form['field_images']['und']['#options'] = $option;
+   // $form['additional_settings']['#access'] = FALSE;
+    
+    $node = node_load($nid);
+    if ($user->uid != 1) {
+      if ($user->uid != $node->uid) 
+        drupal_access_denied();
+    }
+    $fid = arg(3);
+    $getrevison = _get_review_status_fid($fid);
+    if ($getrevison > 0)
+      $database = 'gmc_files_review';
+    else 
+      $database = 'lesson_files';
+    $vid_query = db_select($database, 'a');
+    $vid_query->fields('a');
+    $vid_query->condition('a.fid',$fid);
+    $db_or = db_or();
+    $db_or->condition('f.filemime','video/mp4');
+    $db_or->condition('f.filemime','video/x-flv');
+    $vid_query->condition($db_or); 
+    $vid_query->join('file_managed', 'f', 'f.fid = a.fid'); 
+    $vid_query->fields('f');
+    $vid_query->orderBy('weight');
+    $data = $vid_query->execute()->fetchObject();
+
+    $form['body']['und']['0']['#format'] = "instructors_lesson";
+    $form['body']['und']['0']['#title'] = t('Text instructions for this part :'); 
+    $form['body']['und']['0']['#value'] = $data->description;
+    $noderevision = _get_review_status($nid);
+
+
+    if ($noderevision > 0) 
+      $preview = 'revisionlesson/preview/'.$nid;
+    else 
+     $preview = 'lesson/preview/'.$nid;
+    //module_load_include('inc', 'node', 'node.pages');
+   // $form = node_add('all_parts');
+    $form['namefile'] = array(
+      '#weight' => '-5',
+      '#suffix' => '<h2>Edit lesson part "' . arg(5) . '"</h2><br /><div><b>' . $node->title . ', Filename: '.$data->filename.'</b></div>',
+      '#value' => $data->filename,
+    );
+
+    $form['moviname'] = array(
+      '#weight' => '-4',
+      //'#suffix' => '<div id="">'.l(t('Scale Generator'), 'scalegenerator',  array('attributes' => array('target'=>'_blank', 'class' => ''))).'</div>',
+      '#suffix' => '<div class="content-block" style="width: 70px; margin-top:0px!important;">'.l(t('Preview'), $preview, array('attributes' => array('target'=>'_blank', 'style' => 'color:RED;', 'class' => 'bigbutton'))).'</div>',
+      //'#value' => $data->filename,
+    );
+    $form['lesson_desc'] = array(
+      '#weight' => '-2',
+      '#rows' => '11',
+      '#type' => 'textarea',
+      '#title' => t('Tab for this part (always include backing chords above the tab): '),
+      '#value' => $data->notes,
+    );
+   /* $form['lesson_tab_text'] = array(
+      '#rows' => '5',
+      '#weight' => '-1',
+      '#type' => 'text_format',
+      '#format' => 'instructors_lesson', 
+      '#base_type' => 'textarea',
+      '#title' => t('Text instructions for this part (use shift + enter for a new line):'),
+      '#value' => $data->description,
+    );*/
+    $form['fid'] = array(
+      '#type' => 'hidden',
+	    '#attributes' => array('id' => array('edit-lesson-file')),
+      '#value' => $data->fid,
+    );
+     $form['status'] = array(
+      '#type' => 'hidden',
+      '#value' => $data->status,
+    );
+    $form['weight'] = array(
+      '#type' => 'hidden',
+      '#value' => $data->weight,
+    );
+    $form['dnid'] = array(
+      '#type' => 'hidden',
+      '#value' => $nid,
+    );
+    $form['actions']['my_action'] = array(
+      '#type' => 'submit',
+      '#value' => t('Save'),
+      '#submit' => array('gmc_lessons_add_details_form_submit'),
+    );
+    unset($form['actions']['submit']);
+    $form['additional_settings']['#access'] = FALSE;
+    $form['body']['und'][0]['format']['#options']['#access'] = FALSE;
+    
+  }
+}
+/** Impelement the lesson preview page
+  *  @preview_lesson_data function
+  *  $nid : node id
+  *  using node_view() function for call node preview
+  *  Return full node view.
+  */
+function preview_lesson_data($nid) {
+  global $user;
+  drupal_add_js(drupal_get_path('module', 'lessons_support') . '/js/lesson.js');
+  $node = node_load($nid);
+  if (!in_array('administrator', $user->roles)) {
+    if ($user->uid != $node->uid) {
+      drupal_access_denied();
+      exit;
+    }
+  }
+  $elements = node_view($node, 'full');
+  $full = drupal_render($elements);
+  $output = '<div class="preview node-type-lessons">';
+  $output .= '<h3 class="post-preview" >' . t('Preview of your posting') . '</h3>';
+  $output .= $full;
+  $output .= "</div>\n";
+  return $output;
+}
+
+/** Impelement ajax callback function for update video parts status with selectlist.
+  *  @update_gppdf_data function
+  *  variable $_POST['data'],
+  *  $que : array list of file id and status.
+  *  Return NONE.
+  */
+function update_gppdf_data() {
+  $que =  explode(',', $_POST['data']);
+  $nid = $_POST['nid'];
+  $filerevision = _get_review_status($nid);
+  if ($filerevision == 0) {
+    $node = node_load($nid);
+    if ($node->status == 1) {
+      make_copy_to_revision($nid); 
+      $database = 'gmc_files_review';
+    } else {
+      $database = 'lesson_files';
+    }
+  } else {
+    $database = 'gmc_files_review';
+  }
+  foreach($que as $key) {
+    $val =  explode('--', $key);
+    if ($val[1] == 'true') 
+        $i= 1;
+    else 
+        $i = 0;
+    db_update($database)
+      ->fields(array(
+       'publish' => $i,
+      ))
+    ->condition('fid', $val[0], '=')
+    ->execute();
+  }
+  print $node->status.'---'.$nid;
+}
+
+/** Impelement ajax callback function for update video parts status with selectlist.
+  *  @update_gppdf_data function
+  *  variable $_POST['data'],
+  *  $que : array list of file id and status.
+  *  Return NONE.
+  */
+function update_mp3w_data() {
+  $nid = $_POST['nid'];
+  $fid = $_POST['fid'];
+  $node = node_load($nid);
+  $status = $node->status;
+  if ($status == 1) {
+    $revstatus = _get_review_status($nid);
+    if ($revstatus == 0) {
+      make_copy_to_revision($nid);
+    } 
+     db_merge('gmc_node_backing_revision')
+      ->key(array('nid' => $nid))
+      ->fields(array(
+        'nid' => $nid,
+        'fid' => $fid,
+        'date' => time(),
+      ))
+      ->execute();
+  } else {
+    $node->field_downloadable_backing['und'][0]['value'] = $fid;
+    field_attach_presave('node', $node);
+    field_attach_update('node', $node);
+  }
+  print 'Done';
+}
+
+/** Impelement ajax callback function for update video parts status with radio button.
+  *  @update_gppdf_data function
+  *  variable $_POST['data'],
+  *  $que : array list of file id and status.
+  *  Return NONE.
+  */
+function update_uup_data() {
+  $fid =  $_POST['fid'];
+  $op =  $_POST['op'];
+  $nid = _get_review_status_nid($fid);
+  $node = node_load($nid);
+  $revision = _get_review_status_fid($fid);
+  if ($revision == 0) {
+    if ($node->status == 0 ) {
+      $dbname = 'lesson_files';
+    } else {
+      $dbname = 'gmc_files_review'; 
+      make_copy_to_revision($node->nid); 
+    }
+  } else {
+    $dbname = 'gmc_files_review';
+  }
+  db_merge($dbname)
+    ->key(array('fid' => $fid))
+    ->fields(array(
+      'fid' => $fid,
+      'publish' => $op,
+    ))
+    ->execute();
+  print 'done';
+}
+
+/** Impelement ajax callback function for update video parts weight and part number.
+  *  @update_weight_data function
+  *  variable $_POST['data'],
+  *  $que : array list of file id and status.
+  *  Return NONE.
+  */
+function update_weight_data() {
+  $que =  explode(',', $_POST['data']);
+  $nid = $_POST['nid'];
+  $status = $_POST['status'];
+  $i = 0;
+  $node = node_load($nid);
+  $revistion = _get_review_status($nid);
+  if ($revision == 0) {
+    if ($node->status == 0 ) {
+      $dbname = 'lesson_files';
+    } else {
+      $dbname = 'gmc_files_review'; 
+      make_copy_to_revision($node->nid); 
+    }
+  } else {
+    $dbname = 'gmc_files_review';
+  }
+  foreach($que as $key) {
+    db_update($dbname)
+      ->fields(array(
+       'weight' => $i,
+      ))
+    ->condition('fid', $key, '=')
+    ->execute();
+    $i++;
+  }
+  print 'Done';
+}
+
+
+/** Impelement selectlist form for ublish/Un-publish section
+  *  @gmc_lessons_listing_member_form function
+  *  $nid : node id
+  *  using node_view() function for call node preview
+  *  Return full node view.
+  */
+function gmc_lessons_listing_member_form($form,&$form_state, $status, $fid) {
+  $form['member'] = array(
+    '#type' => 'select',
+    '#title' => t(''),
+    '#options' => array(
+      0 => t('Unpublished'),
+      1 => t('Published'),
+    ),
+    '#attributes' => array('onchange' => 'checkd('.$fid.', this.value)'),
+    '#id' => 'list-'.$fid,
+    '#class' => 'list-action',
+	  '#default_value' => $status,
+  );
+  return $form;
+}
+
+/**  Impelement Lesson part tab/note edit page
+  *  @lesson_data_fid_edit function
+  *  $fid : file id
+  *  using node_view() function for call node preview
+  *  gmc_lessons_add_details_form : form for edit data.
+  *  Return full node view.
+  */  
+function lesson_data_fid_edit($fid) {
+  $getrevison = _get_review_status_fid($fid);
+  if ($getrevison > 0)
+    $database = 'gmc_files_review';
+  else 
+    $database = 'lesson_files';
+  $vid_query = db_select($database, 'a');
+  $vid_query->fields('a');
+  $vid_query->condition('a.fid',$fid);
+  $db_or = db_or();
+  $db_or->condition('f.filemime','video/mp4');
+  $db_or->condition('f.filemime','video/x-flv');
+  $vid_query->condition($db_or); 
+  $vid_query->join('file_managed', 'f', 'f.fid = a.fid'); 
+  $vid_query->fields('f');
+  $vid_query->orderBy('weight');
+  $vid_records = $vid_query->execute()->fetchObject();
+  return $rendformfordetails = drupal_get_form('gmc_lessons_add_details_form', $vid_records);
+}
+
+/**  Impelement Lesson part listing page
+  *  @list_lesson_data function
+  *  $nid : node id
+  *  using node_view() function for call node preview
+  *  Return full node view.
+  */  
+function list_lesson_data($nid) {
+  global $user;
+  if(!is_numeric($nid)) return drupal_not_found();
+  //start with upload fields.
+  $node = node_load($nid);
+  if (!in_array('administrator', $user->roles)) {
+    if ($user->uid != $node->uid) 
+      drupal_access_denied();
+  }
+  $revisionstatus = _get_review_status($nid);
+  $titlerev = '';
+  $revisionpreview = '';
+  if ($node->status == 1) {
+    if ($revisionstatus == 0) {
+      $databasename = 'lesson_files';
+      $pretext = 'Preview'; 
+    } else {
+      $databasename = 'gmc_files_review';
+      $titlerev = '(Revision)';
+      $pretext = 'Live Preview';
+      $revisionpreview = l(t('Revision Preview'), 'revisionlesson/preview/'.$nid, array('attributes' => array('target'=>'_blank', 'style' => 'color:RED;', 'class' => 'bigbutton')));
+    }
+  } else {
+    $databasename = 'lesson_files';
+    $pretext = 'Preview';
+  }
+  $submitstatus = 0;
+  $reid = get_review_ids($nid);
+  $output = '<div><h2 style="color:#0074BD; font-size:24px;">'.$node->title.' '.$titlerev.'</h2></div>';
+  $output .= '<div class="content-block" style=" margin-top:0px!important;">'.l(t($pretext), 'lesson/preview/'.$nid, array('attributes' => array('target'=>'_blank', 'style' => 'color:RED;', 'class' => 'bigbutton'))) . ' ' . $revisionpreview;
+  if (($node->status == 0 && $reid == 0) || ($revisionstatus != 0 && $reid == 0)) {
+    $output .= '&nbsp;&nbsp;&nbsp;<span class="re"><a href="javascript:void(0);" style="color:RED;" class="bigbutton" id="reviewlesson" nid="'.$nid.'" revision = "'.$revisionstatus.'" >Submit for Review</a></span>';
+    $submitstatus = 0;
+  } else if (($node->status == 0 && $reid == 1) || ($revisionstatus != 0 && $reid == 1)) {
+     $output .= '&nbsp;&nbsp;&nbsp;<span><a class="bigbutton" style="color:#bbb;">Submit for Review</a></span>';
+     $output .= '&nbsp;&nbsp;&nbsp;<span><a href="javascript:void(0);" style="color:RED;" class="bigbutton" id="reeditlesson" nid="'.$nid.'" revision = "'.$revisionstatus.'">Re-edit</a></span>';
+      $submitstatus = 1;
+     $reviewrevision = _get_revision_status_review($nid);
+     if ($reviewrevision == 1 && in_array('administrator', $user->roles)) {
+       $submitstatus = 0;
+       $output .= '&nbsp;&nbsp;&nbsp;<span class="re"><a style="float:right;color:RED;" href="javascript:void(0);" class="bigbutton" id="revisionlesson" nid="'.$nid.'" revision = "'.$revisionstatus.'">Publish Current Lesson Revision</a></span>';
+     }
+     
+  }
+  $output .=  '</div>';
+  $output .= '<div>';
+  if ($submitstatus == 0) {
+    $form_upload = drupal_get_form('upload_zip', $nid);
+    $output .=  drupal_render($form_upload);
+  }
+  $output .= '</div>';
+  //implement below list of video part and description section.
+  //header variable for list the header for video parts
+	$header = array(
+    array('data' => t('File Name')),  
+    array('data' => t('File Type')), 
+    array('data' => t('Weight')),
+    array('data' => t('Status')), 
+    array('data' => t('Operations')), 
+  );
+	$header3 = array(
+    array('data' => t('File Name')),  
+    array('data' => t('File Type')), 
+    array('data' => t('Download')),
+    array('data' => t('Weight')),
+    array('data' => t('Status')), 
+    array('data' => t('Operations')), 
+  );
+  //header variable for list the header for other files
+	$new_header = array(
+    array('data' => t('File Name')),  
+    array('data' => t('Image link')), 
+    array('data' => t('Status')), //File Type
+    array('data' => t('Operations')), 
+  );
+  //header variable for list the header for other files
+	$image_header = array(
+    array('data' => t('File Name')),  
+    array('data' => t('Image link')), 
+    array('data' => t('File Type')),
+    array('data' => t('Operations')), 
+  );
+  // select the video part from table base on $nid(node id)
+	$vid_query = db_select($databasename, 'a');
+	$vid_query->fields('a');
+	$vid_query->condition('a.nid',$nid);
+  $db_or = db_or();
+  $db_or->condition('f.filemime','video/mp4');
+  $db_or->condition('f.filemime','video/x-flv');
+  $db_or->condition('f.filemime','video/quicktime');
+  $db_or->condition('f.filemime','video/mov');
+  $db_or->condition('f.filemime','video/x-ms-wmv');
+  $vid_query->condition($db_or); 
+	$vid_query->join('file_managed', 'f', 'f.fid = a.fid'); 
+  $vid_query->fields('f');
+  $vid_query->orderBy('weight');
+	$vid_records = $vid_query->execute();
+	$items = array();
+  $title = t('My custom listing');
+  $type = 'ul';
+  // The following attributes apply to the list tag (e.g., <ol> or <ul>)
+  $attributes = array(
+    'id' => 'itemlist',
+    'class' => 'custom-class another-custom-class', // a string or indexed (string) array with the classes for the list tag
+  );
+  // loop for list the data and save in $items for theme_list
+	foreach ($vid_records as $vid_data) {
+    if ($vid_data->publish == 1) {
+      $wdata = ($vid_data->weight == 0) ? 'main' : 'Part ' . $vid_data->weight;
+    } else {
+      $wdata = 'Not Assigned to any video part';
+    }
+    $formd = drupal_get_form('gmc_lessons_listing_member_form', $vid_data->publish, $vid_data->fid);
+   // $reviewstatus = _get_file_review_status($vid_data->fid);
+   // if ($reviewstatus != 0) {
+    if ($submitstatus == 0 )  {
+      $pubform = drupal_render($formd);
+      $vrevidata = l('Edit', 'lesson/' . $nid . '/part/' . $vid_data->fid . '/edit/' . $wdata,  array('attributes' => array('target'=>'_blank')));
+    } else {
+    //  if ( $user->uid == 1) {
+    //    $pubform = l('click here to approved', '#;');
+    //  } else {
+        $pubform = 'Waiting for review';
+        $vrevidata = 'Waiting for review';
+    //  }  
+    }
+    if (in_array('administrator', $user->roles)) {
+      $admincon = ' | ' . l('Delete', 'delete/lesson-files', array('attributes' => array('class' => array('keysop'),'onclick' => array('if(!confirm("Do you really want to Delete this file?")){return false;}')),'query' => array('fid' => $vid_data->fid,'nid' => $nid,'file_id' =>$vid_data->fid)));
+    } else {
+      $admincon = '';
+    }
+		$items[] = array('data' => '<table style="width:100%;"><tr style="border: 1px solid rgb(187, 187, 187); padding: 20px;"><td><img style="padding: 0 0 0 10px; width: 30px;" src="/sites/all/themes/gmc_v2/images/drage.jpg" /></td><td style="width:60px;">'.$wdata.'</td><td style="width: 25%;">'.$vid_data->filename.'</td><td>'.$vid_data->filemime.'</td><td>'. $pubform .'</td><td>'. $vrevidata . $admincon  .'</td></tr></table>', 'class' => array('list-i-'.$vid_data->fid, 'listcontrole'), 'id' => array('itemsort'), 'newdata' => array($vid_data->fid), 'nid' => array($nid), 'status' => array($vid_data->publish), 'style' => array('font-size:12px;'));
+	}
+    
+	if ($items) {
+		$output .= '<span id="vid-head" class="lesson-list-head">Videos</span>';
+    //$output .= '<span id="" class="">Note : Using the mouse for change the order of videos.(Drag and Drop). You can publish and unpublished data using select list and then refresh page. Please note video auto assigned to part base on video order (Unpublish part not display on the lesson page.) '.l(t('Click here to refresh page'), 'node/'.$nid.'/all-parts').'</span>';
+    $output .= '<span id="" class="">Notes: Adjust the order of the videos in the lesson (main video, part 1, part 2 etc) using drag n drop. Published/Unpublished menu controls which videos will be visible on the lesson page.'.l(t('Click here to refresh page'), 'node/'.$nid.'/all-parts', array('attributes' => array('color' => 'RED'))).'</span>';
+		$output .= '<div id="vid-head-cont" style="width: 800px;">'.theme_item_list(array('items' => $items, 'title' => '', 'type' => $type, 'attributes' => $attributes)).'</div>';
+    $rendformfordetails = drupal_get_form('gmc_lessons_add_details_form', $vid_data);
+    $lessonform = 'gmc_lessons_add_details_form';
+		$output .='<div class="lesson-popup" style=""><span class="button b-close"><span>X</span></span><div id="content_settings">'.drupal_render($rendformfordetails).'</div></div>';		
+	}
+  $output .= '<span id="tab-head" class="lesson-list-head" >COMPLETE TAB</span>';
+  // call function for get Complete Tab form.
+  $comform = drupal_get_form('complete_tab', $submitstatus);
+  $output .=  '<div id="tab-head-cont" style="clear: both;">'.render($comform).'</div>';
+	//for mp3 files manage here
+	$mp3_query = db_select($databasename, 'a');
+	$mp3_query->fields('a');
+	$mp3_query->condition('a.nid',$nid)->condition('f.filemime','audio/mpeg');
+	$mp3_query->join('file_managed', 'f', 'f.fid = a.fid');  
+  $mp3_query->fields('f');
+  $mp3_query->orderBy('filesize', 'ASC');
+	$mp3_records = $mp3_query->execute();
+	$mp3_rows = array();
+  $w = 0;
+  $node = node_load($nid);
+  foreach($mp3_records as $mp3_data){
+    if ($submitstatus == 0 )  {
+      $formm3name2 = drupal_get_form('update_namemp', $mp3_data->fid, str_replace(".mp3", "", $mp3_data->filename));
+      $formm3name = drupal_render($formm3name2);
+    } else {
+      $formm3name = str_replace(".mp3", "", $mp3_data->filename);
+    }
+    if (!empty($node->field_downloadable_backing['und'][0]['value'])) {
+      $pub = ($node->field_downloadable_backing['und'][0]['value'] == $mp3_data->fid) ? 'CHECKED' : '';
+      $mp3v = ($node->field_downloadable_backing['und'][0]['value'] == $mp3_data->fid) ? 1 : 0;
+    } else{
+      $pub = '';
+      $mp3v = 0;
+    }
+    
+    $reviewstatus = _get_file_review_status($mp3_data->fid);
+    $revisonfid = _get_mp3_revison_status($nid);
+    if ($revisionstatus > 0) {
+      if ($mp3_data->fid == $revisonfid) {
+        $pub = 'CHECKED';
+        $mp3v = 1;
+      }
+    }
+    if ($submitstatus == 0 )  {
+      $pubform = drupal_get_form('gmc_lessons_listing_member_form', $mp3_data->publish, $mp3_data->fid);
+      $pubform2 = '<input type="radio" nid="' . $nid . '" fid="' . $mp3_data->fid . '" name="mp3_rows" value="' . $mp3_data->publish . '"' . $pub . '> Downloadable';
+    } else {
+        $pubform2 = 'Waiting for review';
+   //   if ( $user->uid == 1) {
+   //     $pubform = l('click here to approved', '#;');
+   //   } else {
+        $pubform = 'Waiting for review';
+    //  }  
+    }
+    
+		$mp3_rows[] = array(
+	    $formm3name,
+	    array('data' => $mp3_data->filemime), 
+      $pubform2,
+      array('data' => $mp3_data->weight), 
+	    array('data' => $pubform),
+	    l('Delete', 'delete/lesson-files', array('attributes' => array('class' => array('keysop'),'onclick' => array('if(!confirm("Do you really want to Delete this file?")){return false;}')),'query' => array('fid' => $mp3_data->fid,'nid' => $nid,'file_id' =>$mp3_data->fid))),
+		);
+    $w++;
+	}
+	if(!empty($mp3_rows)){
+		$output .= '<span id="mp3-head" class="lesson-list-head">MP3</span>';
+		$output .= '<div id="mp3-head-cont" > ' . theme('table', array('header' => $header3, 'rows'=> $mp3_rows,'attributes' => array('class' => array('lesson-listing')))) . '</div>';
+	}
+	//for doc/pdf files manage here
+	$pdf_query = db_select($databasename, 'a');
+	$pdf_query->fields('a');
+	$pdf_query->condition('a.nid',$nid)->condition('f.filemime','application/pdf');
+	$pdf_query->join('file_managed', 'f', 'f.fid = a.fid'); 
+  $pdf_query->fields('f');
+	$pdf_records = $pdf_query->execute();
+	$pdf_rows = array();
+	foreach($pdf_records  as $pdf_data){
+    $pub = ($pdf_data->publish == 1) ? 'CHECKED' : '';
+    $active = ($submitstatus == 0 ) ? '<input type="radio" nid="' . $nid . '" fid="' . $pdf_data->fid . '" name="pdf_rows" value="' . $pdf_data->publish . '" '.$pub.'> Active' : 'Waiting for review';
+		$pdf_rows[] = array(
+      array('data' => $pdf_data->filename), 
+      array('data' => $pdf_data->filemime), 
+      $active,
+      l('Delete', 'delete/lesson-files', array('attributes' => array('class' => array('keysop'),'onclick' => array('if(!confirm("Do you really want to Delete this file?")){return false;}')), 'query' => array('fid' => $pdf_data->fid, 'nid' => $nid, 'file_id' => $pdf_data->fid))),
+    );
+	}
+	if (!empty($pdf_rows)) {
+		$output .= '<span id="pdf-head" class="lesson-list-head">PDF</span>';
+		$output .= '<div id="pdf-head-cont" >'. theme('table', array('header' => $new_header, 'rows'=> $pdf_rows,'attributes' => array('class' => array('lesson-listing')))).'</div>';
+	}
+	//for gp5 files manage here
+
+	$gp5_query = db_select($databasename, 'a');
+	$gp5_query->fields('a');
+	$gp5_query->condition('a.nid',$nid)->condition('f.filemime','application/octet-stream');
+	$gp5_query->join('file_managed', 'f', 'f.fid = a.fid'); 
+  $gp5_query->fields('f');
+	$gp5_records = $gp5_query->execute();
+	$gp5_rows = array();
+	while($gp5_data = $gp5_records->fetchObject()){
+    $pub = ($gp5_data->publish == 1) ? 'CHECKED' : '';
+    $active = ($submitstatus == 0 ) ? '<input type="radio" nid="' . $nid . '" fid="' . $gp5_data->fid . '" name="gp5_rows" value="' . $gp5_data->publish . '"' . $pub . '> Active' : 'Waiting for review';
+		$gp5_rows[] = array(
+			array('data' => $gp5_data->filename), 
+			array('data' => $gp5_data->filemime), 
+      $active,
+			l('Delete', 'delete/lesson-files', array('attributes' => array('class' => array('keysop'), 'onclick' => array('if(!confirm("Do you really want to Delete this file?")){return false;}')), 'query' => array('fid' => $gp5_data->fid, 'nid' => $nid, 'file_id' => $gp5_data->fid))),
+		);
+	}
+	if (!empty($gp5_rows)) {
+		$output .= '<span id="gp-head" class="lesson-list-head">GUITAR PRO</span>';
+		$output .= '<div id="gp-head-cont" >' . theme('table', array('header' => $new_header, 'rows' => $gp5_rows, 'attributes' => array('class' => array('lesson-listing')))) . '</div>';
+	}
+	//for images files manage here
+  $img_query = db_select($databasename, 'a');
+	$img_query->fields('a');
+	$img_query->join('file_managed', 'f', 'f.fid = a.fid');
+  $img_query->fields('f'); 
+	$img_query->condition('a.nid',$nid);
+	$or = db_or()->condition('f.filemime','image/jpeg')->condition('f.filemime','image/png')->condition('f.filemime','image/gif');
+	$img_query->condition($or);
+	$img_records = $img_query->execute();
+	$img_rows = array();
+	foreach ($img_records as $img_data) {
+		$img_rows[] = array(
+			array('data' => '<span title="'.$img_data->filename.'">'. text_summary($img_data->filename, 'full_html', 60).'</span>') , 
+      '<div><span class="copyimageurl" style="display:none;"><input type="text" value="'.file_create_url($img_data->uri).'" /></span><spna class="clicktoshow bigbutton" style="cursor: pointer;">show url</span></div>',
+			array('data' => $img_data->filemime), 
+			l('Delete', 'delete/lesson-files', array('attributes' => array('class' => array('keysop'),'onclick' => array('if(!confirm("Do you really want to Delete this file?")){return false;}')),'query' => array('fid' => $img_data->fid,'nid' => $nid,'file_id' =>$img_data->fid))),
+		);
+	}
+	if (!empty($img_rows)) {
+		$output .= '<span id="img-head" class="lesson-list-head">IMAGES</span>';
+		$output .= '<div id="img-head-cont" >' . theme('table', array('header' => $image_header, 'rows'=> $img_rows, 'attributes' => array('class' => array('lesson-listing')))) . '</div>';
+	}
+  //Thumbnail manage here
+  if (in_array('administrator', $user->roles)) {
+
+    $output .= '<div><span id="vid-head" class="lesson-list-head">Videos Lesson Thumbnails</span>';
+    $output .= '<img style="max-width:300px;" src="/sites/default/files/uploads/' . $nid . '/big_' . $nid . '.jpg" />';
+    $output .= '<div style="clear:both;">' . l('Edit lesson thumbnail', 'node/' . $nid . '/all-parts/upload/thumbnail', array('attributes' => array('target' => '_blank', 'style' => 'color:#0074BD;'))) . '</div>';
+  }
+  $output .= '<div class="content-block" style="clear: both;" ><span class="re"><a href="/node/'.$nid.'/all-parts" style="color:RED;" class="bigbutton" id="" nid="'.$nid.'" revision = "'.$revisionstatus.'">Save</a></span></div>';
+  $output .= '</div>';
+  $output .= '<div class="element_to_pop_up" ><div>Are you sure you want to submit this lesson for review? This should only be done when a lesson is completely error free and ready to be presented to the world.<br/>NO - I will review it once more<br/>YES - I am confident the lesson is error free</div><div style="text-align:center;" class="content-block"><a href="javascript:void(0);" class="bigbutton b-close" >No</a>&nbsp;&nbsp;<a href="javascript:void(0);" nid="'.$nid.'" revision = "'.$revisionstatus.'" class="bigbutton b-submit"  >Yes</a></div></div>';
+	if (!empty($output)) {
+		$output_data = $output;
+	}
+	else {
+		$output_data = '<h3>No lessons files found for this lesson.</h3>';
+	}
+	return $output_data;
+}
+
+/**  Impelement Delete lesson files 
+  *  @delete_lesson_files function
+  *  $_GET['fid'] : file ID
+  *  $_GET['nid'] : Node nid
+  *  Return full node view.
+  */ 
+function delete_lesson_files() {
+	$fid = $_GET['fid'];
+	$nid = $_GET['nid'];
+  $status = node_load($nid)->status;
+  $revistion = _get_review_status($nid);
+  if ($revistion == 0) {
+    if ($status == 1 ) {
+      make_copy_to_revision($nid);
+      $dbname = 'gmc_files_review';
+    } else {
+      $dbname = 'lesson_files';
+    }
+  } else {
+    $dbname = 'gmc_files_review';
+  }
+	$managed_file = file_load($_GET['file_id']);
+	//file_delete($managed_file,$force=TRUE);
+	db_delete($dbname)
+	  ->condition('fid', $fid)
+	  ->execute();
+	drupal_set_message("Files deleted successfully!", "status");
+	drupal_goto('node/'.$nid.'/all-parts');
+}
+
+/**  Impelement Delete lesson files 
+  *  @gmc_lessons_add_details_form function
+  *  $data : content data for list files information 
+  *  Return form with files data.
+  */ 
+function gmc_lessons_add_details_form($form, &$form_state, $data) {
+  global $user;
+  $nid = arg(1);
+  $node = node_load($nid);
+  if ($user->uid != 1) {
+    if ($user->uid != $node->uid) 
+      drupal_access_denied();
+  }
+  $noderevision = _get_review_status($nid);
+  if ($noderevision > 0) 
+    $preview = 'revisionlesson/preview/'.$nid;
+  else 
+   $preview = 'lesson/preview/'.$nid;
+  //module_load_include('inc', 'node', 'node.pages');
+ // $form = node_add('all_parts');
+  $form['namefile'] = array(
+    '#weight' => '-5',
+    '#suffix' => '<h2>Edit lesson part "' . arg(5) . '"</h2><br /><div><b>' . $node->title . ', Filename: '.$data->filename.'</b></div>',
+    '#value' => $data->filename,
+  );
+  $form['moviname'] = array(
+    '#weight' => '-4',
+    //'#suffix' => '<div id="">'.l(t('Scale Generator'), 'scalegenerator',  array('attributes' => array('target'=>'_blank', 'class' => ''))).'</div>',
+    '#suffix' => '<div class="content-block" style="width: 70px; margin-top:0px!important;">'.l(t('Preview'), $preview, array('attributes' => array('target'=>'_blank', 'style' => 'color:RED;', 'class' => 'bigbutton'))).'</div>',
+    //'#value' => $data->filename,
+  );
+
+  $form['lesson_desc'] = array(
+    '#weight' => '-2',
+    '#rows' => '11',
+    '#type' => 'textarea',
+    '#title' => t('Tab for this part (always include backing chords above the tab): '),
+    '#value' => $data->notes,
+  );
+  $form['lesson_tab_text'] = array(
+    '#rows' => '5',
+    '#weight' => '-1',
+    '#type' => 'text_format',
+    '#format' => 'instructors_lesson', 
+    '#base_type' => 'textarea',
+    '#title' => t('Text instructions for this part (use shift + enter for a new line):'),
+    '#value' => $data->description,
+  );
+  $form['fid'] = array(
+    '#type' => 'hidden',
+	  '#attributes' => array('id' => array('edit-lesson-file')),
+    '#value' => $data->fid,
+  );
+   $form['status'] = array(
+    '#type' => 'hidden',
+    '#value' => $data->status,
+  );
+  $form['weight'] = array(
+    '#type' => 'hidden',
+    '#value' => $data->weight,
+  );
+  $form['nid'] = array(
+    '#type' => 'hidden',
+    '#value' => $data->nid,
+  );
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Save'),
+  );
+    $form['und'][0]['format']['#access'] = FALSE;
+  return $form;
+}
+
+/**  Impelement form submit callback
+  *  @gmc_lessons_add_details_form_submit function
+  *  Return None
+  */ 
+function gmc_lessons_add_details_form_submit($form,&$form_state){
+	if ($form_state['values']) {
+    $revistion = _get_review_status_fid($form_state['input']['fid']);
+    $status = node_load($form_state['input']['dnid'])->status;
+    if ($revistion == 0) {
+      if ($status == 1 ) {
+        make_copy_to_revision($form_state['input']['dnid']);
+        $dbname = 'gmc_files_review';
+      } else {
+        $dbname = 'lesson_files';
+      }
+    } else {
+      $dbname = 'gmc_files_review';
+    }
+    db_merge($dbname)
+      ->key(array('fid' => $form_state['input']['fid']))
+      ->fields(array(
+        'nid' => $form_state['input']['dnid'],
+        'fid' => $form_state['input']['fid'],
+        'status' => $form_state['input']['status'],
+	      'weight' => $form_state['input']['weight'],
+	      'notes' => $form_state['input']['lesson_desc'],
+        'description' => $form_state['input']['body']['und'][0]['value'],
+        'publish' => $form_state['input']['status'],
+      ))
+      ->execute();
+  }
+ // _revisioning_unpublish_revision($form_state['input']['nid']);
+  $title = node_load($form_state['input']['dnid'])->title;
+  //revisioning_set_status_message(t('%title is no longer publicly visible.', array('%title' => $title)));
+	drupal_set_message("Lesson files updated successfully!", "status");	
+}
+
+/** @upload_form
+  * These form allowed to user upload a zip file and extract it automatically.
+  * >> $nid current page node nid.
+  * Return a upload form.
+  */
+function upload_zip($form,&$form_state, $nid){
+  $form['im-container'] = array(
+    '#prefix'=>'<div id="im-area">',
+    '#suffix'=>'</div>',
+  );
+  $form['image_file'] = array(
+    '#title' => '<h2>Upload your files (zip accepted)</h2>',
+    '#type' => 'file',
+  );
+  $form['nid_id'] = array(
+    '#type' => 'hidden',
+    '#value' => $nid,
+  );
+  $form['upload'] = array(
+    '#type' => 'submit',
+    '#value' => 'upload',
+    //'#submit' => array('upload_image'),
+    '#ajax'=> array(
+      'callback'=>'upload_image',
+      'wrapper'=> 'im-area',
+      'method'=> 'replace',
+      'effect'=> 'fade',
+    ),
+  );
+  return $form;
+}
+
+/** @upload_form
+  * These form allowed to user upload a zip file and extract it automatically.
+  * >> $nid current page node nid.
+  * Return a upload form.
+  */
+function update_namemp($form,&$form_state, $fid, $name){
+  $form['name'] = array(
+    '#type' => 'textfield',
+    '#title' => t(''),
+    '#default_value' => $name,
+    '#size' => 25,
+    '#maxlength' => 128,
+  );
+  $form['fid_id'] = array(
+    '#type' => 'hidden',
+    '#value' => $fid,
+  );
+  $form['upload'] = array(
+    '#type' => 'submit',
+    '#value' => 'Update',
+    '#submit' => array('update_name'),
+    '#suffix'=>'<span id="im-areamp3-'.$fid.'"></span>',
+    '#ajax'=> array(
+      'callback' => 'update_name',
+      'wrapper' => 'im-areamp3-'.$fid,
+      'method' => 'replace',
+      'effect' => 'fade',
+    ),
+  );
+  return $form;
+}
+
+/** @upload_form
+  * These form allowed to user upload a zip file and extract it automatically.
+  * >> $nid current page node nid.
+  * Return a upload form.
+  */
+function update_name($form, $form_state){
+  global $user;
+  $fid = $form['fid_id']['#value'];
+  $name = $form_state['input']['name'].'.mp3';
+  $file = file_load($fid);
+  $file->filename = $name;
+  $file->status = FILE_STATUS_PERMANENT;
+  file_save($file);
+  return '<span id="im-areamp3-'.$fid.'">done</span>';
+
+
+}
+
+/** @upload_image
+  * These form allowed to user upload a zip file and extract it automatically.
+  * >> $nid current page node nid.
+  * Return a upload form.
+  */
+function upload_image($form, $form_state) {
+  global $user;
+  $datasavefilename = '';
+  $weight2 = 100;
+  $nid = $form['nid_id']['#value'];
+  $status = node_load($nid)->status;
+  $revisionstatus = _get_review_status($nid);
+  if($status == 1 && $revisionstatus == 0) {
+     make_copy_to_revision($nid);
+  }
+  $directory = drupal_realpath("public://uploads/".$form['nid_id']['#value']);
+  $extra_directory = $directory.'/original';
+  file_unmanaged_delete_recursive($extra_directory);
+  if ( !file_exists($directory) ) { 
+    drupal_mkdir($directory);
+    drupal_mkdir($extra_directory);
+  }
+  $file2 = file_save_upload('image_file', array('file_validate_extensions' => array('zip rar mp3 jpeg jpg png gif flv mp4 pdf gp5 wmv mov')), "public://uploads/".$form['nid_id']['#value'], $replace = FILE_EXISTS_RENAME);
+  $filefilename = str_replace(" ", "-", $file2->filename);
+  //$filefilename = str_replace("_", "-", $filefilename);
+  $destination =  "public://uploads/".$form['nid_id']['#value']."/".$filefilename;
+  $file = file_copy($file2, $destination, $replace = FILE_EXISTS_RENAME);
+  $file->filename = basename($file->uri);
+  $file->filename = str_replace(" ", "-", $file->filename);
+  //$file->filename = str_replace("_", "-", $file->filename);
+  $type = $file->filemime;
+  $archiver = archiver_get_archiver($file->uri);
+  if (!$archiver) { 
+    $file->status = FILE_STATUS_PERMANENT;
+    $file->uid = $user->uid;
+    file_save($file);
+  
+    if ( $type == 'audio/mpeg') {
+      $mp3_query = db_select('lesson_files', 'a');
+      $mp3_query->fields('a');
+      $mp3_query->condition('a.nid',$nid)->condition('f.filemime','audio/mpeg');
+      $mp3_query->join('file_managed', 'f', 'f.fid = a.fid');  
+      $mp3_query->fields('f');
+      $mp3_query->orderBy('filesize', 'ASC');
+      $mp3_records = $mp3_query->execute()->rowCount(); 
+      if ( $mp3_records > 0) {
+        $iv = (10*$mp3_records)+10;
+     } else {
+        $iv = 10; 
+      }
+      
+      // $lsfilename = $iv.'-bmp.mp3'; 
+      // $iv = $iv + 10; 
+      // $file->filename = $lsfilename;
+      $file->status = FILE_STATUS_PERMANENT;
+      $file->uid = $user->uid;
+      file_save($file);
+    }
+    
+    
+    if (empty($file)) {
+      $form['im-container']=array(
+        '#title'=>t('Preview:'),
+        '#prefix'=>'<div id="im-area">',
+        '#markup'=>'<div>UPLOAD COMPLETE! <b>'.l(t('Click here to refresh page'), 'node/'.$nid.'/all-parts', array('attributes' => array('style' => array('color:RED;')))).'</b></div>',
+        '#suffix'=>'</div>',
+      );
+      return $form['im-container'];
+    }
+  }
+  if (!$archiver) {
+    // throw new Exception(t('Cannot extract %file, not a valid archive.', array('%file' => $file)));
+    //$weight2 = db_query('SELECT MAX(weight)  FROM `lesson_files` WHERE `nid` = :nid AND `weight` >= 100',array('nid' => $nid))->fetchAll();
+    //$weight2 = ($weight2) ? $weight2 : 100;
+    if ( $status == 0 ){
+      _inserting_filesv($file->fid, $nid, 1, $weight2, '', '', 0);
+    } else {
+      _insert_file_revision($file->fid, $nid, 1, $weight2, '', '', 0, 0, 0);
+    }
+    $weight2++;
+    if ($type == 'video/mp4' || $type == 'video/x-flv' || $type == 'video/mov' || $type == 'video/quicktime' || $type == 'video/x-ms-wmv') {
+      if ($type != 'audio/mpeg')  {
+        $srcFile = drupal_realpath($file->uri);
+        $info = pathinfo($file->filename);
+        //$ff = new ffmpeg_movie(drupal_realpath($file->uri));
+        $low = drupal_realpath("public://uploads/".$nid."/small_".$info['filename'].".mp4");
+        $medium = drupal_realpath("public://uploads/".$nid."/medium_".$info['filename'].".mp4");
+        $high = drupal_realpath("public://uploads/".$nid."/high_".$info['filename'].".mp4");
+        $mobile = drupal_realpath("public://uploads/".$nid."/mobile_".$info['filename'].".mp4");
+        $lowf = drupal_realpath("public://uploads/".$nid."/small_".$info['filename']."_qtfast.mp4");
+        $mediumf = drupal_realpath("public://uploads/".$nid."/medium_".$info['filename']."_qtfast.mp4");
+        $highf = drupal_realpath("public://uploads/".$nid."/high_".$info['filename']."_qtfast.mp4");
+        $mobilef = drupal_realpath("public://uploads/".$nid."/mobile_".$info['filename']."_qtfast.mp4");
+        $videosize = '960x720'; 
+ 
+        if ($type != 'video/x-flv' ) {
+          $dimensions = file_get_width_height($nid, $filename);
+          $srcWidth = $dimensions['srcWidth'];
+          $srcWidth -= $srcWidth & 1;
+	        $srcHeight = $dimensions['srcHeight'];
+            $srcHeight -= $srcHeight & 1;
+            $srcsize = $srcWidth."x".$srcHeight;
+            if ($srcHeight >= 1080) {
+             $rate = '8000k';	
+            } else {
+             $rate = '5000k';	
+            }
+            if ($srcHeight >= 1080) {
+              $videosize = '1920×1080';
+            } else if($srcHeight >= 720) {
+              $videosize = '1280x720';
+            }
+          } else {
+             $rate = '5000k';
+          }
+          if (!file_exists($high)) {
+            if($srcHeight >= 1080) {
+              exec("/opt/local/bin/ffmpeg -i $srcFile -vcodec libx264 -preset fast -acodec copy -ab 256 -f mp4 $highf 2>&1",$output);
+            } else {
+              exec("/opt/local/bin/ffmpeg -i $srcFile -vcodec libx264 -preset fast -s $videosize -acodec copy -ab 256 -b:v $rate -f mp4 $highf 2>&1",$output);
+            }
+            exec("/opt/local/bin/qt-faststart ".$highf." ".$high);
+	          unlink(drupal_realpath($highf));
+	        }
+          if (!file_exists($low)) {
+            exec("/opt/local/bin/ffmpeg -i $srcFile -vcodec libx264 -preset fast -acodec copy -ab 256 -b:v 300k -s 512x288 -f mp4 $lowf 2>&1",$output);
+	          exec("/opt/local/bin/qt-faststart ".$lowf." ".$low);
+	          unlink(drupal_realpath($lowf));
+	        }
+	        if (!file_exists($medium)) {
+            exec("/opt/local/bin/ffmpeg -i $srcFile -vcodec libx264 -preset fast -acodec copy -ab 256 -b:v 900k -s 640x360 -f mp4 $mediumf 2>&1",$output);
+	          exec("/opt/local/bin/qt-faststart ".$mediumf." ".$medium);
+	          unlink(drupal_realpath($mediumf));
+	        }
+        }
+      }
+    file_delete($file2);
+  } else { 
+    
+    $files2 = '';
+    $files = $archiver->listContents();
+    $aa = $archiver->extract($extra_directory);
+    file_unmanaged_delete_recursive("public://uploads/".$form['nid_id']['#value']."/original/__MACOSX");
+    $files2 = file_scan_directory($extra_directory ,'/.*\.mp4|wmv|flv|pdf|doc|jpg|png|JPG|PNG|gp5|mp3$/');
+    $weight = 0;
+    $weight2 = 100;
+    $iv = 10;
+    $i = 1;
+    $data = '';
+    $extractfiles = array();
+    foreach ($files2 as $key => $data) {
+      if ($data) {
+        $fp = file_get_contents($data->uri);
+        $type = $file->filemime;
+        $lsfilename = str_replace(' ', '_', $data->filename);
+        if ( $type == 'audio/mpeg') {
+         // $lsfilename = $iv.'-bmp.mp3'; 
+          //$iv = $iv + 10; 
+        }
+        $xpath = 'public://uploads/'.$nid."/".$lsfilename;
+        $file = new stdClass();
+        $file = file_save_data($fp, $xpath, FILE_EXISTS_RENAME);
+        $file->status = FILE_STATUS_PERMANENT;
+        $file->uid = $user->uid;
+        $file->filename = substr(strrchr($file->uri, "/"), 1);
+        file_save($file);
+        $type = $file->filemime;
+        if ($type == 'video/mp4' || $type == 'video/x-flv' || $type == 'video/mov' ) {
+          $wc = $weight++;
+        } else {
+          $wc =  $weight2++;
+        }
+        if ( $status == 0 ) {
+          _inserting_filesv($file->fid, $nid, 1, $wc, '', '', 0);
+        } else {
+          _insert_file_revision($file->fid, $nid, 1, $wc, '', '', 0, 0, 0);
+        }
+        if ($type == 'video/mp4' || $type == 'video/x-flv' || $type == 'video/mov') {
+          if ($type != 'audio/mpeg')  {
+            $srcFile = drupal_realpath($file->uri);
+            $info = pathinfo($file->filename);
+            //$ff = new ffmpeg_movie(drupal_realpath($file->uri));
+            $low = drupal_realpath("public://uploads/".$nid."/small_".$info['filename'].".mp4");
+            $medium = drupal_realpath("public://uploads/".$nid."/medium_".$info['filename'].".mp4");
+            $high = drupal_realpath("public://uploads/".$nid."/high_".$info['filename'].".mp4");
+            $mobile = drupal_realpath("public://uploads/".$nid."/mobile_".$info['filename'].".mp4");
+            $lowf = drupal_realpath("public://uploads/".$nid."/small_".$info['filename']."_qtfast.mp4");
+            $mediumf = drupal_realpath("public://uploads/".$nid."/medium_".$info['filename']."_qtfast.mp4");
+            $highf = drupal_realpath("public://uploads/".$nid."/high_".$info['filename']."_qtfast.mp4");
+            $mobilef = drupal_realpath("public://uploads/".$nid."/mobile_".$info['filename']."_qtfast.mp4");
+            $videosize = '960x720';
+            if ($type != 'video/x-flv' ) {
+              $dimensions = file_get_width_height($nid, $filename);
+              $srcWidth = $dimensions['srcWidth'];
+              $srcWidth -= $srcWidth & 1;
+              $srcHeight = $dimensions['srcHeight'];
+              $srcsize = $srcWidth."x".$srcHeight;
+              if ($srcHeight >= 1080) {
+               $rate = '8000k';	
+              } else {
+               $rate = '5000k';	
+              }
+              if ($srcHeight >= 1080) {
+                $videosize = '1920×1080';
+              } else if($srcHeight >= 720) {
+                $videosize = '1280x720';
+              }
+            } else {
+               $rate = '5000k';
+            }
+            //$thumbname = "sites/default/files/uploads/".$nid."/big_" . $nid . ".jpg";
+           // exec("ffmpeg -i $srcFile -f image2 -vframes 1  $thumbname");
+            // print_r($high);
+            if (!file_exists($low)) {
+              drupal_set_time_limit(1000);
+              exec("/opt/local/bin/ffmpeg -i $srcFile -vcodec libx264 -preset fast -acodec copy -ab 256 -b:v 300k -s 512x288 -f mp4 $lowf 2>&1",$output);
+	            //exec("ffmpeg -i $srcFile -vcodec libx264 -preset fast -acodec copy -ab 256 -b:v 300k -s 512x288 -f mp4 $low 2>&1",$output);
+              exec("/opt/local/bin/qt-faststart ".$lowf." ".$low);
+	            unlink(drupal_realpath($lowf));
+	          }
+	          if (!file_exists($medium)) {
+              drupal_set_time_limit(1000);
+              exec("/opt/local/bin/ffmpeg -i $srcFile -vcodec libx264 -preset fast -acodec copy -ab 256 -b:v 900k -s 640x360 -f mp4 $mediumf 2>&1",$output);
+	            //exec("ffmpeg -i $srcFile -vcodec libx264 -preset fast -acodec copy -ab 256 -b:v 900k -s 640x360 -f mp4 $medium 2>&1",$output);
+	            exec("/opt/local/bin/qt-faststart ".$mediumf." ".$medium);
+	            unlink(drupal_realpath($mediumf));
+	          }
+          if (!file_exists($high)) {
+            if($srcHeight >= 1080) {
+              exec("/opt/local/bin/ffmpeg -i $srcFile -vcodec libx264 -preset fast -acodec copy -ab 256 -f mp4 $highf 2>&1",$output);
+              } else {
+                exec("/opt/local/bin/ffmpeg -i $srcFile -vcodec libx264 -preset fast -s $videosize -acodec copy -ab 256 -f mp4 $highf 2>&1",$output);
+              }
+              exec("/opt/local/bin/qt-faststart ".$highf." ".$high);
+	            unlink(drupal_realpath($highf));
+	          }
+          }
+        }
+      }
+      $i++;
+    } 
+    $form['im-container']=array(
+      '#title'=>t('Preview:'),
+      '#prefix'=>'<div id="im-area">',
+      '#markup'=>'<div>UPLOAD COMPLETE! <b>'.l(t('Click here to refresh page'), 'node/'.$nid.'/all-parts', array('attributes' => array('style' => array('color:RED;')))).'</b></div>',
+      '#suffix'=>'</div>',
+    );
+    return $form['im-container'];
+    //exit;
+  }
+//  _revisioning_unpublish_revision($nid);
+  $title = node_load($nid)->title;
+  //revisioning_set_status_message(t('%title is no longer publicly visible.', array('%title' => $title)));
+  
+  $form['im-container']=array(
+    '#title'=>t('Preview:'),
+    '#prefix'=>'<div id="im-area">',
+    '#markup'=>'<div>UPLOAD COMPLETE! <b>'.l(t('Click here to refresh page'), 'node/'.$nid.'/all-parts', array('attributes' => array('style' => array('color:RED;')))).'</b></div>',
+    '#suffix'=>'</div>',
+  );
+  return $form['im-container'];
+}
+
+/** @function : list_lesson_data_upload_thumbnail()
+  * This function use as a form arguments and provide a form
+  * for Lesson thumbnail upload/update.
+  * $nid is node id and this function using the ajax callback.
+  */
+function list_lesson_data_upload_thumbnail($form, &$form_state) {
+  global $user;
+  $_SESSION['times'] = 00.35;
+  $nid = arg(1);
+  $node = node_load($nid) ;
+  if ($user->uid != 1) {
+    if ($user->uid != $node->uid) 
+      drupal_access_denied();
+  }
+  if (file_exists("public://uploads/".$nid."/big_".$nid.".jpg")) {
+    $config = array(
+      "style_name" => '120x80',
+      "path" => "public://uploads/".$nid."/big_".$nid.".jpg",
+      "height" => NULL,
+      "width" => NULL,
+    );
+    $config2 = array(
+      "style_name" => '30x20',
+      "path" => "public://uploads/".$nid."/big_".$nid.".jpg",
+      "height" => NULL,
+      "width" => NULL,
+    );
+    $form['im-container'] = array(
+      '#prefix'=>'<h2>THUMBNAIL</h2><br/><div id="im-area">',
+      '#markup'=>'<div><h3>Big thumbnail:</h3></div><div>'.theme_image_style($config).'</div><div><h3>Small thumbnail:</h3></div><div>'.theme_image_style($config2).'</div>',
+      '#suffix'=>'</div>',
+    );
+
+  } else {
+    $form['im-container'] = array(
+      '#prefix'=>'<h2>THUMBNAIL</h2><br/><div id="im-area">',
+      '#suffix'=>'</div>',
+    );
+  }
+
+  $result = db_query("SELECT * FROM  {lesson_files} lf left JOIN {file_managed} fm on lf.fid=fm.fid WHERE fm.filemime LIKE '%video%' AND lf.nid = :nid", array(':nid' => $nid))->fetchAll();
+  $option = array();
+  $option[] = '--select--';
+  foreach($result as $value) {
+    $option[$value->fid] = $value->filename;
+  }
+
+  $form['selected'] = array(
+    '#type' => 'select',
+    '#title' => t('Select Lesson video Part for generated Thumbnail'),
+    '#options' => $option,
+    '#default_value' => '',
+    '#description' => t(''),
+  );
+  $form['regenerate'] = array(
+    '#type' => 'submit',
+    '#value' => 're-generate',
+    '#submit' => array('re_generate_image'),
+    '#ajax'=> array(
+      'callback'=>'re_generate_image',
+      'wrapper'=> 'im-area',
+      'method'=> 'replace',
+      'effect'=> 'fade',
+    ),
+  );
+  $form['image_file'] = array(
+    '#prefix' => '<b>-OR-</b> <br />',
+    '#title' => t('Save or Upload Image file for generated Lesson Thumbnail'),
+    '#type' => 'file',
+  );
+  $form['nid_id'] = array(
+    '#type' => 'hidden',
+    '#value' => $nid,
+  );
+  $form['times'] = array(
+    '#type' => 'hidden',
+    '#value' => 00.35,
+  );
+  $form['upload'] = array(
+    '#type' => 'submit',
+    '#value' => 'upload',
+    '#submit' => array('upload_thumbnail'),
+    '#ajax'=> array(
+      'callback'=>'upload_thumbnail',
+      'wrapper'=> 'im-area',
+      'method'=> 'replace',
+      'effect'=> 'fade',
+    ),
+  );
+  return $form;
+}
+
+/**
+  * @function : upload_thumbnail() callback function for ajax callback 
+  * Return the uploaded file.
+  */
+function re_generate_image($form, $form_state) {
+  header("Cache-Control: no-cache, must-revalidate"); // HTTP/1.1
+  header("Expires: Sat, 26 Jul 1997 05:00:00 GMT");
+  $form['im-container']=array(
+    '#title'=>t('Preview:'),
+    '#prefix'=>'<div id="im-area">'.$form['selected']['#value'].'------'.$form['nid_id']['#value'],
+    '#markup'=>'<div><b style="color:redl" >Please select any one option gen</b></div>',
+    '#suffix'=>'</div>',
+  );
+  if (!empty($form['selected']['#value'])) {
+    $video = file_load($form['selected']['#value']);
+    $srcFilev = drupal_realpath($video->uri); 
+    $thumbname = drupal_realpath("public://uploads/".$form['nid_id']['#value']."/big_".$form['nid_id']['#value'].".jpg");
+      $du = exec("/opt/local/bin/ffmpeg -i  $srcFilev 2>&1 | grep 'Duration'");
+    $derivative_uri = drupal_realpath(image_style_path('120x80', "public://uploads/".$form['nid_id']['#value']."/big_".$form['nid_id']['#value'].".jpg"));
+    $derivative_uri2 = drupal_realpath(image_style_path('30x20', "public://uploads/".$form['nid_id']['#value']."/big_".$form['nid_id']['#value'].".jpg"));
+    exec("rm -rf $thumbname");
+    exec("rm -rf $derivative_uri");
+    exec("rm -rf $derivative_uri2");
+    $config = array(
+      "style_name" => '120x80',
+      "path" => "public://uploads/".$form['nid_id']['#value']."/big_".$form['nid_id']['#value'].".jpg",
+      "height" => NULL,
+      "width" => NULL,
+    );
+    $config2 = array(
+      "style_name" => '30x20',
+      "path" => "public://uploads/".$form['nid_id']['#value']."/big_".$form['nid_id']['#value'].".jpg",
+      "height" => NULL,
+      "width" => NULL,
+    );
+    $time = $_SESSION['times'];
+    $_SESSION['times']++;
+    $thumbnametime = drupal_realpath("public://uploads/".$form['nid_id']['#value']."/big_".$form['nid_id']['#value'].'-'.$time.".jpg");
+    exec("/opt/local/bin/ffmpeg -i $srcFilev -ss 00:00:$time -f image2 -vframes 1  $thumbname");
+    exec("/opt/local/bin/ffmpeg -i $srcFilev -ss 00:00:$time -f image2 -vframes 1  $thumbnametime");
+    $form['im-container']=array(
+      '#title'=>t('Preview:'),
+      '#prefix'=>'<div id="im-area">',
+      '#markup'=>'<div>Original Upload thumbnail: <br /><img src="/sites/default/files/uploads/'.$form['nid_id']['#value'].'/big_'.$form['nid_id']['#value'].'-'.$time.'.jpg" /></div><br/>Video Time:'.$time,
+    );
+  } else {
+    $form['im-container']=array(
+      '#title'=>t('Preview:'),
+      '#prefix'=>'<div id="im-area">',
+      '#markup'=>'<div>File save:None3</div>',
+      '#suffix'=>'</div>',
+    );
+  } 
+  return $form['im-container'];  
+}
+
+/**
+  * @function : upload_thumbnail() callback function for ajax callback 
+  * Return the uploaded file.
+  */
+function upload_thumbnail($form, $form_state) {
+  $file = file_save_upload('image_file', array('file_validate_extensions' => array('jpg jpeg png')), '',$replace = FILE_EXISTS_REPLACE);
+  if (!empty($form['selected']['#value']) && !empty($file)) {
+    $form['im-container']=array(
+      '#title'=>t('Preview:'),
+      '#prefix'=>'<div id="im-area">',
+      '#markup'=>'<div><b style="color:redl" >Please select any one option</b></div>',
+      '#suffix'=>'</div>',
+    );
+  } elseif (!empty($file)) {
+    global $user, $base_url;
+    $datasavefilename = '';
+    $weight2 = 100;
+    $nid = $form['nid_id']['#value'];
+    $directory = drupal_realpath("public://uploads/".$form['nid_id']['#value']);
+    $extra_directory = $directory.'/original';
+    if ( !file_exists($directory) ) { 
+      drupal_mkdir($directory);
+    }
+    $filfilename = 'big_'.$nid.'.jpg';
+    $destination_dir = "public://uploads/".$form['nid_id']['#value'].'/';
+    $fp = file_get_contents($file->uri);
+    $file = file_save_data($fp,"public://uploads/".$form['nid_id']['#value']."/big_".$form['nid_id']['#value'].".jpg", $replace = FILE_EXISTS_REPLACE);
+    $file->status = FILE_STATUS_PERMANENT;
+    $file->uid =  $user->uid;
+    file_save($file);
+    $srcFile = str_replace('public://' , $base_url.'/sites/default/files/' ,  $file->uri);
+    if (!empty($file)) {
+      $config = array(
+        "style_name" => '120x80',
+        "path" => $file->uri,
+        "height" => NULL,
+        "width" => NULL,
+
+
+
+
+      );
+      $config2 = array(
+        "style_name" => '30x20',
+        "path" => $file->uri,
+        "height" => NULL,
+        "width" => NULL,
+      );
+      $form['im-container']=array(
+        '#title'=>t('Preview:'),
+        '#prefix'=>'<div id="im-area">',
+        '#markup'=>'<div>Original Upload thumbnail: <img src="'.$srcFile.'" /></div><div>Big thumbnail:'.theme_image_style($config).'</div><div>Small thumbnail:'.theme_image_style($config2).'</div>',
+        '#suffix'=>'</div>',
+      );
+    } else {
+      $form['im-container']=array(
+        '#title'=>t('Preview:'),
+        '#prefix'=>'<div id="im-area">',
+        '#markup'=>'<div>File save: No file found.</div>',
+        '#suffix'=>'</div>',
+      );
+    }
+  } elseif (!empty($form['selected']['#value'])) {
+    $video = file_load($form['selected']['#value']);
+    $srcFilev = drupal_realpath($video->uri); 
+    $thumbname = drupal_realpath("public://uploads/".$form['nid_id']['#value']."/big_".$form['nid_id']['#value'].".jpg");
+    exec("/opt/local/bin/ffmpeg -i $srcFilev -ss 00:00:01.5 -f image2 -vframes 1  $thumbname");
+    $form['im-container']=array(
+      '#title'=>t('Preview:'),
+      '#prefix'=>'<div id="im-area">',
+      '#markup'=>'<div>File save:  Lesson Thumbnail image saves.</div>',
+      '#suffix'=>'</div>',
+    );
+  } else {
+    $form['im-container']=array(
+      '#title'=>t('Preview:'),
+      '#prefix'=>'<div id="im-area">',
+      '#markup'=>'<div>File save:No action done</div>',
+      '#suffix'=>'</div>',
+    );
+  } 
+  return $form['im-container'];  
+}
+
+/** @function : complete_tab()
+  * This function use as a form arguments and provide a form
+  * for Lesson thumbnail upload/update.
+  * $nid is node id and this function using the ajax callback.
+  */
+function complete_tab($form, &$form_state, $submitstatus) {
+  $nid = arg(1);
+  $revstatus = _get_review_status($nid);
+  $revisontab = _get_revison_completetab($nid);
+  $node = node_load($nid);
+  $completetabs = ($node->field_complete_tab) ? $node->field_complete_tab['und'][0]['value'] : '';;
+  if ($node->status == 1) {
+    if ($revstatus > 0) {
+      $completetabs = (!empty($revisontab)) ? $revisontab : $node->field_complete_tab['und'][0]['value'];
+    } 
+  } 
+  $form['im-tabs'] = array(
+    '#prefix'=>'<div id="im-areax">',
+    '#suffix'=>'</div>',
+  );
+  $form['tabtext'] = array(
+    '#weight' => '-2',
+    '#type' => 'textarea',
+    '#title' => t('Complete Tab'),
+	'#class'=>'compele_tab_guiter',
+    '#default_value' => (!empty($completetabs)) ? $completetabs : '------------------------------------------------------------------------------------------------------------------------------
+                                                        TAB
+------------------------------------------------------------------------------------------------------------------------------',
+  );
+  $form['nid_id'] = array(
+    '#type' => 'hidden',
+    '#value' => $nid,
+  );
+  if ( $submitstatus == 0 ) {
+    $form['tabupdate'] = array(
+      '#type' => 'submit',
+      '#value' => 'update tab',
+      '#submit' => array('upload_tab_update'),
+      '#ajax'=> array(
+        'callback'=>'upload_tab_update',
+        'wrapper'=> 'im-area',
+        'method'=> 'replace',
+        'effect'=> 'fade',
+      ),
+    );
+  }
+  return $form;
+}
+
+/** @function : upload_tab_update()
+  * This function provide the update and save Tabs / note content with files.
+  * for Lesson thumbnail upload/update.
+  * $form_state['input']['nid_id'] is node id and this function using the ajax callback.
+  */
+function upload_tab_update($form, $form_state) {
+  $nid = $form_state['input']['nid_id'];
+  $status = node_load($nid)->status;
+  if ($status == 1) {
+    $revstatus = _get_review_status($nid);
+    if ($revstatus == 0) {
+      make_copy_to_revision($nid);
+    } 
+     db_merge('gmc_node_complete_tab')
+      ->key(array('nid' => $nid))
+      ->fields(array(
+        'nid' => $nid,
+        'description' => $form_state['input']['tabtext'],
+        'date' => time(),
+      ))
+      ->execute();
+         
+  } else {
+    $node = node_load($form_state['input']['nid_id']);
+    $form['im-tabs']=array(
+      '#title'=>t('Preview:'),
+      '#prefix'=>'<div id="im-areax">',
+      '#markup'=>'<div>Tab information is saved.</div>',
+      '#suffix'=>'</div>',
+    );
+    $tab = $form_state['input']['tabtext'];
+    $node->field_complete_tab['und'][0]['value'] = $tab;
+    field_attach_presave('node', $node);
+    field_attach_update('node', $node);
+  //  _revisioning_unpublish_revision($form_state['input']['nid_id']);
+    $title = node_load($form_state['input']['nid_id'])->title;
+    $title = $form_state['values']['title'];
+    //revisioning_set_status_message(t('%title is no longer publicly visible.', array('%title' => $title)));
+  }
+  return $form['im-tabs'];
+}
+
+/**
+  * unpublish on change.
+  */
+function unpub_change($nid) {
+  db_query("UPDATE {node} SET status=0 WHERE nid=:nid " ,array(':nid'=>$nid));
+  db_query("UPDATE {node_revision} SET status=0 WHERE nid=:nid" ,array(':nid'=>$nid));
+}
+
+function _insert_file_revision($fid, $nid, $cid, $weight, $note, $des, $status, $pub) {
+  global $user;
+  db_merge('gmc_files_review')
+    ->key(array('fid' => $fid))
+    ->fields(array(
+      'uid' => $user->uid,
+      'fid' => $fid,
+      'nid' => $nid,
+      'approved' => 0,
+      'notes' => $note,
+      'description' => $des,
+      'date' => time(),
+      'other' => '',
+      'revision' => 1,
+      'publish' => $pub,
+      'status' => $status,
+      'weight' => $weight
+    ))
+    ->execute();
+}
+
+function _get_file_review_status($fid) {
+  $status = db_select('gmc_files_review', 'n')
+       ->fields('n')
+       ->condition('n.fid', $fid)
+       ->execute()->fetchAll();
+  return !empty($status) ? $status[0]->approved : 2;
+}
+
+function _get_mp3_revison_status($nid) {
+  $status = db_select('gmc_node_backing_revision', 'n')
+       ->fields('n')
+       ->condition('n.nid', $nid)
+       ->execute()->fetchAll();
+  return !empty($status) ? $status[0]->fid : '';
+}
+
+function make_copy_to_revision($nid) {
+  global $user;
+  $data = db_select('lesson_files', 'n')
+       ->fields('n')
+       ->condition('n.nid', $nid)
+       ->execute()->fetchAll();
+  $htm = array();
+  foreach($data as $key => $value) {
+     _insert_file_revision($value->fid, $value->nid, '', $value->weight, $value->notes, $value->description, $value->status, $value->publish);
+  }
+}
+
+function _get_review_status($nid) {
+  $count = db_query("SELECT * FROM {gmc_files_review} WHERE nid = :id",array(':id' => $nid))->rowCount();  
+  return $count;
+}
+
+function _get_review_status_fid($fid) {
+  $count = db_query("SELECT * FROM {gmc_files_review} WHERE fid = :id",array(':id' => $fid))->rowCount();  
+  return $count;
+}
+
+function _get_review_status_nid($fid) {
+  $status = db_select('lesson_files', 'n')
+       ->fields('n')
+       ->condition('n.fid', $fid)
+       ->execute()->fetchAll();
+  return !empty($status) ? $status[0]->nid : 0;
+}
+
+/**
+ * Callback function for revison lessons file load
+ */
+function load_revison_files($nid) {
+	$files = db_query("SELECT * FROM {gmc_files_review} WHERE nid = :nid  AND publish = 1 order by weight", array(':nid' => $nid))->fetchAll();
+	return $files;
+}
+
+/**
+ * Callback function for revison lessons file load
+ */
+function _get_revison_completetab($nid) {
+  $data = db_select('gmc_node_complete_tab', 'n')
+       ->fields('n')
+       ->condition('n.nid', $nid)
+       ->execute()->fetchAll();
+	return (!empty($data[0]->description)) ? $data[0]->description : '';
+}
+
+
+function gmc_lessons_listing_wysiwyg_editor_settings_alter(&$settings, $context) {
+  if($context['profile']->editor == 'ckeditor') {
+    $settings['enterMode'] = 2; //<br />
+  }
+}
+
+
+function gmc_lessons_listing_wysiwyg_plugin($editor, $version) {
+  switch ($editor) {
+   case 'ckeditor':
+    return array(
+     'my_plugin' => array(
+      'path' => drupal_get_path('module', 'gmc_lessons_listing') . '/my_plugin',
+      'buttons' => array(
+       'my_plugin_button' => t('Do something awesome'),
+      ),
+      'load' => TRUE,
+     ),
+    );
+    break;
+  }
+}
+
+function ratio($a, $b) {
+    $_a = $a;
+    $_b = $b;
+
+    while ($_b != 0) {
+
+        $remainder = $_a % $_b;
+        $_a = $_b;
+        $_b = $remainder;   
+    }
+
+    $gcd = abs($_a);
+	if($gcd != 0){
+		return ($a / $gcd)  . ':' . ($b / $gcd);
+	}
+
+}

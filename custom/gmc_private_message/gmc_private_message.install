@@ -1,0 +1,160 @@
+<?php
+
+/**
+ * @file Rules - Installation file.
+ */
+
+/**
+ * Implements hook_schema().
+ */
+function gmc_private_message_schema() {
+  $schema['pm_draft'] = array(
+    'fields' => array(
+      'draft_id' => array(
+        'type' => 'serial',
+        'not null' => TRUE,
+        'description' => 'Private Message Draft ID',
+      ),
+      'author' => array(
+        'description'   => 'UID of the author',
+        'type'          => 'int',
+        'not null'      => TRUE,
+      ),
+      'subject' => array(
+        'description'   => 'Subject text of the message',
+        'type'          => 'varchar',
+        'length'        => 255,
+        'not null'      => TRUE,
+      ),
+      'recipients'     => array(
+        'description'   => 'Stores the saved recipients list',
+        'type'          => 'text',
+        'not null'      => TRUE,
+        'size'          => 'normal',
+      ),
+      'body' => array(
+        'description'   => 'Body of the message',
+        'type'          => 'text',
+        'not null'      => TRUE,
+        'size'          => 'big',
+      ),
+      'format' => array(
+        'type'          => 'varchar',
+        'length'        => 255,
+        'not null'      => TRUE,
+        'description'   => 'The format of the message text.',
+      ),
+      'timestamp' => array(
+        'description'   => 'Time when the draft was saved',
+        'type'          => 'int',
+        'not null'      => TRUE,
+      ),
+    ),
+    'primary key' => array('draft_id'),
+    'indexes' => array(
+       'draft_id' => array('draft_id'),
+       'author' => array('author'),
+       'timestamp' => array('timestamp'),
+    ),
+  );
+	//Save Attachment
+  $schema['pm_draft_attachment'] = array(
+    'fields' => array(
+      'attach_id' => array(
+        'type' => 'serial',
+        'not null' => TRUE,
+        'description' => 'Private Message Attach ID',
+      ),
+      'draft_id' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'description' => 'Private Message Draft ID',
+      ),
+      'attachment_fid' => array(
+        'description'   => 'fid of the attach file',
+        'type'          => 'int',
+        'not null'      => TRUE,
+      ),
+    ),
+	'primary key' => array('attach_id'),
+    'indexes' => array(
+       'attach_id' => array('attach_id'),
+    ),
+  );
+
+	//Save User Folder Name
+  $schema['pm_folder_name'] = array(
+    'fields' => array(
+      'folder_id' => array(
+        'type' => 'serial',
+        'not null' => TRUE,
+        'description' => 'Private Message Folder ID',
+      ),
+      'folder_name' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'description' => 'Private Message Folder Name',
+      ),
+      'uid' => array(
+        'description'   => 'uid of the user',
+        'type'          => 'int',
+        'not null'      => TRUE,
+      ),
+      'originaluid' => array(
+        'description'   => 'Live site uid of the user',
+        'type'          => 'int',
+        'not null'      => TRUE,
+      ),	  
+    ),
+	'primary key' => array('folder_id'),
+    'indexes' => array(
+       'folder_id' => array('folder_id'),
+    ),
+  );
+
+	//User Folder Index
+  $schema['pm_folder_index'] = array(
+    'fields' => array(
+      'index_id' => array(
+        'type' => 'serial',
+        'not null' => TRUE,
+        'description' => 'Private Message Index ID',
+      ),
+      'folder_id' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'description' => 'Private Message Folder ID',
+      ),
+      'uid' => array(
+        'description'   => 'uid of the user',
+        'type'          => 'int',
+        'not null'      => TRUE,
+      ),
+      'thread_id' => array(
+        'description'   => 'Thread ID of the message',
+        'type'          => 'int',
+        'not null'      => TRUE,
+      ),
+    ),
+	'primary key' => array('index_id'),
+    'indexes' => array(
+       'index_id' => array('index_id'),
+    ),
+  );
+	//User Folder Index
+  $schema['pm_gmc_disable'] = array(
+    'description'       => '{pm_gmc_disable} holds the list of users that do not have permission of private message',
+    'fields' => array(
+      'uid'    => array(
+        'description'   => 'ID of the user',
+        'type'          => 'int',
+        'not null'      => TRUE,
+        'unsigned'      => TRUE,
+      ),
+    ),
+    'primary key'       => array('uid'),
+  );
+  
+  return $schema;
+}

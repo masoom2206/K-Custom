@@ -1,0 +1,13 @@
+name = GMC scale Generator
+description = Custom GMC scale Generator Module.
+package = Custom
+version = VERSION
+core = 7.x
+files[] = gmc_scale_generator.module
+files[] = template/scalegenerator.tpl.php
+files[] = includes/generate_scale_image.inc
+files[] = js/scalegenerator-1.0.js
+; Information added by drupal.org packaging script on 2013-02-20
+version = "7.custom"
+project = support
+

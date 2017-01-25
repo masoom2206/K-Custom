@@ -1,0 +1,212 @@
+<?php
+
+/**
+ * @file
+ * Provides functionality for  spots adding and alter home page "New Lessons Block"
+ */
+
+/**
+ * Implementation of hook_menu().
+ */
+
+function gmc_new_lessons_menu() {
+  $items = array();
+  $items['admin/configure/spots'] = array(
+    'title' => 'Spots Lessons',
+    'description' => 'add remove spots',
+    'page callback' => 'spots_section',
+    'access arguments' => TRUE,
+    'type' => MENU_CALLBACK,
+  );
+  $items['spots/autocomplete'] = array(
+    'title' => 'Autocomplete for node',
+    'page callback' => '_node_autocomplete',
+    'access arguments' => TRUE,  //or whatever permission makes sense
+    'type' => MENU_CALLBACK
+  );
+ $items['spot/record/delete'] = array( 
+    'title' => t('Delete Spots'),
+    'page callback' => 'delete_lesson_spot',
+    'access callback' => TRUE,
+  );
+  return $items;
+}
+
+
+/** 
+  * Implement function for spots callback
+  */
+function spots_section() {
+  $f1 = drupal_get_form('add_spots_data');
+  $f2 = list_spots_data();
+  return drupal_render($f1).'<br/>'.$f2;
+}
+
+/** 
+  * Implement function for add_spots_data form
+  */
+
+function add_spots_data($form, $form_state) {
+  $form = array();
+  $form['node'] = array(
+    '#type' => 'textfield',
+    '#title' => 'Title',
+    '#maxlength' => 128,
+    '#autocomplete_path' => 'spots/autocomplete',
+  );
+  $form['spots'] = array(
+    '#type' => 'textfield',
+    '#title' => 'Spot number',
+    '#maxlength' => 128,
+    '#number_type' => 'integer',
+    '#field_name' => 'num_seats',
+    '#element_validate' => array ('number_field_widget_validate'),
+  );
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => 'Submit',
+    '#suffix'=>'<span id="spots-node"></span>',
+  );
+  return $form;
+}
+
+function add_spots_data_submit($form, $form_state){
+  global $user;
+  $data = $form['node']['#value'];
+  $spots = $_POST['spots'];
+  $nid = explode(' ::: ', $data);
+  db_merge('gmc_lesson_spots_data')
+  ->key(array('nid' => $nid[1]))
+  ->fields(array(
+      'nid' => $nid[1],
+      'uid' => $user->uid,
+      'spot' => $spots,
+      'date' => time(),
+  ))
+  ->execute();
+  return '<span id="spots-node">done'.$nid[1].'</span>';
+}
+
+/**
+* autocomplete helper
+* $string = string for search
+*/
+function _node_autocomplete($string) {
+  $matches = array();
+  // Some fantasy DB table which holds cities
+  $query = db_select('node', 'c');
+  // Select rows that match the string
+  $return = $query
+  ->fields('c')
+  ->condition('c.title', '%' . db_like($string) . '%', 'LIKE')
+   ->condition('c.type', 'lessons')
+  ->range(0, 10)
+  ->execute();
+  // add matches to $matches  
+  foreach ($return as $row) {
+    $matches[$row->title . ' ::: ' . $row->nid] = check_plain($row->title);
+  }
+  // return for JS
+  return drupal_json_output($matches);
+  exit();
+}
+
+function list_spots_data() {
+
+  $records = db_query('SELECT * FROM gmc_lesson_spots_data g left join node n on n.nid=g.nid order bY g.spot ASC, n.changed desc')->fetchAll();
+  $header = array(
+    array('data' => t('Lesson ID')),  
+    array('data' => t('Lesson Name')), 
+    array('data' => t('Publish ON')),
+    array('data' => t('Status')),
+    array('data' => t('Spot Number')), 
+    array('data' => t('Operations')), 
+  );
+  $rows = array();
+  foreach($records as $data) {
+    $rows[] = array(
+                 array('data' => $data->nid), 
+                 array('data' => node_load($data->nid)->title),
+                 array('data' => date("F j, Y, g:i a", node_load($data->nid)->changed)),
+                 array('data' => node_load($data->nid)->status),
+                 array('data' => $data->spot), 
+                 l('Delete', 'spot/record/delete', array('attributes' => array('class' => array('keysop'),'onclick' => array('if(!confirm("Do you really want to Delete this record?")){return false;}')),'query' => array('id' => $data->id)))
+             );
+  }
+  return theme('table', array(
+    'header' => $header,
+    'rows' => $rows,
+    'attributes' => array('class' => array('spotsclass'))
+  ));
+}
+
+function delete_lesson_spot() {
+	$fid = $_GET['id'];
+	db_delete('gmc_lesson_spots_data')
+	  ->condition('id', $fid)
+	  ->execute();
+	drupal_set_message("Lesson spot deleted successfully!", "status");
+	drupal_goto('admin/configure/spots');
+}
+
+/**
+* Implementation of hook_views_query_alter
+* @param type $view
+* @param type $query
+*/
+function gmc_new_lessons_views_query_alter(&$view, &$query) {
+  //simple example: change the order of the master display
+  //if you want to do it only  on a certain display add something
+  // like  "&&$view->current_display == 'panel_page_1'"
+ if ($view->name == 'new_guitar_lessons') {
+      $join = new views_join;
+      $join->construct('gmc_lesson_spots_data',
+              'node',  // left table
+              'nid',   // left field
+              'nid'  // field
+          );
+    //to find out what the fieldname ist: use devel and add your desired field as
+    //first filter ( =>orderby[0]). install devel and uncomment the next line
+    //dpm($view->query->orderby)
+    //$view->query->orderby[0]['field'] = "CASE FIELD_NAME WHEN 'apple' THEN 1 WHEN 'zebra' THEN 2 WHEN 'banna' THEN 3 ELSE 4 END";
+    $view->query->add_relationship('gmc_lesson_spots_data',$join,'node'); 
+    $view->query->orderby[0]['field'] = "gmc_lesson_spots_data.spot";
+	$view->query->orderby[0]['direction'] = "ASC";
+    $spot_value = db_query('SELECT g.nid, g.spot FROM gmc_lesson_spots_data g left join node n on n.nid=g.nid WHERE n.status = 1  order bY g.spot ASC, n.changed desc')->fetchAll();
+    $nids = array();
+    foreach ($spot_value as $data) {
+      $nids[$data->spot][] = $data->nid;
+    }
+    $nides = array();
+    for($x=1; $x <= 8; $x++) {
+      $nides[] = $nids[$x][0];
+    }
+    $value = implode(", ", $nides);
+     $query->add_where_expression(0,'node.nid IN ('.$value.')');
+/*    $query->where[0]['conditions'][2] = array(
+                          'field' => 'node.nid',
+                          'value' => $nids,
+                          'operator' =>'IN' 
+                      );*/
+     // $query->addJoin('LEFT', 'gmc_lesson_spots_data', 'ti', 'node.nid = ti.nid');
+  }
+  if ($view->name == 'recent_guitar_lessons') {
+    $spot_value = db_query('SELECT g.nid, g.spot FROM gmc_lesson_spots_data g left join node n on n.nid=g.nid WHERE n.status = 1  order bY g.spot ASC, n.changed desc')->fetchAll();
+    $nids = array();
+    foreach ($spot_value as $data) {
+      $nids[$data->spot][] = $data->nid;
+    }
+    $nides = array();
+    for($x=1; $x <= 8; $x++) {
+      $nides[] = $nids[$x][0];
+    }
+    $value = implode(", ", $nides);
+     $query->add_where_expression(0,'node.nid NOT IN ('.$value.')');
+  }
+  if ($view->name == 'featured_content' && $view->current_display == 'block_3') {
+      $nids = db_query("SELECT node.nid As nid FROM  node node LEFT JOIN draggableviews_structure draggableviews_structure ON node.nid = draggableviews_structure.entity_id AND draggableviews_structure.view_name = 'featured_content' AND draggableviews_structure.view_display = 'block_1' WHERE (( (node.status = '1') AND (node.type IN  ('news')) )) AND draggableviews_structure.weight = 0")->fetchAll();;
+    // $view->args[0] = 1;
+      $query->add_where_expression(0,'node.nid = '.$nids[0]->nid);
+     // $view->build_info['query']="SELECT node.nid AS nid, node.title AS title, term_data.tid AS tid, term_data.name AS name FROM node,term_node,term_data,term_data term_data2 WHERE node.type='%s' AND term_data2.tid=%d AND term_data2.name = term_data.name AND term_node.tid in (term_data.tid) AND term_node.nid = node.nid ORDER BY tid, node.title";
+  }
+}

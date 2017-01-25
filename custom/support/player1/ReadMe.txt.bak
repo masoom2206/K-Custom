@@ -1,0 +1,20 @@
+1. Player.php is the only file to be modified.
+
+2. Image poster should be set properly in the code like this:
+Line no 32:
+<video id="example_video_1" class="video-js" width="590" height="442" controls="controls" preload="auto" poster="/thumbs/<?=$thumbimage;?>">
+
+
+3. Video source should be set properly in the code like this:
+
+Line no 33:      <source src="/videos/<?=$videoname;?>" type='video/mp4; codecs="avc1.42E01E, mp4a.40.2"' />
+
+
+4. Paste your current flash embed code between
+
+// Flash embed code starts 
+and 
+// Flash Embed code ends
+
+Player will play flash in the web browsers and HTML5 player for mobile phones.
+

@@ -1,0 +1,223 @@
+<?php
+/**
+* Implementation of hook_menu
+*/
+function lick_days_menu() {
+  $items = array();
+  //Test URL for Lick Of The Days
+  $items['lick/of/the/days'] = array(
+    'title' => 'Songs',
+    'access callback' => TRUE,
+    'page callback' => 'lick_of_the_days',
+    'type' => MENU_LOCAL_TASK,
+  );  
+  //Menu to generate xml for lick of the day detail page and category page.
+  $items['lick/ofthe/day/%/%/xml'] = array(
+    'title' => 'Lick Of The Day XML',
+    'description' => 'Add / Edit / Delete Videos, Mp3s, Graphics, Notes & Statistics',
+    'page callback' => 'generate_lick_xml',
+	'page arguments' => array(3,4),
+    'access callback' => TRUE,
+	'file' => 'lick_of_the_day.php',
+	'type' => MENU_CALLBACK,
+ );
+  $items['actions/getlick/part/%'] = array(
+    'title' => 'Get Lick',
+    'access callback' => TRUE,
+    'page callback' => 'browser_actions_getlick',
+    'type' => MENU_LOCAL_TASK,
+  );  
+ 
+  //Menu to user.
+  $items['html5player'] = array(
+    'title' => '',
+    'description' => 'html5player',
+	'page callback' => 'mobile_html5player',
+    'access callback' => TRUE,
+  );
+
+  return $items;
+}
+/**
+ * Implements hook_init()
+ */
+function lick_days_init(){
+	if(arg(0) == 'lick-of-the-day-v2' && is_numeric(arg(1))) {
+		//drupal_add_js(drupal_get_path('module', 'lick_days') . '/js/jquery.countdown.js');
+		drupal_add_js(drupal_get_path('module', 'lick_days') . '/js/jquery.countdown.js');
+		drupal_add_js(drupal_get_path('module', 'lick_days') . '/js/script.js');
+	}
+}
+/**
+ * Callback function for testing
+ * Testing the videos for lick-of-the-days
+ * @return $output;
+ * @URL : lick/of/the/days
+ */
+function lick_of_the_days() {
+	return '';
+}
+
+/**
+* Implements hook_cron()
+*/
+function lick_days_cron() {
+	$category = taxonomy_get_tree(13);
+	foreach($category as $tid) {
+		if($tid->name == 'Blues' || $tid->name == 'Country' || $tid->name == 'Jazz') {
+			$blues_nid = db_query("SELECT n.nid from node n INNER JOIN field_data_field_cats c on n.nid = c.entity_id where field_cats_tid = :tid AND n.type = :type", array(':tid' => $tid->tid, ':type' => 'lick_of_the_day'));
+			$num = $blues_nid->rowCount();
+			$blues_num = $num - 1;
+			foreach($blues_nid as $nid) {
+				$blues_weight = db_query("SELECT weight from draggableviews_structure where entity_id = :nid", array(':nid' => $nid->nid))->fetchField();
+				if($blues_weight == $blues_num) {
+					$weight = 0;
+				}
+				else {
+					$weight = $blues_weight + 1;
+				}
+				$num_updated = db_update('draggableviews_structure')
+					->fields(array(
+					'weight' => $weight,
+					))
+					->condition('entity_id', $nid->nid, '=')
+					->execute();
+			}
+		}
+	}
+}
+
+/**
+ * Implements hook_user_login()
+ */
+function lick_days_user_login(&$edit, $account){
+	global $base_url;
+	if(strpos($_SERVER['SCRIPT_FILENAME'], 'wiki')) {
+		header("Location: /wiki?title=Main_Page");
+		die();
+	}
+	else {
+		$path = current_path();
+		$edit['redirect'] = $path;
+		drupal_goto($path);
+	}
+}
+
+/**
+ * Implements hook_form_alter()
+ */
+function lick_days_form_alter(&$form, &$form_state, $form_id){
+	if($form_id == 'user_register_form') {
+		//$form['actions']['submit2'] = array('#type' => 'button', '#value' => t('Credit Card'));
+		$form['actions']['submit2'] = array('#markup' => '<a href="#"><div id="edit-submit2" class="credit_ccard_payment">Credit Ccard Payment</div></a>');		
+		//Radio Button for subscriber
+		$active = array(1 => t('1 month'), 6 => t('6 months'), 12 => t('12 months'));
+		$form['subscriber'] = array(
+			'#type' => 'radios',
+			'#title' => t(''),
+			'#default_value' => 0,
+			'#options' => $active,
+		);
+		//Radio Button for Pay Once
+		$active = array(12 => t('12 months'));
+		$form['pay_once'] = array(
+			'#type' => 'radios',
+			'#title' => t(''),
+			'#default_value' => 0,
+			'#options' => $active,
+		);		
+	}
+	if($form_id == 'lick_of_the_day_node_form') {
+		if(!in_array('administrator', $user->roles)) {
+			$form['field_text_value']['und']['0']['#format'] = 'general_full_html_admin';
+			$form['field_sound_value']['und']['0']['#format'] = 'general_full_html_admin';
+			$form['field_scales_value']['und']['0']['#format'] = 'general_full_html_admin';
+		}
+		$form['actions']['submit']['#value'] = 'Post New Lick';
+		$form['actions']['preview']['#value'] = 'Preview Post';
+	}
+}
+
+//hook_user_insert(&$edit, $account, $category)
+
+function lick_days_user_insert(&$edit, $account, $category) {
+	//print "<pre>";print_r($account);exit;
+	if($edit['subscriber'] != '0'){
+		if($edit['subscriber'] == '1') {
+			drupal_goto('cart/add/p46911_a1o1', array('query' => array('destination' => 'cart/checkout')));
+		}
+		else if($edit['subscriber'] == '6') {
+			drupal_goto('cart/add/p46911_a1o2', array('query' => array('destination' => 'cart/checkout')));
+		}
+		else if($edit['subscriber'] == '12') {
+			drupal_goto('cart/add/p46911_a1o4', array('query' => array('destination' => 'cart/checkout')));
+		}
+	}
+	else if ($edit['pay_once'] != '0'){
+		drupal_goto('cart/add/p46914', array('query' => array('destination' => 'cart/checkout')));
+	}
+}
+/**
+ * Implements hook_theme()
+ * @return $themes
+ */
+function lick_days_theme($existing, $type, $theme, $path) {
+	$themes = array (
+		'mobile_html5player' => array(
+			'template' => 'template/mobile_html5player',
+		),
+	);
+	return $themes;	
+}
+
+/**
+ * Callback function to play video in html5player
+ */
+function mobile_html5player(){
+	$empty = array("Spoken Video Example");
+	return theme('mobile_html5player', $empty);
+}
+/**
+ * Callback function browser_actions_getlick()
+ * to return video url for mobile.
+ * //actions/getlick/part/%
+ */
+function browser_actions_getlick(){
+  $file = DRUPAL_ROOT . '/' . drupal_get_path('module', 'gmc_html5_player') . "/includes/class.inc"; 
+  require_once $file;
+	$browser = App::request_browser( true ) ;
+	$json = array();
+	$lessonid = arg(3);
+	$node = node_load($lessonid);
+    $files = $node->field_video_upload['und']['0'];
+    $srcFile = drupal_realpath($files['uri']);
+    $destination = str_replace(" ", "_", $srcFile);
+    $file2  = file_unmanaged_move($files['uri'], $destination, FILE_EXISTS_RENAME);
+    //print_r($file2); exit;
+		$filename = str_replace(" ", "_", $files['filename']);
+		$low = drupal_realpath($files['uri'].'_qt_fast.mp4');
+    exec("ffmpeg -i $destination $low");
+    exec("qt-faststart $low $destination");
+    unlink($low);
+   // print "ffmpeg -i $destination $low"; exit;
+		$small = file_create_url("public://lick_of_the_day/mp4/".$filename);
+		$small = $small;
+		$medium = $small;
+		$large = $small;
+		$json['parts'][] = array($small, $medium, $large);
+	foreach($node->field_backtrack_upload['und'] as $files) {
+		$url_backtrack = file_create_url($files['uri']);
+		$json['backingtracks'][] = array('title' => '', 'id' => $files['fid'], 'nid' => $node->nid, 'length' => 100, 'fid' => $files['fid'], 'url' => $url_backtrack, NULL );
+	}
+	$json['tools']['Text Tab'][0] = '';
+	$json['tools']['Guitar Pro'][0] = '';
+	$json['tools']['pdf'][0] = '';
+  $json['free_tacks'] = $freetrack;
+  $json['coverlesson'] = 0;
+  $json['coverd_lesson'] =''; 
+  if ( isset($_q['query']['jsonp']) ) {
+    echo preg_replace('/[^\w\.]/', '_', $_q['query']['jsonp']) , ' = ' , json_encode($json) , ';' ;
+    exit ;
+  }
+  echo json_encode($json);
+}

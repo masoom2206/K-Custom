@@ -1,0 +1,195 @@
+<?php
+
+/**
+ * @file Rules - Installation file.
+ */
+
+/**
+ * Implements hook_install().
+ *
+function lessons_support_install() {
+  module_load_include('inc', 'rules', 'modules/events');
+  // Set the modules' weight to 20, see
+  // http://drupal.org/node/445084#comment-1533280 for the reasoning.
+  db_query("UPDATE {system} SET weight = 20 WHERE name = 'rules'");
+}*/
+
+/**
+ * Implements hook_uninstall().
+ *
+function lessons_support_uninstall() {
+  variable_del('rules_empty_sets');
+  variable_del('rules_debug');
+}*/
+
+/**
+ * Implements hook_schema().
+ */
+function gmc_view_schema() {
+  $schema['forums_extra'] = array(
+    'fields' => array(
+      'id' => array(
+        'description' => 'The primary identifier for a node.',
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'tid' => array(
+        'type' => 'int',
+        'not null' => FALSE,
+        'default' => 0,
+        'description' => 'The Node id.',
+      ),  
+      'parent' => array(
+        'type' => 'int',
+        'default' => 0,
+        'description' => 'parent tid.',
+      ),    
+      'forum_nid' => array(
+        'description' => 'The primary identifier for a node.',
+        'type' => 'int',
+        'default' => 0,
+      ),  
+      'forum_topic_count' => array(
+        'type' => 'int',
+        'default' => 0,
+        'description' => 'Total forum count.',
+      ),
+      'forum_reply_count' => array(
+        'type' => 'int',
+        'default' => 0,
+        'description' => 'Total reply count.',
+      ),
+      'last_update_title' => array(
+        'type' => 'text',
+        'size' => 'small',
+        'description' => 'The last updated node title.',
+      ),
+      'last_update_uid' => array(
+        'description' => 'The {users}.uid that owns this node; initially, this is the user that created it.',
+        'type' => 'int',
+        'default' => 0,
+      ),  
+      'last_update_user_name' => array(
+        'type' => 'text',
+        'size' => 'small',
+        'description' => 'The note description.',
+      ),  
+      'last_update_time' => array(
+        'type' => 'int',
+        'default' => 0,
+        'description' => 'The note description.',
+      ),     
+    ),
+    'primary key' => array('id'),
+  );
+  $schema['topics_extra'] = array(
+    'fields' => array(
+      'id' => array(
+        'description' => 'The primary identifier for a node.',
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'nid' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'description' => 'The Node id.',
+      ),   
+      'uid' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'description' => 'The Node id.',
+      ),    
+      'tid' => array(
+        'type' => 'int',
+        'description' => 'The forum tid.',
+      ),  
+      'last_comment' => array(
+        'type' => 'text',
+        'size' => 'big',
+        'description' => 'The note description.',
+      ),
+     'last_comment_uid' => array(
+        'type' => 'int',
+        'description' => 'The note description.',
+      ),
+     'last_comment_time' => array(
+        'type' => 'int',
+        'description' => 'The note description.',
+      ),
+      'forum_view_count' => array(
+        'type' => 'int',
+        'description' => 'Total forum count.',
+      ),
+      'forum_reply_count' => array(
+        'type' => 'int',
+        'description' => 'Total reply count.',
+      ),
+      'last_update_title' => array(
+        'type' => 'text',
+        'size' => 'small',
+        'description' => 'The last updated node title.',
+      ),
+      'last_update_uid' => array(
+        'type' => 'int',
+        'description' => 'Last action uid.',
+      ),   
+      'last_update_user_name' => array(
+        'type' => 'text',
+        'size' => 'small',
+        'description' => 'The note description.',
+      ),  
+      'last_update_time' => array(
+        'type' => 'int',
+        'description' => 'The note description.',
+      ),     
+    ),
+    'primary key' => array('id'),
+  );
+  $schema['users_extra'] = array(
+    'fields' => array(
+      'id' => array(
+        'description' => 'The primary identifier for a user extra.',
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'uid' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'description' => 'The user id.',
+      ),
+      'user_group' => array(
+        'type' => 'text',
+        'size' => 'big',
+        'description' => 'The user group (role).',
+      ),
+      'forum_post_count' => array(
+        'type' => 'int',
+        'description' => 'User forum post count.',
+      ),
+      'user_full_name' => array(
+        'description'   => 'User Full Name',
+        'type'          => 'varchar',
+        'not null'      => TRUE,
+        'description' => 'User full name.',
+      ),
+      'profile_views_count' => array(
+        'type' => 'int',
+        'description' => 'User Profile Views Count.',
+      ),
+    ),
+    'primary key' => array('id'),
+  );
+  return $schema;
+}
+
+function gmc_view_install() {
+  // Create my tables.
+  drupal_install_schema('gmc_view');
+}
+function gmc_view_uninstall() {
+  // Drop my tables.
+  drupal_uninstall_schema('gmc_view');
+}

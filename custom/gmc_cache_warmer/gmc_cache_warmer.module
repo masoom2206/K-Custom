@@ -1,0 +1,83 @@
+<?php
+/*
+ *
+ */
+function gmc_cache_warmer_cron() {
+  global $base_url;
+  $hrs = date('G', time());
+  if ($hrs & 2)  {  
+    run_cache_basiccron();    
+    watchdog('cache warmer cron','esta funcion se ejecuto cuando se ejecuto el cron');
+  }
+  if ($hrs & 1)  {  
+     run_cache_othercron();
+  }
+  if ($hrs & 3)  {  
+    run_cache_serachcron();
+  }
+}
+
+
+function run_cache_basiccron() {
+  global $base_url;
+  exec("drush cache-warmer --hub-pages-file=hub_pages.txt ".$base_url);
+}
+
+function run_cache_forumcron() {
+  global $base_url;
+  exec("drush cache-warmer --hub-pages-file=hub_pages.txt ".$base_url);
+}
+
+function run_cache_lessoncron() {
+  global $base_url;
+  exec("drush cache-warmer --hub-pages-file=hub_pages.txt ".$base_url);
+}
+
+function run_cache_serachcron() {
+  global $base_url;
+  exec("drush cache-warmer --hub-pages-file=hub_pages_search.txt ".$base_url);
+}
+
+function run_cache_othercron() {
+  global $base_url;
+  exec("drush cache-warmer --updated-last='-2 days' ".$base_url);
+}
+
+/**
+* Implements hook_entity_insert().
+*/
+function gmc_cache_warmer_entity_insert($entity, $type) {
+  // Update our indexer table
+  if ($type != 'lessons') {
+    return;
+  }
+  $indexer_table = apachesolr_get_indexer_table($type);
+
+// Insert the new entity into a fictional table of all entities.
+  $info = entity_get_info($type);
+  list($id) = entity_extract_ids($type, $entity);
+  db_insert($indexer_table)->fields(array(
+    'entity_type' => $type,
+    'bundle' => $entity->type,
+    'entity_id' => $id,
+    'changed' => REQUEST_TIME,
+  ))->execute();
+}
+
+/**
+* Implements hook_entity_update().
+*/
+function gmc_cache_warmer_entity_update($entity, $type) {
+  // Update our indexer table
+  if ($type != 'lessons') {
+    return;
+  }
+  $indexer_table = apachesolr_get_indexer_table($type);
+
+  db_update($indexer_table)
+    ->fields(array(
+      'changed' => REQUEST_TIME,
+    ))
+  ->condition('entity_id', $entity->entity_id)
+  ->execute();
+}

@@ -1,0 +1,9 @@
+name = User Comments on Profile
+description = User Comments on Profile.
+package = Custom
+version = VERSION
+core = 7.x
+files[] = user_comment.module
+; Information added by drupal.org packaging script on 2013-08-17
+version = "7.custom"
+project = user_comment

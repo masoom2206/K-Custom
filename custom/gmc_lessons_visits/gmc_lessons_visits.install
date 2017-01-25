@@ -1,0 +1,43 @@
+<?php
+
+/**
+ * @file
+ * GMC Lessons Visits - install file
+ */
+
+/**
+ * Implements hook_schema().
+ */
+function gmc_lessons_visits_schema() {
+  $schema['gmc_lessons_visits'] = array(
+    'description' => 'The base table for GMC lessons visits activity.',
+    'fields' => array(
+      'visit_id' => array(
+        'type' => 'serial',
+        'not null' => TRUE,
+        'description' => 'Lessons visit ID',
+      ),
+      'nid' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'description' => 'Lessons ID',
+      ),
+      'uid' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'description' => 'Visited user ID',
+      ),
+      'visit' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'description' => 'Timestamp of visit.',
+      ),
+    ),
+    'primary key' => array('visit_id'),
+    'indexes' => array(
+       'visit_id' => array('visit_id'),
+       'visit' => array('visit'),
+    ),
+  );
+  return $schema;
+}

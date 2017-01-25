@@ -1,0 +1,4418 @@
+<?php
+  ini_set('memory_limit', '-1');
+  drupal_set_time_limit(1000);
+/* 
+ * Implement hook_permission()
+ * for creating custom page for import process.
+ */
+
+function hook_permission() {
+  return array(
+    'administer controls' => array(
+      'title' => t('Administer Controls'),
+      'description' => t('Perform administration tasks for Drupal.'),
+    ),
+  );
+}
+
+/* 
+ * Implement hook_menu()
+ * for creating custom page for import process.
+ */
+function lessondata_import_menu(){
+  $items = array();
+  $items['admin/config/import/lessondata'] = array(
+    'title' => 'Lessondata/video and other files Import',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('import_lessondata_import'),
+    'type' => MENU_NORMAL_ITEM,
+    'access arguments' => array('access content'),
+  );
+  $items['admin/lesson/tabdata'] = array(
+    'title' => 'Lessondata/video and other files Import',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('admin_lesson_tabdata'),
+    'type' => MENU_CALLBACK,
+    'access arguments' => array('access content'),
+  );
+  $items['list/lessons/des/images'] = array(
+    'title' => 'Lessons Description images update',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('list_lessons_des_images_process'),
+    'type' => MENU_NORMAL_ITEM,
+    'access arguments' => array('access content'),
+  );
+  $items['list/lessons/gpfiles/fiels'] = array(
+    'title' => 'Lessons GP4 fiels update',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('list_lessons_gpfiles_fiels_process'),
+    'type' => MENU_NORMAL_ITEM,
+    'access arguments' => array('access content'),
+  );
+ /* $items['admin/list/lessons/lessondata'] = array(
+    'title' => 'Lesson list',
+    'page callback' => 'list_all_imported_lesson',
+    'type' => MENU_CALLBACK,
+    'access arguments' => array('access content'),
+  );
+  $items['admin/list/delete/terms'] = array(
+    'title' => 'Lesson list',
+    'page callback' => 'list_all_delete_terms',
+    'type' => MENU_CALLBACK,
+    'access arguments' => array('access content'),
+  );
+  $items['admin/list/not/impotedfile'] = array(
+    'title' => 'Lesson list',
+    'page callback' => 'list_all_not_impotedfile',
+    'type' => MENU_CALLBACK,
+    'access arguments' => array('access content'),
+  );
+  $items['admin/imageche'] = array(
+    'title' => 'Image list',
+    'page callback' => 'list_all_images_dilie',
+    'type' => MENU_CALLBACK,
+    'access arguments' => array('access content'),
+  ); */
+  $items['admin/thumbnail/images'] = array(
+    'title' => 'Image list',
+    'page callback' => 'admin_thumbnail_images',
+    'type' => MENU_CALLBACK,
+    'access arguments' => array('administer controls'),
+  );
+  $items['admin/import/lesson/video/%'] = array(
+    'title' => 'Image list',
+    'page callback' => 'admin_import_lesson_video',
+    'page arguments' => array(4),
+    'type' => MENU_CALLBACK,
+    'access arguments' => array('access content'),
+  );
+ /* $items['admin/import/lesson/nid'] = array(
+    'title' => 'Image list',
+    'page callback' => 'admin_import_lesson_nid',
+    'page arguments' => array(4),
+    'type' => MENU_CALLBACK,
+    'access arguments' => array('access content'),
+  );*/ 
+  $items['admin/import/videodata/nid/%'] = array(
+    'title' => 'Image list',
+    'page callback' => 'admin_import_videodata_nid',
+    'page arguments' => array(4),
+    'type' => MENU_CALLBACK,
+    'access arguments' => array('access content'),
+  );
+  $items['admin/addremain/lesson/liveid/%'] = array(
+    'title' => 'Image list',
+    'page callback' => 'admin_addremain_lesson_liveid',
+    'page arguments' => array(4),
+    'type' => MENU_CALLBACK,
+    'access arguments' => array('access content'),
+  );
+  $items['admin/node/nid/%/delete'] = array(
+    'title' => 'Image list',
+    'page callback' => 'admin_node_nid_delete',
+    'page arguments' => array(3),
+    'type' => MENU_CALLBACK,
+    'access arguments' => array('access content'),
+  );
+  $items['admin/list/regenerate/thumb/nojs/%'] = array(
+    'title' => 'Image list',
+    'page callback' => 'admin_list_regenerate_images',
+    'page arguments' => array(4, 5),
+    'type' => MENU_CALLBACK,
+    'access arguments' => array('access content'),
+  );
+  $items['admin/list/regenerate/thumb/ajax/%'] = array(
+    'delivery callback' => 'ajax_deliver',
+  ) + $items['admin/list/regenerate/thumb/nojs/%'];
+  
+  $items['admin/import/comment/nid/%'] = array(
+    'title' => 'Import Comment',
+    'page callback' => 'admin_import_comment_nid',
+    'page arguments' => array(4),
+    'type' => MENU_CALLBACK,
+    'access arguments' => array('access content'),
+  );
+  $items['admin/duplicate/email/users'] = array(
+    'title' => 'Import Comment',
+    'page callback' => 'duplicate_email_users',
+    'type' => MENU_CALLBACK,
+    'access arguments' => array('access content'),
+  );
+  $items['admin/lession/visit/users'] = array(
+    'title' => 'Import Comment',
+    'page callback' => 'admin_lession_visit_users',
+    'type' => MENU_CALLBACK,
+    'access arguments' => array('access content'),
+  );
+  $items['admin/lession/diffrence/list'] = array(
+    'title' => 'lession diffrence list',
+    'page callback' => 'admin_lession_diffrence_list',
+    'type' => MENU_CALLBACK,
+    'access arguments' => array('access content'),
+  );
+  $items['update_lessions_pem'] = array(
+    'title' => 'update_lessions_pem',
+    'page callback' => 'update_lessions_pem',
+    'type' => MENU_CALLBACK,
+    'access arguments' => array('access content'),
+  );
+  $items['update/lesson/record/compare/live'] = array(
+    'title' => 'update_lesson_record_compare_live',
+    'page callback' => 'update_lesson_record_compare_live',
+    'type' => MENU_CALLBACK,
+    'access arguments' => array('access content'),
+  );
+  $items['admin/record/compare/live/diff/tag'] = array(
+    'title' => 'update_lesson_record_compare_live',
+    'page callback' => 'update_lesson_record_compare_live_diff_tag',
+    'type' => MENU_CALLBACK,
+    'access arguments' => array('access content'),
+  );
+  $items['admin/record/free/diff'] = array(
+    'title' => 'update_lesson_record_compare_live',
+    'page callback' => 'update_lesson_record_compare_live_free_diff',
+    'page arguments' => array(4),
+    'type' => MENU_CALLBACK,
+    'access arguments' => array('access content'),
+  );  
+  $items['admin/instructor_pro_up'] = array(
+    'title' => 'instructor_pro_up',
+    'page callback' => 'instructor_pro_up',
+    'type' => MENU_CALLBACK,
+    'access arguments' => array('access content'),
+  );  
+  $items['admin/image_brok_list'] = array(
+    'title' => 'instructor_pro_up',
+    'page callback' => 'image_brok_list',
+    'type' => MENU_CALLBACK,
+    'access arguments' => array('access content'),
+  );  
+  $items['admin/image_brok_list'] = array(
+    'title' => 'instructor_pro_up',
+    'page callback' => 'image_brok_list',
+    'type' => MENU_CALLBACK,
+    'access arguments' => array('access content'),
+  );
+  $items['get_nodechangeupdate'] = array(
+    'title' => 'instructor_pro_up',
+    'page callback' => 'get_nodechangeupdate',
+    'type' => MENU_CALLBACK,
+    'access arguments' => array('access content'),
+  );  
+  return $items;
+}
+
+function duplicate_email_users() {
+  $url = "http://www.guitarmasterclass.net/payment/subscriptions.json";
+  $request = drupal_http_request($url);
+  $json_response = drupal_json_decode($request->data);
+  unset($json_response[0]);
+  $json_response = array_reverse($json_response);
+  $i=1;
+  
+  foreach ($json_response as $values) {
+    if (!valid_email_address($values[1])) {
+       $values[1] = $values[1]."@guitarmatserclass.net";
+	  }     
+     $data = db_query('SELECT u.uid, u.mail, gu.uid, gu.juid, gu.uid as uids, gu.* FROM users u left join gmc_users gu on gu.uid=u.uid where u.mail LIKE :mail', array(':mail' => $values[1]))->fetchAll();
+     $data = $data[0];
+     if(empty($data->juid)) {
+       $ds = db_query('SELECT *, u.uid as ud, gu.uid  as gud, gu.juid, gu.email, u.mail, u.created as gucreated FROM users u left join gmc_users gu on gu.email LIKE u.mail where u.mail LIKE :mail', array(':mail' => $values[1]))->fetchAll();
+       $ds = $ds[0];
+       print 'live data : '.$values[0].'--1--'.$values[1].'---2---'.$ds->ud.'---a---'.$ds->gud.'---b---'.$ds->email.'--'.$ds->mail.'<br />'; 
+       /* if (empty($ds->gud)) {
+         $dslive = db_query('SELECT *  FROM ds2_gmc.gmc_user WHERE id = :id', array(':id' => $values[0]))->fetchAll();
+         $dslive = $dslive[0];
+            db_delete('gmc_users')
+                ->condition('juid', $values[0], '=')
+                ->execute();
+           db_merge('gmc_users')
+              ->key(array('juid' => $values[0]))
+              ->fields(array(
+                  'uid' => $ds->ud,
+                  'juid'  => $values[0],
+                  'password'  => $dslive->pass_hash,
+                  'converted' => 0,
+                  'email'  =>  $ds->mail,
+                  'created'  => strtotime($dslive->creation_date),
+                ))  
+            ->execute();
+           print 'live data : '.$values[0].'--1--'.$values[1].'---2---'.$ds->ud.'---a---'.$ds->gud.'---b---'.$ds->email.'--'.$ds->mail.'<br />'; 
+       }*/
+     }
+  }
+
+  
+  /*$records = db_query('SELECT uid, mail, count(mail) as cnt FROM users GROUP by mail HAVING cnt > 1')->fetchAll();
+  foreach ($records as $key => $value) {
+    $data = db_query('SELECT u.uid, u.mail, ur.rid FROM users u left join users_roles ur on ur.uid = u.uid  Where mail LIKE :mail', array(':mail' => $value->mail))->fetchAll();
+    print $data[0]->uid.'--'.$data[0]->rid.'---'.$data[1]->uid.'--'.$data[1]->rid.'<br />';
+    $user_uid = $data[0]->uid;
+    $user_uid2 = $data[1]->uid;
+    $rid = $data[1]->rid;
+    if($user_uid != $user_uid2) {
+      if ($rid == 6) {
+        $myuser = module_invoke('user', 'load', $user_uid);
+        $myuserroles = $myuser->roles;
+        $myuserroles[6]  = 'paid user';
+        module_invoke('user', 'save', $myuser, array('roles' => $myuserroles)); 
+      }
+      user_delete($user_uid2);
+    }
+  }*/
+}
+
+//Batch function for Improve the GP 4 files.
+function list_lessons_gpfiles_fiels_process() {
+  $form['description'] = array(
+    '#type' => 'markup',
+    '#markup' => t('Image update for Lesson decriptions.'),
+  );
+  $form['batch'] = array(
+    '#type' => 'select',
+    '#title' => 'Choose batch',
+    '#options' => array(
+      'batch_1' => t('batch 1 - Imporve the GP4 files on lessons pages.'),
+    ),
+  );
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => 'Go',
+  );
+  return $form;
+}
+
+/*
+ * Implement function to get batch opration request on starting on batch function operation
+ */
+function list_lessons_gpfiles_fiels_process_submit($form, &$form_state){ 
+  $function = 'import_gp_files_' . $form_state['values']['batch'];
+  $_SESSION['http_request_count'] = 0; // reset counter for debug information.
+  $batch = $function();
+  batch_set($batch);
+}
+
+/**
+  * Function for batch function 18 for Update Tags. 
+  */
+function import_gp_files_batch_1 () {
+  ini_set('memory_limit', '-1');
+  drupal_set_time_limit(1000);
+  $operations = array();
+  $doneid = db_query('SELECT ld.nid, La.ID, La.LM2_LessonId FROM lesson_data_video_import ld LEFT JOIN ds2_oskar.LessonAll La ON La.ID = ld.liveid')->fetchAll();
+  $i = 1;
+  foreach ($doneid as $value) {
+    if ($value->LM2_LessonId != 0) {
+      $operations[] = array('import_gp_op_1', array(array('datas' => $value->nid, 'datax' => 1, 'datay' => $value->LM2_LessonId, 'datai' => $value->ID), t('(Operation @operation)', array('@operation' => $i))));
+    }
+    else {
+     $operations[] =  array('import_gp_op_1', array(array('datas' => $value->nid, 'datax' => 2, 'datay' => 0, 'datai' => $value->ID), t('(Operation @operation)', array('@operation' => $i))));
+    }     
+    $i++;
+  }
+  drupal_set_message(t('Creating an array of @num operations', array('@num' => $i)));
+  $batch = array(
+    'operations' => $operations,
+    'finished' => 'import_data_finished',
+  );
+  return $batch;
+}
+
+function import_gp_op_1($value, $operation_details, &$context) {
+  $node = $node = node_load($value['datas']);
+  $iss = $value['datax'];
+  $datai = $value['datai'];
+  $insercount = db_query('SELECT * FROM {lesson_files} where nid = :nids', array(':nids' => $node->nid))->rowCount();
+    $valueLM2_LessonId = $value['datay'];
+    if($valueLM2_LessonId != 0) {
+      _attach_gp4_files($node, 1, $valueLM2_LessonId, $datai);
+    } else {
+      _attach_gp4_files($node, 2);  
+    }
+}
+
+
+/**
+  * Function call action to add the video to part .
+  */
+function _attach_gp4_files($node, $numb, $lid, $datai) {
+  $dir = "/opt/web/admin/public_html/sites/default/files/uploads/".$node->nid;
+  if(empty($node->nid)) return;
+  if (!file_exists($dir)) mkdir($dir);
+  if ( $numb == 1 ) {
+    $ins = db_query("SELECT *, f.id as iidd from ds2_icp.lm2_file f Left join ds2_icp.lm2_lessonpart lv on (lv.fileId = f.id) where lesson_id = :id AND f.extension LIKE '.gp4' order by lv.lessonId ASC, lv.id ASC",array(':id'=>$lid))->fetchAll();
+    if ( empty($ins) ) return;
+		$weight = 0;
+    $weight2 = 100;
+		foreach($ins as $key => $ls) {
+      $ls->filename = str_replace(' - ', '_', $ls->filename);
+      $ls->filename = str_replace(' ', '_', $ls->filename); 
+      $ls->filename = str_replace('-', '_', $ls->filename); 
+      $text = '';
+      $tab = '';	
+      $path = '/opt/web/guitarmasterclass.net/public_html/icp/lm2/files/flv';
+      $path2 = '/opt/web/guitarmasterclass.net/public_html/icp/lm2/files/uploads'.$ls->path; 
+      if($ls->extension == '.gp4') {
+        if (file_exists($path.$ls->filename) && is_file($path.$ls->filename) ) {
+			    $fp = file_get_contents($path.$ls->filename);
+          $xpath = 'public://uploads/'.$node->nid."/".$ls->filename;
+  				$file = file_save_data($fp, $xpath,FILE_EXISTS_REPLACE);
+				  $file->status = FILE_STATUS_PERMANENT;
+				  $file->uid = $node->uid;
+				  file_save($file);
+          if ($ls->extension == '.mp3') {
+            $csd = db_query("SELECT * FROM {ds2_icp.lm2_lessonBacking} WHERE lesson_id = :lid AND file_id = :id", array(':id' => $ls->iidd, ':lid' => $l->lesson_id))->rowCount(); 
+            if ($csd > 0) {
+               _inserting_filesv($file->fid,$node->nid,0,$weight2, '', '', 1);
+             } else {
+               _inserting_filesv($file->fid,$node->nid,0,$weight2, '', '', 0);
+             }
+          } else {
+            _inserting_filesv($file->fid,$node->nid,0,$weight2, '', '', 1);
+          }
+				  
+          $weight2++;
+			  } 
+        else if (file_exists($path2.$ls->iidd.$ls->extension)) {
+          
+          $fp = file_get_contents($path2.$ls->iidd.$ls->extension);
+          $lsfilename = str_replace(' ', '_', $ls->filename);
+          $xpath = 'public://uploads/'.$node->nid."/".$lsfilename;
+					$file = file_save_data($fp, $xpath, FILE_EXISTS_REPLACE);
+					$file->status = FILE_STATUS_PERMANENT;
+					$file->uid = $node->uid;
+					file_save($file);
+					$text = $ls->lessonText;
+					$tab = $ls->lessonTab;
+					if (empty($text) && empty($tab)) {
+					  $lv = db_query('select * from {ds2_icp.lv_lessonpart} where lessonId = :lid and fileId = :field',array(':lid'=>$lid, ':field'=>$ls->iidd))->fetchAll();
+            if ($lv) {
+						  $text = $lv[0]->lessonText;
+						  $tab = $lv[0]->lessonTab;	
+            }
+					}
+					$re = strpos($text,'view_image');
+					if ($re !== false) {
+					  watchdog('Lesson Fix','Change Image code in lesson !name',array('!name'=> $node->title));
+					}
+					$free = 1;
+					if (!empty($node->field_free_parts_al['und'][0]['value'])) {
+					  $pts = explode(",",$node->field_free_parts_al['und'][0]['value']);
+						if (in_array($weight,$pts)) {
+						  $free = 0;
+						}
+					}
+         if ($ls->extension == '.mp3') {
+            $csd = db_query("SELECT *  FROM {ds2_icp.lv_lessonBacking} WHERE lesson_id = :lid AND file_id = :id", array(':id' => $ls->iidd, ':lid' => $ls->lesson_id))->rowCount(); 
+            if ($csd > 0) {
+               _inserting_filesv($file->fid,$node->nid,$free,$weight2,$tab,$text, 1);
+             } else {
+               _inserting_filesv($file->fid,$node->nid,$free,$weight2,$tab,$text, 0);
+             }
+          } else {
+            _inserting_filesv($file->fid,$node->nid,$free,$weight2,$tab,$text, 1);
+          }
+					//_inserting_filesv($file->fid, $node->nid,$free,$weight2,$tab,$text, $pubcount);
+          $weight2++;
+        }
+      } 
+    }
+  } else {
+    $weight2 = 100;
+    $pubcount = 1;
+    $doneid = db_query('SELECT liveid FROM lesson_data_video_import WHERE nid = :nid LIMIT 0, 1', array(':nid' => $node->nid))->fetchField();
+    $records = db_query("SELECT * FROM ds2_oskar.LessonAll l WHERE l.ID = :ID", array(':ID' =>  $doneid))->fetchAll();
+    $records = $records[0];
+    $uss = $records->Url;
+    //$uss = drupal_get_path_alias('node/'.$node->nid);
+	  $path = '/opt/web/guitarmasterclass.net/public_html/lessondata/lessondata/'.$uss;
+	  $folders[] = 'filmer';
+	  $folders[] = 'filmer_mo';
+	  foreach($folders as $key => $folds) {
+		  if (file_exists($path."/".$folds)) {
+				if (file_exists($path."/tab/guitarpro.gp4")) {
+				  $fp = file_get_contents($path."/tab/guitarpro.gp4");
+					$file = file_save_data($fp, 'public://uploads/'.$node->nid."/guitarpro.gp5",FILE_EXISTS_REPLACE);
+					$file->status = FILE_STATUS_PERMANENT;
+					$file->uid = $node->uid;
+					file_save($file);
+					_inserting_filesv($file->fid,$node->nid,0,$weight2,'', '', 1, '');
+          $weight2++;
+				}
+		  }
+	  }
+  }
+}
+
+//Batch function for Improve the description images files.
+function list_lessons_des_images_process() {
+  $form['description'] = array(
+    '#type' => 'markup',
+    '#markup' => t('Image update for Lesson decriptions.'),
+  );
+  $form['batch'] = array(
+    '#type' => 'select',
+    '#title' => 'Choose batch',
+    '#options' => array(
+      'batch_1' => t('batch 1 - Imporve the image on lessons pages.'),
+    ),
+  );
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => 'Go',
+  );
+  return $form;
+}
+
+
+/*
+ * Implement function to get batch opration request on starting on batch function operation
+ */
+function list_lessons_des_images_process_submit($form, &$form_state){ 
+  $function = 'import_list_lesson_' . $form_state['values']['batch'];
+  $_SESSION['http_request_count'] = 0; // reset counter for debug information.
+  $batch = $function();
+  batch_set($batch);
+}
+
+/**
+  * Function for batch function 18 for Update Tags. 
+  */
+function import_list_lesson_batch_1 () {
+  $query = db_select('lesson_files', 'it')->fields('it')->condition('description', '%../../lessonviewer/view_image.php?id=%', 'LIKE')->execute()->fetchAll();
+  $i=1;
+  $operations = array();
+  foreach ($query as $value) {
+    $operations[] = array('image_lesson_op_1', array($value, t('(Operation @operation)', array('@operation' => $i))));
+    $i++;
+  }
+  $batch = array(
+    'operations' => $operations,
+    'finished' => 'import_data_finished',
+  );
+  return $batch;
+}
+
+function image_lesson_op_1($value, $operation_details, &$context) {
+  $chars = preg_match_all('/<img [^>]*src="([^"]+)"/i', $value->description, $matches);
+  $imglist = $matches[1];
+  foreach ($imglist as $imgval) {
+      
+      $id = str_replace("../../lessonviewer/view_image.php?id=", "", $imgval); 
+      if (isset($id) && is_numeric($id)) { 
+        $node_data = node_load($value->nid)->uid;
+        $result = db_query("SELECT * FROM ds2_icp.lv_file WHERE id = :id", array(":id" => $id))->fetchAll();	
+        if (count($result) < 0) {
+	        $result = db_query("SELECT * FROM ds2_icp.lm2_file WHERE id = :id", array(":id" => $id))->fetchAll();
+        }
+         
+        $type = $result[0]->extension;
+        $filename = $id.$result[0]->extension; 
+        $path = "public://lesson_image/".$filename;
+        $filepaths = "/sites/default/files/lesson_image/" . $filename;	
+        if (!file_exists(drupal_realpath($path)) ) {
+	        $path = '/opt/web/guitarmasterclass.net/public_html/icp/lm2/files/uploads'.$result[0]->path.$result[0]->id.$result[0]->extension;
+	        $file_temp = file_get_contents($path);
+	        $file = file_save_data($file_temp, "public://lesson_image/" . $filename, FILE_EXISTS_REPLACE);
+	        $file->status = FILE_STATUS_PERMANENT;
+	        $file->uid = $node_data;
+	        file_save($file);
+          $value->description = str_replace("../../lessonviewer/view_image.php?id=".$id, $filepaths, $value->description);
+          $value->description = str_replace("http://gmc.getonit.tk", "", $value->description);
+          db_update('lesson_files')
+              ->fields(array(
+                  'description' => $value->description,
+            ))
+            ->condition('nid', $value->nid, '=')
+            ->condition('fid', $value->fid, '=')
+            ->execute();
+       } else {
+          $value->description = str_replace("http://gmc.getonit.tk", "", $value->description);
+          $value->description = str_replace("../../lessonviewer/view_image.php?id=".$id, $filepaths, $value->description);
+          db_update('lesson_files')
+              ->fields(array(
+                  'description' => $value->description,
+            ))
+            ->condition('nid', $value->nid, '=')
+            ->condition('fid', $value->fid, '=')
+            ->execute();
+       }
+       
+     }
+  }
+  $value->description = str_replace("http://gmc.getonit.tk", "", $value->description);
+  db_update('lesson_files')
+      ->fields(array(
+          'description' => $value->description,
+    ))
+    ->condition('nid', $value->nid, '=')
+    ->condition('fid', $value->fid, '=')
+    ->execute();
+}
+
+/***
+function list_lessons_des_images() {
+  $query = db_select('lesson_files', 'it')->fields('it')->condition('fid', 176452)->execute()->fetchAll();
+  $myserach = array();
+  
+  foreach ($query as $value) {
+    //print_r($value->description); exit;
+    $chars = preg_match_all('/<img [^>]*src="([^"]+)"/i', $value->description, $matches);
+    $imglist = $matches[1];
+    foreach ($imglist as $imgval) {
+        
+        $id = str_replace("../../lessonviewer/view_image.php?id=", "", $imgval);
+        if (isset($id)) { 
+          $node_data = node_load($value->nid)->uid;
+	        $result = db_query("SELECT * FROM ds2_icp.lv_file WHERE id = :id", array(":id" => $id))->fetchAll();	
+	        if (count($result) < 0) {
+		        $result = db_query("SELECT * FROM ds2_icp.lm2_file WHERE id = :id", array(":id" => $id))->fetchAll();
+	        }
+	        $type = $result[0]->extension;
+	        $filename = $id.$result[0]->extension;
+	        $path = "public://lesson_image/".$filename;
+          $filepaths = "/sites/default/files/lesson_image/" . $filename;
+	        if (!file_exists(drupal_realpath($path)) ) {
+		        $path = '/opt/web/guitarmasterclass.net/public_html/icp/lm2/files/files/uploads'.$result[0]->path.$result[0]->id.$result[0]->extension;
+		        $file_temp = file_get_contents($path);
+		        $file = file_save_data($file_temp, "public://lesson_image/" . $filename, FILE_EXISTS_REPLACE);
+		        $file->status = FILE_STATUS_PERMANENT;
+		        $file->uid = $node_data;
+		        file_save($file);
+            $value->description = str_replace("../../lessonviewer/view_image.php?id=".$id, $filepaths, $value->description);
+            db_update('lesson_files')
+                ->fields(array(
+                    'description' => $value->description,
+              ))
+              ->condition('nid', $value->nid, '=')
+              ->condition('fid', $value->fid, '=')
+              ->execute();
+	       } else {
+            
+            $value->description = str_replace("../../lessonviewer/view_image.php?id=".$id, $filepaths, $value->description);
+            db_update('lesson_files')
+                ->fields(array(
+                    'description' => $value->description,
+              ))
+              ->condition('nid', $value->nid, '=')
+              ->condition('fid', $value->fid, '=')
+              ->execute();
+         }
+         
+       }
+    }
+    print_r($value);
+    exit;
+  }
+}*/
+
+//funtion for delete old lesson part
+function admin_node_nid_delete($nid) {
+  db_delete('lesson_files')
+    ->condition('nid', $nid)
+    ->execute();
+  return 'Done';
+}
+
+// function for reimport lesson part
+function admin_import_videodata_nid($nid) {
+
+  $doneid = db_query('SELECT liveid FROM lesson_data_video_import WHERE nid = :nid LIMIT 0, 1', array(':nid' => $nid))->fetchField();
+  $records = db_query("SELECT * FROM ds2_oskar.LessonAll l WHERE l.ID = :ID", array(':ID' =>  $doneid))->fetchAll();
+  $records = $records[0];
+
+  $node = node_load($nid);
+
+  if($records->LM2_LessonId != 0) {
+    _attach_lm2_files($node, 1, $records->LM2_LessonId, $records->ID);
+  } else {
+    _attach_lm2_files($node, 2, $records->LM2_LessonId, $records->ID);  
+  }
+  return 'Done';
+}
+
+
+//add nid into drupal.
+function admin_import_lesson_nid() {
+  $records = db_query("select * from ds2_oskar.LessonAll l order by l.ID ASC")->fetchAll();
+  $adfd = array();
+  $i = 1;
+  foreach ($records as $value) {
+    $datas = db_query("select * from {dev_syn_drupal.node} WHERE title LIKE :title AND type = 'lessons'", array(':title' => str_replace('##', '',$value->Title)))->fetchAll();
+    $nid = $datas[0];
+    $nid = ($nid->nid != '') ? $nid->nid : 0;
+    
+    if ($nid > 0 ) {
+      $insercount = db_query('SELECT * FROM {dev_syn_drupal.lesson_files} where nid = :nids', array(':nids' => $nid))->rowCount();
+    } else {
+       $insercount = 0;
+    }
+    $inserlcount = db_query('SELECT *  FROM {ds2_icp.lm2_file} WHERE lesson_id = :id', array(':id' => $value->LM2_LessonId))->rowCount();
+    db_insert('lesson_data_video_import') // Table name no longer needs {}
+    ->fields(array(
+      'liveid' => $value->ID,
+      'nid' => $nid,
+      'videocountlive' => $inserlcount,
+      'videocountdrupal' => $insercount,
+      'other' => $value->LM2_LessonId,
+    ))
+    ->execute();
+  }
+}
+
+
+
+// page callback function for importing video for single node. 
+function admin_import_lesson_video($nid) {
+  $node = node_load($nid);
+  $records = db_query("select * from {ds2_oskar.LessonAll} l WHERE l.title LIKE '".$node->title."'order by l.ID DESC")->fetchAll();
+  $datai = $records[0]->ID;
+  $insercount = db_query('SELECT * FROM {lesson_files} where nid = :nids', array(':nids' => $node->nid))->rowCount();
+  if($insercount == 0) {
+    $valueLM2_LessonId = $records[0]->LM2_LessonId;
+    if($valueLM2_LessonId != 0) {
+      _attach_lm2_files($node, 1, $valueLM2_LessonId, $datai);
+    } else {
+      _attach_lm2_files($node, 2);  
+    }
+  }
+}
+
+
+// page callback function for adding new images. 
+function admin_list_regenerate_images($ajax, $nid) {
+  global $base_url;
+  $is_ajax = $ajax === 'ajax';
+  // Since clicking this link updates the database, we used drupal_get_token() for security.
+  if (empty($_GET['tok']) || !drupal_valid_token($_GET['tok'], 'delete_log_item' . $nid)) {
+    //return MENU_ACCESS_DENIED;
+  }
+  $dir = "public://uploads/".$nid;
+  $allfiles = file_scan_directory($dir,'/.*\.mp4$/');
+  $all_files = array();
+  foreach ($allfiles as $key => $value) {
+     $all_files[] = $value->uri;
+     $namesfile = str_replace(' ', '_', $value->filename);
+  }
+  $datauri = $all_files[0]; 
+  $srcFile = drupal_realpath($datauri);
+ // $fp = file_get_contents($srcFile);
+ // $file = file_save_data($fp,"public://uploads/".$nid."/".$namesfile,FILE_EXISTS_REPLACE);
+ // $file->status = FILE_STATUS_PERMANENT;
+//  $file->uid = $node->uid;
+ // file_save($file);
+ // $srcFile = drupal_realpath($file->uri);
+ 
+
+  //$ds = 'ffmpeg -i "'.$srcFile.'" -ss 00:00:01.435 -f image2 -vframes 1 big_'.$nid.'.jpg';
+  //exec($ds);
+  $thumb = 'public://uploads/'.$nid.'/big_'.$nid.'.jpg';
+//  $excu = "avconv -i '{$srcFile}' -ss 00:00:14.435 -f image2 -vframes 1  big_{$nid}.png";
+   exec("/usr/local/bin/ffmpeg -i $srcFile -f image2 -vframes 1  big_{$nid}.png");
+ // exec($excu);
+  $scrss = $base_url; 
+//  $thumb = 'public://uploads/'.$nid.'/big_'.$nid.'.jpg';
+//  $fp = file_get_contents($thumb);
+ // $file = file_save_data($fp,"public://uploads/".$nid."/big_".$nid.".jpg",FILE_EXISTS_REPLACE);
+ // $file->status = FILE_STATUS_PERMANENT;
+ // $file->uid = $node->uid;
+  //file_save($file);
+  $pics = $base_url.'/sites/default/files/uploads/'.$nid.'/big_'.$nid.'.jpg';
+  if ($is_ajax) {
+    $commands = array();
+    $content = '<img width="200px;" src="/sites/default/files/uploads/'.$nid.'/big_'.$nid.'.jpg">';
+    // Perhaps we could remove the table row we just deleted?
+    $commands[] = ajax_command_replace("#target".$nid, $content);
+    return array(
+      '#type' => 'ajax',
+      '#commands' => $commands,
+    );
+  }
+  else {
+    drupal_set_message(t('Deleted 1 message'));
+    drupal_goto();
+  }
+}
+
+function admin_addremain_lesson_liveid($liveid) {
+  print $liveid;
+  $values = db_query("select * from {ds2_oskar.LessonAll} l WHERE l.ID = '".$liveid."'")->fetchAll();
+  $values = $values[0];
+  $node = new stdClass();
+  $datass = db_query('select l.* , unix_timestamp(l.Date) as dt,c.Name as category ,t.Name as type,tc.Name as technique, v.guest as guest, v.member as member from {ds2_oskar.LessonAll} l left join {ds2_oskar.Technique} tc on  (tc.ID = l.Technique) left join ds2_oskar.LessonType t on (t.ID = l.LessonType) left join ds2_oskar.MusicCategory c on (c.ID = l.MusicCategory) left join {ds2_oskar.visit_counter} v on (v.iValue = l.ID) and l.Instructor != 0 Where l.ID = :ID ', array(':ID' => $values->ID))->fetchAll();
+       // print_r($data); exit;
+        
+        $data = $datass[0];
+        if($data->Title != '') {
+        $datad = db_query("select * from ds2_oskar.LessonAll l Left Join ds2_oskar.Instructor I on I.ID = l.Instructor where l.ID = :ID", array(':ID' => $values->ID))->fetchAll();
+        if (!empty($data->category)) {
+          $music_category = _get_term_from_name($data->category, 8); 
+        }
+        if (!empty($data->type)) {
+          $lesson_type = _get_term_from_name($data->type, 7); 
+        }
+        if (!empty($data->technique)) {
+          $technique = _get_term_from_name($data->technique, 9); 
+        }
+        if ($data->Instructor != 0) {
+          $ins = db_query('SELECT * from {ds2_oskar.Instructor} where ID = :id',array(':id'=>$data->Instructor))->fetchAll();  
+          $ins = $ins[0];
+          //print_r($data->Instructor); exit;
+          $u = user_load_by_name($ins->FName.' '.$ins->LName);
+          
+          if ( empty($ins->Email) ) $ins->Email = strtolower($ins->FName.'.'.$ins->LName).'@guitarmasterclass.net';
+          $u = user_load_by_name($ins->FName.' '.$ins->LName);
+          if (!is_object($u)) {
+          $u = user_load_by_mail($ins->Email);
+          }
+        } else {
+          $u = new stdClass;
+          $u->uid = 0;
+        }
+        if(!empty($data->Tags)) {
+          $tags = explode(",",$data->Tags);
+        //  print_r($tags); exit;
+          if (count($tags[0])) {
+            foreach($tags as $key => $t) {
+              $tid = $ttid = taxonomy_get_term_by_name($t, 'tags');;
+            //  print_r($tid); exit;
+              if (key($tid) != 0 && key($tid) != '') {
+                $node->field_tags['und'][$key]['tid'] = key($tid);
+              } /*else {
+                // print_r($tags); exit;
+                $tid =  taxonomy_term_save((object) array(
+                   'name' => $t,
+                   'vid' => 1,
+                 ));
+                
+               // print_r($tid);exit;
+              }*/
+            }
+          }
+        }
+        $node->field_spoken_video['und'][0]['value'] = $data->SpokenVideo;
+        $node->type = 'lessons';
+        if (!empty($data->category)) {
+          if ($music_category) {
+            $node->field_music_category['und'][0]['tid'] = $music_category;
+          }
+        }
+        if (!empty($data->type)) {
+          if ($lesson_type) {
+           $node->field_lesson_type['und'][0]['tid'] = $lesson_type;
+          }
+        }
+        if (!empty($data->technique)) {
+          if ($technique) {
+            $node->field_technique['und'][0]['tid'] = $technique;
+          }
+        }
+        $node->field_guest_views['und'][0]['value'] = $data->guest;
+        $node->field_member_views['und'][0]['value'] = $data->member;
+        $node->field_camera_angles['und'][0]['value'] = $data->CameraAngles;
+        $node->uid = $u->uid;
+        $node->field_scales_and_key['und'][0]['value'] = $data->TheoryInAction;
+        $node->field_is_cover_lesson['und'][0]['value'] = $data->cover_lesson;
+        $node->field_the_style_of['und'][0]['value'] = ($data->InTheStyleOf) ? $data->InTheStyleOf : 0;
+        $node->field__mobile['und'][0]['value'] = $data->is_mobile;
+        $node->field_backing['und'][0]['value'] = $data->NonDownloadableBacking;
+        $node->field_music_sub_genre['und'][0]['value'] = $data->MusicStyle;
+        $node->field_bonus_lesson['und'][0]['value'] = $data->BonusLesson;
+
+        $node->title = $data->Title;
+        
+        $dta  = explode('-', $data->Date);
+        if ($dta[0] > 2020) {
+         $data->Date = '2017-09-21 00:00:00';
+        } elseif ($dta[0] == 0000) {
+          $data->Date = '2017-09-21 00:00:00';  
+        } 
+        
+        $node->created = strtotime($data->Date);
+        $node->revision_timestamp = strtotime($data->Date);
+        $node->changed = strtotime($data->Date);
+        $node->status = ($data->cp_status == 2) ? 1 : 0;
+        $node->field_difficulty_level['und'][0]['value'] = $data->DifficultyLevel;
+        //$node->tags['und'][0]['value'] = $data->Tags;
+        $node->promote = 0;      // If you want promoted to front page, else use 0
+        $node->sticky = 0;
+       // print '<pre>';
+        //print_r($data); exit;
+        $node->body['und'][0]['value'] = $data->ShortDescription;
+        $node->body['und'][0]['format'] = 'full_html';       // Filtered HTML  
+       // $node->language = 'und';
+        $ex_path = explode("/",$data->Url);
+        if (!empty($ex_path[1])) 
+          $node->path['und'][0]['alias'] = $ex_path[1]."/".$ex_path[2];
+        // $node->comment = 2;
+        //   print_r($node); exit;
+        $node->field_free_parts_al['und'][0]['value'] = $data->fria_delar;
+        $node->field_free_parts['und'][0]['value'] = $data->Free;
+      //  print '<pre>';
+       //print_r($node); exit;
+        //$node = node_submit($node);
+        node_save($node);  //print_r($node);                                                               
+       // $datad['dd'] = $values;
+       $datax[] = $datass;
+      db_merge('lesson_data_video_import') // Table name no longer needs {}
+        ->key(array('liveid' => $values->ID))
+        ->fields(array(
+          'liveid' => $values->ID,
+          'nid' => $node->nid,
+          'videocountlive' => 0,
+          'videocountdrupal' => 0,
+          'other' => $values->LM2_LessonId,
+        ))->execute();
+      print $node->nid;
+    }
+}
+
+
+//deleted terms all.
+function list_all_delete_terms() {
+/*  $query = db_query("Select ttd.tid from taxonomy_term_hierarchy tth Left Join taxonomy_term_data ttd on tth.tid = ttd.tid WHERE ttd.tid != ''")->fetchAll();
+  $data = array();
+  foreach ($query as $key => $value) {
+   $data[] = $value->tid;
+  }
+  $tidss = implode(",", $data);
+  $dfa = 'DELETE FROM taxonomy_term_hierarchy WHERE tid NOT IN ('. $tidss.')';
+  return print_r($dfa);*/
+} 
+
+/*
+ * Implement callback function to get http request on starting on batch function operation
+ */
+function import_lessondata_import() {
+  $form['description'] = array(
+    '#type' => 'markup',
+    '#markup' => t('Importing the Lesson data.'),
+  );
+  $form['batch'] = array(
+    '#type' => 'select',
+    '#title' => 'Choose batch',
+    '#options' => array(
+      'batch_1' => t('batch 1 - Import the Lesson data PHP to drupal'),
+      'batch_2' => t('batch 2 - Remove ## from title'),
+      'batch_3' => t('batch 3 - Add tags from title'),
+      'batch_4' => t('batch 4 - list all lesson part'),
+      'batch_5' => t('batch 5 - list all lesson part data'),
+      'batch_05' => t('batch 05 - Part0 first update users email/add on the site.'),
+      'batch_6' => t('batch 6 - Part1- Import new lesson without video'),
+      'batch_7' => t('batch 7 - Part2- Update the URL alias'),
+      'batch_8' => t('batch 8 - Part3- update create and update time with publish date.'),
+      'batch_9' => t('batch 9 - Part4- Change stauts for publish/unpublish.'),
+      'batch_10' => t('batch 10 - Part 5- Add lesson videos.'),
+      'batch_11' => t('batch 11 - Part 6- Reattaching comment with lessons.'),
+      'batch_12' => t('batch 12 - Part 7- Reattaching thumbnail with lessons.'),
+      'batch_13' => t('batch 13 - Part 8- Reattaching Related Lesson with lesson.'),
+      'batch_14' => t('batch 14 - Part 9- Update like ([img]abcdx[/img]).'),
+      //'batch_15' => t('batch 16 - Part 10 eee- Update like ([img]abcdx[/img]).'),
+      'batch_16' => t('batch 16 - Part 11- Update Complete Tags.'),
+      'batch_17' => t('batch 17 - Part 12- Update REC Takes.'),
+      'batch_18' => t('batch 18 - gmc_featured_content to drupal.'),
+      'batch_19' => t('batch 19 - Update PDF.'),
+      'batch_20' => t('batch 20 - Update users payment status from old site data.'),
+      'batch_21' => t('batch 21 - Update count data tags .'),
+    ),
+  );
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => 'Go',
+  );
+  return $form;
+}
+
+/*
+ * function add the Old site payment/ role statatus on Drupal.
+ */
+function import_data_lessondata_batch_20 () {
+  $url = "http://www.guitarmasterclass.net/payment/subscriptions.json";
+  $request = drupal_http_request($url);
+  $json_response = drupal_json_decode($request->data);
+  unset($json_response[0]);
+  $json_response = array_reverse($json_response);
+  $i=1;
+  foreach ($json_response as $values) {
+    $operations[] = array('import_ldata_op_20', array($values, t('(Operation @operation)', array('@operation' => $i))));
+    $i++;
+  }
+  $batch = array(
+    'operations' => $operations,
+    'finished' => 'import_data_finished',
+  );
+  return $batch;
+}
+
+function import_ldata_op_20($value, $operation_details, &$context) {
+  $account = _add_live_member($value[0], $value[1]); 
+  if($account != 'DILIP') {
+      $rid = 6;
+      $timestamp = strtotime($value[3]);
+     //       print_r($value); 
+    //  print_r($account); 
+      // If the role expires, keep a record.
+      if (!empty($timestamp)) {
+        db_merge('uc_roles_expirations')
+        ->key(array('uid' => $account->uid))
+          ->fields(array(
+            'uid' => $account->uid,
+            'rid' => $rid,
+            'expiration' => $timestamp,
+          ))
+          ->execute();
+        $myuser = module_invoke('user', 'load', $account->uid);
+        $myuserroles = array(6 => 'paid user' );
+        module_invoke('user', 'save', $myuser, array('roles' => $myuserroles));
+        
+      }
+  }
+}
+
+
+function _add_live_member($author_id, $email) {
+  $userdata = db_query('SELECT * FROM {dev_syn_drupal.gmc_users} WHERE juid = :juid', array(':juid' => $author_id))->fetchAll();
+  if (count($userdata) > 0) {
+    return $u = user_load($userdata[0]->uid); 
+  } 
+  $ins = db_query('SELECT *, g.id as ID, mm.name as display_name from  {ds2_gmc.gmc_user} g left join {ds2_gmc.medlemmar} md on (md.medlem_id = g.old_id) left join {ds2_gmc.ibf_member_extra} m on (m.id = g.ipb_id) left join {ds2_gmc.ibf_members} mm on (mm.id = g.ipb_id) where g.id = :id',array(':id'=> $author_id))->fetchAll();
+  if (count($ins)) {
+   $ins = $ins[0];
+  } else {
+   return 'DILIP';
+  }
+  if (!valid_email_address($email)) {
+     $name = $email;
+     $ins->email = $email."@guitarmatserclass.net";
+	}
+  if ( !empty($ins->display_name) ) {
+		$name = $ins->display_name;
+	}
+  list($fname,$lname) = explode(" ",$name);
+  if (strtotime($ins->slut) > strtotime(date('Y-m-d')) ) {
+    $new_user_roles = array(6 => 'paid user' );
+  } else {
+    $new_user_roles = array(5 => 'member' );
+  }
+  if (empty($ins->email)) {
+    return 'DILIP';
+  }
+  $new_user->name = !empty($ins->members_l_username) ? str_replace(' ', '', $ins->members_l_username) :  $ins->email;
+	//$new_user->pass = $ins->pass_hash; // plain text, hashed later
+	$new_user->mail = $ins->email;
+	$new_user->init = $ins->email;
+	$new_user->roles = $new_user_roles;
+	$new_user->field_first_name['und'][0]['value'] = $fname;
+	$new_user->field_last_name['und'][0]['value'] = $lname;
+	$new_user->status = 1; 
+	user_save($new_user);
+	$picture = '/opt/web/guitarmasterclass.net/public_html/guitar_forum/'.$ins->avatar_type."s/".$ins->avatar_location;
+	if (file_exists($picture)) {
+		$fp = file_get_contents($picture);	
+	  $file = file_save_data($fp,"public://pictures/".$ins->avatar_location,FILE_EXISTS_REPLACE);
+		if (is_object($file)) {
+	    $file->status = FILE_STATUS_PERMANENT;
+	    $file->uid = $new_user->uid;
+	    $file = file_save($file);
+	    $new_user->picture = $file;
+	  }
+	}
+	$new_user = user_save($new_user);
+  $uid = $new_user->uid;
+    db_merge('gmc_users')
+      ->key(array('uid' => $uid))
+      ->fields(array(
+          'uid' => $uid,
+          'juid'  => $ins->ID,
+          'password'  => $ins->pass_hash,
+          'converted' => 0,
+          'email'  =>  $ins->email,
+          'created'  => strtotime($ins->creation_date),
+        ))  
+    ->execute();
+	return $new_user;	
+}
+
+/**
+  * Function for batch function 18 for Update Tags. 
+  */
+function import_data_lessondata_batch_18 () {
+  $records = db_query("SELECT * FROM ds2_gmc.gmc_featured_content Where id > 154 ORDER BY id ASC ")->fetchAll();
+  $i=1;
+  foreach ($records as $values) {
+    $operations[] = array('import_ldata_op_18', array($values, t('(Operation @operation)', array('@operation' => $i))));
+    $i++;
+  }
+  $batch = array(
+    'operations' => $operations,
+    'finished' => 'import_data_finished',
+  );
+  return $batch;
+}
+
+
+function import_ldata_op_18($value, $operation_details, &$context) {
+
+  $title = $value->description;
+  if(!empty($value->large_image)) {
+    $img = $value->large_image;
+  } else {
+   $img = $value->small_link;
+  }
+  $date = strtotime($value->publish_date);
+  $dta  = explode('-', $value->publish_date);
+  if ($dta[0] == 0000 || $dta[0] > 2020) {
+    $date = time();
+  }
+   
+  $custom_html = $value->custom_html;
+  $url = $value->url;
+  $node = new stdClass();
+  $node->field_small_text_['und'][0]['value'] = $title;
+  $node->field_url['und'][0]['value'] = $url;
+  $node->field_custom_html['und'][0]['value'] = $custom_html;
+  $node->field_custom_html['und'][0]['format'] = 'full_html';
+  $node->created = $date;
+  $node->status = 0;
+  $node->uid = 1;
+  $node->type = 'news';
+  $path = 'http://www.guitarmasterclass.net';
+  $img = str_replace("http://www.guitarmasterclass.net", "", $img);
+  $fp = file_get_contents($path.$img);
+  $xfile = pathinfo($path.$url);
+  $xpath = 'public://uploads/'.basename($img);
+  $file = file_save_data($fp, $xpath, FILE_EXISTS_RENAME);
+  $file->status = FILE_STATUS_PERMANENT;
+  $file->uid = $node->uid;
+  file_save($file);
+  $node->field_image_url_['und'][0]['fid'] = $file->fid;
+  node_save($node);
+}
+
+/**
+  * Function for batch function 17 for Update video. 
+  */
+function import_data_lessondata_batch_17 () {
+  $records = db_query("SELECT * FROM ds2_gmc.gmc_rec_video2 grv left Join lesson_data_video_import ld on ld.liveid = grv.lesson_id ORDER BY grv.lesson_id ASC ")->fetchAll();
+  $i=1;
+  foreach ($records as $values) {
+    $operations[] = array('import_ldata_op_17', array($values, t('(Operation @operation)', array('@operation' => $i))));
+    $i++;
+  }
+  $batch = array(
+    'operations' => $operations,
+    'finished' => 'import_data_finished',
+  );
+  return $batch;
+}
+
+
+
+function import_ldata_op_17($value, $operation_details, &$context) {
+  $query = db_select('import_topics_comment_reply', 'it')
+            ->fields('it');
+  $query->leftJoin('import_topics_comment', 'ttd', 'ttd.live_topic_id = it.tid');
+  $query->fields('ttd');
+  $result = $query->condition('it.pid', $value->post_id, '=')
+    ->execute()->fetchAll();
+  if(!empty($result[0]->nid)) {
+    //print $value->nid.'--->>>'.$result[0]->nid.'+++';	
+    $node = node_load($result[0]->nid);
+    if (!empty($node->nid)) {
+      $node->field_lessons_node_id['und'][0]['value'] = $value->nid;
+      field_attach_presave('node', $node);
+      field_attach_update('node', $node);
+    }
+  }
+}
+
+/**
+  * Function for batch function 16 for Update Tags. 
+  */
+function import_data_lessondata_batch_16 () {
+  $records = db_query("SELECT * FROM `lesson_data_video_import` where nid > 0 ")->fetchAll();
+  $i=1;
+  foreach ($records as $values) {
+    $operations[] = array('import_ldata_op_16', array($values, t('(Operation @operation)', array('@operation' => $i))));
+    $i++;
+  }
+  $batch = array(
+    'operations' => $operations,
+    'finished' => 'import_data_finished',
+  );
+  return $batch;
+}
+
+/**
+  * Function for batch function 16 for Update Tags. 
+  */
+function import_ldata_op_16($value, $operation_details, &$context) {
+  global $user;
+  $result = db_query("SELECT *  FROM ds2_oskar.LessonAll ld left join ds2_icp.lm2_lm2lesson ll on ld.LM2_LessonId = ll.id where ld.ID = :ID", array(':ID' => $value->liveid))->fetchAll();
+  if ($result[0]->LM2_LessonId == 0) {
+    $uss = $result[0]->Url;
+    //$uss = drupal_get_path_alias('node/'.$node->nid);
+    $path = '/opt/web/guitarmasterclass.net/public_html/lessondata/lessondata/'.$uss.'/tab/tab.txt';
+    if (file_exists($path)) {
+      $n2 = fopen($path,"r");
+      $notes2 = fread($n2,filesize($path));
+      fclose($n2);
+      $tab = utf8_encode($notes2); 
+    }
+  } else {
+    if (!empty($result[0]->lessonTab))
+      $tab = $result[0]->lessonTab;
+    else 
+      $tab = '';
+  }
+   
+   if (!empty($tab) && !empty($node->nid)) {
+    $node = node_load($value->nid);
+    $node->field_complete_tab['und'][0]['value'] = $tab;
+    field_attach_presave('node', $node);
+    field_attach_update('node', $node);
+  }
+}
+/**
+  * Function for batch function 15 for Update like [img]abcdx[/img]. 
+  */
+function import_data_lessondata_batch_15 () {
+  $records = db_query("SELECT * FROM {ds2_icp.lm2_intro} ")->fetchAll();
+  $i=1;
+  foreach ($records as $values) {
+    $operations[] = array('import_ldata_op_15', array(array('data' => $values), t('(Operation @operation)', array('@operation' => $i))));
+    $i++;
+  }
+  $batch = array(
+    'operations' => $operations,
+    'finished' => 'import_data_finished',
+  );
+  return $batch;
+}
+function import_ldata_op_15($value, $operation_details, &$context) {
+  global $user;
+  $result = db_select('lesson_data_video_import', 'n')
+            ->fields('n')
+            ->condition('liveid', $value['data']->lm2_id, '=')
+            ->execute()
+            ->fetchObject();
+  $nid = $result->nid;
+  db_merge('admin_lesson_text') 
+    ->key(array('nid' => $nid))
+    ->fields(array(
+      'nid' => $nid,
+      'body' => strip_tags($value['data']->publish_body, '<p><a><span><style><strong><i><b><u>'),
+      'uid' => $user->uid,
+      'status' => 1
+    ))->execute();
+}
+
+/**
+  * Function for batch function 14 for Update like [img]abcdx[/img]. 
+  */
+function import_data_lessondata_batch_14 () {
+  $records = db_query("SELECT * FROM lesson_files WHERE description LIKE '%[img]%'")->fetchAll();
+  $i=1;
+  foreach ($records as $values) {
+    $operations[] = array('import_ldata_op_14', array(array('data' => $values), t('(Operation @operation)', array('@operation' => $i))));
+    $i++;
+  }
+  $batch = array(
+    'operations' => $operations,
+    'finished' => 'import_data_finished',
+  );
+  return $batch;
+}
+
+/** processing loop data for Update like [img]abcdx[/img].
+  *
+  */
+function import_ldata_op_14($value, $operation_details, &$context) {
+  $value = $value['data'];
+
+  $dess = explode('[img]', $value->description);
+  $des = array();
+  foreach($dess as $key => $desx) {
+    $pos = strpos($desx, '[/img]');
+    if($pos !== false) {
+      $desxx = explode('[/img]', $desx);
+        foreach($desxx as $keys => $desxxx) {
+           if (is_numeric($desxxx) && $desxxx != '') {
+             $count = db_query("SELECT * FROM ds2_icp.lm2_file WHERE id = :id",array(':id' => $desxxx))->rowCount();
+             if ($count > 0 ) {
+               $ls = db_select('ds2_icp.lm2_file', 'c')
+                      ->fields('c')
+                      ->condition('id', $desxxx,'=')
+                      ->execute()
+                      ->fetchObject();
+               $path = '/opt/web/guitarmasterclass.net/public_html/icp/lm2/files/uploads'.$ls->path;
+               if (file_exists($path.$ls->id.$ls->extension)) {
+				          $fp = file_get_contents($path.$ls->id.$ls->extension);
+                  $lsfilename = str_replace(' ', '_', $ls->filename);
+                  $xpath = 'public://uploads/'.$value->nid."/".$ls->id.$ls->extension;
+          				$file = file_save_data($fp, $xpath, FILE_EXISTS_REPLACE);
+					        $file->status = FILE_STATUS_PERMANENT;
+					        $file->uid = $node->uid;
+					        file_save($file);
+                  $dfind = '[img]'.$desxxx.'[/img]';
+                  $fpath = str_replace('public://', '/sites/default/files/', $file->uri);
+                  $rep = '[img]' . $fpath . '[/img]';
+                  $value->description = str_replace($dfind, $rep, $value->description);
+                  db_update('lesson_files')
+                    ->fields(array(
+                        'description' => $value->description,
+                      ))
+                      ->condition('nid', $value->nid, '=')
+                      ->condition('fid', $value->fid, '=')
+                      ->execute();
+				       }
+             }
+           }
+        }
+    }
+  }
+}
+
+
+/**
+  * Function for batch function 13 for add Related Lesson. 
+  */
+function import_data_lessondata_batch_13 () {
+  $records = db_query("SELECT nid FROM {node} n WHERE n.type = 'lessons' ORDER BY n.nid ASC")->fetchAll();
+  $i=1;
+  foreach ($records as $values) {
+    $operations[] = array('import_ldata_op_13', array(array('data' => $values), t('(Operation @operation)', array('@operation' => $i))));
+    $i++;
+  }
+  $batch = array(
+    'operations' => $operations,
+    'finished' => 'import_data_finished',
+  );
+  return $batch;
+}
+
+/** processing loop data for related lesson.
+  *
+  */
+function import_ldata_op_13($value, $operation_details, &$context) {
+  $nid = $value['data']->nid;
+  $result = db_query('SELECT liveid FROM {lesson_data_video_import} WHERE nid = :nid', array(':nid' => $nid))->fetchField();
+  $query = db_query('SELECT ld.* FROM ds2_oskar.LessonAll l Left join dev_syn_drupal.lesson_data_video_import ld on l.ID = ld.liveid WHERE (l.ID in (select LID1 from ds2_oskar.LessonRelation where LID2 = :result ) or  ID in (select LID2 from ds2_oskar.LessonRelation where LID1 = :result )) AND (l.ID IN ( select ID FROM ds2_oskar.Lesson))', array(':result' => $result))->fetchAll();
+  if ($query) {
+    $i=0;
+    $node = new stdClass();
+    $node = node_load($nid);
+    foreach ($query as $data) {
+      $nidadd = $data->nid;
+      $node->field_related_lessons['und'][$i]['nid'] = $nidadd;
+      field_attach_presave('node', $node);
+      field_attach_update('node', $node);
+      $i++;
+    }
+  }
+}
+
+/**
+  * Function for batch function 12 for add lesson video 
+  */
+function admin_thumbnail_images () {
+  global $base_url, $base_path;
+  ini_set('memory_limit', '-1');
+  drupal_set_time_limit(1000);
+  drupal_add_library('system', 'drupal.ajax');
+  $records = db_query("SELECT * FROM {node} n WHERE n.type = 'lessons' ORDER BY n.nid ASC")->fetchAll();
+  $img_rows = array();
+  $query = array( 'tok' => drupal_get_token('delete_log_item' . $values->nid) ) + drupal_get_destination();
+  $i = 1;
+	$header = array(
+				array('data' => t('S.No.')),  
+				array('data' => t('Thumbnail')), 
+				array('data' => t('Lesson Name')), 
+				array('data' => t('Lesson id')), 
+        array('data' => t('Instructor Name')),
+        array('data' => t('Status')),
+        array('data' => t('Opreations')),
+        array('data' => t('Manage Lesson Part')),
+        array('data' => t('URL Alias')),
+        array('data' => t('Delete lesson')),
+			);
+  foreach ($records as $values) {
+    $filename = 'big_'.$values->nid.'.jpg';
+    $thumb = 'public://uploads/'.$values->nid.'/big_'.$values->nid.'.jpg';
+    $pics = $base_url.'/sites/default/files/uploads/'.$values->nid.'/big_'.$values->nid.'.jpg';
+    if (file_exists($thumb)) {
+      $img_rows[] = array(
+            array('data' => $i),
+            '<img src="'.$pics.'" width="200px;"/>',
+            array('data' => l(t($values->title), 'node/'.$values->nid, array('attributes' => array('target'=>'_blank')))),
+            array('data' => $values->nid),
+            array('data' => user_load($values->uid)->name),
+            array('data' => ($values->status == 1) ? l(t('Publish'), '#', array('attributes' => array('class' => array('keypublish'),'onclick' => array('if(!confirm("Do you really want to Publish this content ?")){return false;}')) ,'query' => array('nid' => $values->nid))) : l(t('Un-Publish'), '#', array('attributes' => array('class' => array('keyunpublish'),'onclick' => array('if(!confirm("Do you really want to Un-Publish this content ?")){return false;}')) ,'query' => array('nid' => $values->nid)))),
+            l(t('Regenerate thumbnail'), 'admin/list/regenerate/thumb/nojs/'.$values->nid , array('attributes' => array('class' => array('use-ajax') , 'query' => $query ,'onclick' => array('if(!confirm("Do you really want to Regenerate thumbnail ?")){return false;}')))),
+            l(t('Deleted Lessons Parts (before re adding)'), 'admin/node/nid/'.$values->nid.'/delete', array('attributes' => array('target'=>'_blank'))).'<br/><br/>'.l(t('Manage Lesson Part'), 'node/'.$values->nid.'/all-parts',array('attributes' => array('target'=>'_blank'))).'<br/><br/>'.l(t('Re Import Lesson data'), 'admin/import/videodata/nid/'.$values->nid, array('attributes' => array('target'=>'_blank'))),
+            array('data' => drupal_get_path_alias('node/'.$values->nid)),
+            l(t('Delete Lesson'), 'node/'.$values->nid.'/delete', array('attributes' => array('target'=>'_blank')) ),
+       );
+    }
+    else {
+      $img_rows[] = array(
+            array('data' => $i),
+            "<div id='target{$values->nid}'>No Thumbnails--</div>",
+            array('data' => l(t($values->title), 'node/'.$values->nid, array('attributes' => array('target'=>'_blank')))),
+            array('data' => $values->nid),
+            array('data' => user_load($values->uid)->name),
+            array('data' => ($values->status == 1) ? l(t('Publish'), '#', array('attributes' => array('class' => array('keypublish'),'onclick' => array('if(!confirm("Do you really want to Publish this content ?")){return false;}')) ,'query' => array('nid' => $values->nid))) : l(t('Un-Publish'), '#', array('attributes' => array('class' => array('keyunpublish'),'onclick' => array('if(!confirm("Do you really want to Un-Publish this content ?")){return false;}')) ,'query' => array('nid' => $values->nid)))),
+            l(t('Regenerate thumbnail'), 'admin/list/regenerate/thumb/nojs/'.$values->nid, array('attributes' => array('class' => array('use-ajax'), 'query' => $query,'target'=>'_blank', 'onclick' => array('if(!confirm("Do you really want to Regenerate thumbnail ?")){return false;}')))),
+            l(t('Manage Lesson Part'), 'node/'.$values->nid.'/all-parts', array('attributes' => array('target'=>'_blank'))).'<br/><br/>'.l(t('Re Import Lesson data'), 'admin/import/videodata/nid/'.$values->nid, array('attributes' => array('target'=>'_blank'))),
+            array('data' => drupal_get_path_alias('node/'.$values->nid)),
+            l(t('Delete Lesson'), 'node/'.$values->nid.'/delete', array('attributes' => array('target'=>'_blank'))),
+       );
+    }
+    $i++;
+  }
+
+  return theme('table', array('header' => $header, 'rows'=> $img_rows,'attributes' => array('class' => array('lesson-and-thumbnail-listing'))));
+}
+
+
+/**
+  * Function for batch function 05 for update and add new users.
+  */
+function import_data_lessondata_batch_05 () {
+   $i=1;
+   $records = db_query("SELECT * FROM users u left join ds2_gmc.ibf_members im on u.name = im.name WHERE `uid` >= 56007 AND `mail` LIKE '%guitarmatserclass.net%' Group BY u.uid ORDER BY `u`.`uid`  DESC")->fetchAll();
+  foreach ($records as $values) {
+    $operations[] = array('import_ldata_op_05', array(array('data' => $values), t('(Operation @operation)', array('@operation' => $i))));
+    $i++;
+  }
+  print '<pre>';
+  print_r($operations); exit;
+  drupal_set_message(t('Creating an array of @num operations', array('@num' => $i)));
+  $batch = array(
+    'operations' => $operations,
+    'finished' => 'import_data_finished',
+  );
+  return $batch;
+}
+
+/**
+  * Function for batch opration 05 for add lesson video 
+  */
+function import_ldata_op_05($value, $operation_details, &$context) {
+   // print_r($value); exit;
+  $value = $value['data'];
+  $account = user_load($value->uid);  
+  $account->mail = $value->email;
+  if ($account->uid > 0) {
+    user_save((object) array('uid' => $value->uid), (array) $account);  
+  }
+}
+
+
+
+/**
+  * Function for batch function 12 for add lesson video 
+  */
+function import_data_lessondata_batch_12 () {
+  ini_set('memory_limit', '-1');
+  drupal_set_time_limit(1000);
+  $records = db_query("select l.*, ld.nid, ld.liveid, l.Date, l.cp_status, n.status, n.created from ds2_oskar.LessonAll l LEFT Join dev_syn_drupal.lesson_data_video_import ld on ld.liveid = l.ID LEFT join dev_syn_drupal.node n on n.nid=ld.nid Where l.cp_status =2 AND l.Date < now() AND l.Date != 0 AND n.nid !='' ORDER BY l.ID DESC")->fetchAll();
+  $datax = array();
+  $ds = array();
+  $i=1;
+  $operations = '';
+  foreach ($records as $values) {
+           $operations[] = array('import_ldata_op_12', array(array('id' => $values->LM2_LessonId, 'nid' => $values->nid), t('(Operation @operation)', array('@operation' => $i))));
+           $i++;
+  }
+  drupal_set_message(t('Creating an array of @num operations', array('@num' => $i)));
+  $batch = array(
+    'operations' => $operations,
+    'finished' => 'import_data_finished',
+  );
+  return $batch;
+}
+
+/**
+  * Function for batch opration 12 for add lesson video 
+  */
+function import_ldata_op_12($value, $operation_details, &$context) {
+  $dir = "/opt/web/drupal.gmc.my/public_html/sites/default/files/uploads/".$value['nid']; 
+  if (!file_exists($dir)) mkdir($dir);
+  $thumb = '/opt/web/guitarmasterclass.net/public_html/icp/lm2/files/clips/clipbig'.$value['id'].'.jpg';
+  $smallthumb = '/opt/web/guitarmasterclass.net/public_html/icp/lm2/files/clips/clip'.$value['id'].'.jpg';
+  $node = node_load($value['nid']);
+  if (file_exists($thumb)) {
+		$fp = file_get_contents($thumb);
+    $file = file_save_data($fp,"public://uploads/".$value['nid']."/big_".$value['nid'].".jpg",FILE_EXISTS_REPLACE);
+    $file->status = FILE_STATUS_PERMANENT;
+    $file->uid = $node->uid;
+    file_save($file);
+  }
+  if (file_exists($smallthumb)) {
+    $fp = file_get_contents($smallthumb);
+    $file = file_save_data($fp,"public://uploads/".$value['nid']."/small_".$value['nid'].".jpg",FILE_EXISTS_REPLACE);
+    $file->status = FILE_STATUS_PERMANENT;
+    $file->uid = $node->uid;
+    file_save($file);
+  }
+}
+
+/**
+  * Function for batch function 11 for add lesson video 
+  */
+function import_data_lessondata_batch_11 () {
+  ini_set('memory_limit', '-1');
+  drupal_set_time_limit(1000);
+  $records = db_query("select l.*, ld.nid, ld.liveid, l.Date, l.cp_status, n.status, n.created from ds2_oskar.LessonAll l LEFT Join dev_syn_drupal.lesson_data_video_import ld on ld.liveid = l.ID LEFT join dev_syn_drupal.node n on n.nid=ld.nid Where l.cp_status =2 AND l.Date < now() AND l.Date != 0 AND n.nid !='' ORDER BY `n`.`status` ASC")->fetchAll();
+  $datax = array();
+  $ds = array();
+  $i=1;
+  foreach ($records as $values) {
+    $operations[] = array('import_ldata_op_11', array(array('topic_id' => $values->topic_id, 'nid' => $values->nid), t('(Operation @operation)', array('@operation' => $i))));
+    $i++;
+  }
+  drupal_set_message(t('Creating an array of @num operations', array('@num' => $i)));
+  $batch = array(
+    'operations' => $operations,
+    'finished' => 'import_data_finished',
+  );
+  return $batch;
+}
+
+/**
+  * Function for batch opration 11 for add lesson video 
+  */
+function import_ldata_op_11($value, $operation_details, &$context) {
+  $node = node_load($value['nid']);
+  $topicID = $value['topic_id'];
+  if ($topicID == 0) return;
+	$ins = db_query('SELECT * from {ds2_gmc.ibf_posts} where topic_id = :id order by post_date ASC',array(':id' => $topicID))->fetchAll();	
+	if (empty($ins)) return;
+//  db_delete('comment')->condition('nid',$node->nid)->execute();
+	foreach($ins as $key => $c) {
+	  $member = _add_member($c->author_id,$c->author_name);
+	  $comment = db_insert('lessons_comments_posts') // Table name no longer needs {}
+      ->fields(array(
+        'cid' => 0,
+        'pid' => 0,
+        'nid' => $node->nid,
+        'uid' => $member->uid,
+        'subject' => substr($node->title,0,30),
+        'created' => $c->post_date,
+        'changed' => $c->post_date,
+        'mail' => $member->mail,
+        'name' => $member->name,
+        'comment_body_value' => $c->post,
+        'comment_body_types' => 'filtered_html',
+        'status' => 1,
+        'language' => 'und'
+      ))
+      ->execute();
+	}
+}
+
+
+/**
+  * Function for batch opration 10 for add lesson video 
+  */
+function import_data_lessondata_batch_10 () {
+  ini_set('memory_limit', '-1');
+  drupal_set_time_limit(1000);
+  $operations = array();
+  $doneid = db_query('SELECT MAX(liveid) FROM {dev_syn_drupal.lesson_data_video_import}')->fetchField();
+  $records = db_query("select * from ds2_oskar.LessonAll l WHERE l.ID > :LID order by l.ID DESC", array(':LID' => $doneid))->fetchAll();
+  $adfd = array();
+  $i = 1;
+  foreach ($records as $value) {
+    $datas = db_query("select * from dev_syn_drupal.node WHERE title LIKE :title AND type = 'lessons'", array(':title' => str_replace('##', '',$value->Title)))->fetchAll();
+     if ($datas[0]->nid != '') {
+       
+       $insercount = db_query('SELECT * FROM {lesson_files} where nid = :nids', array(':nids' => $datas[0]->nid))->rowCount();
+     // if($value->Date != '0000-00-00 00:00:00')  {
+         if ($insercount == 0) {
+           $node = node_load($datas[0]->nid);
+           $node->path['alias'] = $value->Url;
+           if ($value->LM2_LessonId != 0) {
+              //_attach_lm2_files($node, 1, $value->LM2_LessonId);
+              $operations[] = array('import_ldata_op_10', array(array('datas' => $node, 'datax' => 1, 'datay' => $value->LM2_LessonId, 'datai' => $value->ID), t('(Operation @operation)', array('@operation' => $i))));
+           }
+           else {
+            // _attach_lm2_files($node, 2);  
+             $operations[] =  array('import_ldata_op_10', array(array('datas' => $node, 'datax' => 2, 'datay' => 0, 'datai' => $value->ID), t('(Operation @operation)', array('@operation' => $i))));
+           }
+         }
+       //}
+     }
+     $i++;
+  }
+  drupal_set_message(t('Creating an array of @num operations', array('@num' => $i)));
+  $batch = array(
+    'operations' => $operations,
+    'finished' => 'import_data_finished',
+  );
+  return $batch;
+}
+
+/**
+  * Function for batch opration 10 for add lesson video 
+  */
+function import_ldata_op_10($value, $operation_details, &$context) {
+  $node = $value['datas'];
+  $iss = $value['datax'];
+  $datai = $value['datai'];
+  $insercount = db_query('SELECT * FROM {lesson_files} where nid = :nids', array(':nids' => $node->nid))->rowCount();
+  if($insercount == 0) {
+    $valueLM2_LessonId = $value['datay'];
+    if($valueLM2_LessonId != 0) {
+      _attach_lm2_files($node, 1, $valueLM2_LessonId, $datai);
+    } else {
+      _attach_lm2_files($node, 2);  
+    }
+  }
+}
+
+
+
+/**
+  * Function call action to add the video to part .
+  */
+function _attach_lm2_files($node, $numb, $lid, $datai) {
+  $dir = "/opt/web/drupal.gmc.my/public_html/sites/default/files/uploads/".$node->nid;
+  if (!file_exists($dir)) mkdir($dir);
+  if ( $numb == 1 ) {
+    $ins = db_query('SELECT *, f.id as iidd from {ds2_icp.lm2_file} f Left join {ds2_icp.lm2_lessonpart} lv on (lv.fileId = f.id) where lesson_id = :id order by lv.lessonId ASC, lv.id ASC',array(':id'=>$lid))->fetchAll();
+    if ( empty($ins) ) return;
+		$weight = 0;
+    $weight2 = 100;
+		foreach($ins as $key => $ls) {
+      $ls->filename = str_replace(' - ', '_', $ls->filename);
+      $ls->filename = str_replace(' ', '_', $ls->filename); 
+      $ls->filename = str_replace('-', '_', $ls->filename); 
+      $text = '';
+      $tab = '';	
+      $path = '/opt/web/guitarmasterclass.net/public_html/icp/lm2/files/flv';
+      $path2 = '/opt/web/guitarmasterclass.net/public_html/icp/lm2/files/uploads'.$ls->path; 
+      
+      $pubcount = db_query("SELECT * FROM {ds2_icp.lm2_lessonpart} WHERE fileId = :id", array(':id' => $ls->iidd))->rowCount();
+      if ($ls->extension != '.mp3' && $ls->extension != '.pdf' && $ls->extension != '.gd5' && $ls->extension != '.jpg'  && $ls->extension != '.gp5' && $ls->extension != '.gp4') {
+			
+        if (!file_exists($path.$ls->converted_big) && !is_file($path.$ls->converted_big)) {
+          $fp = file_get_contents($path2.$ls->iidd.$ls->extension);
+          $lsfilename = str_replace(' ', '_', $ls->filename);
+          $xpath = 'public://uploads/'.$node->nid."/".$lsfilename;
+					$file = file_save_data($fp, $xpath, FILE_EXISTS_REPLACE);
+					$file->status = FILE_STATUS_PERMANENT;
+					$file->uid = $node->uid;
+					file_save($file);
+					$text = $ls->lessonText;
+					$tab = $ls->lessonTab;
+					if (empty($text) && empty($tab)) {
+					  $lv = db_query('SELECT * FROM {ds2_icp.lm2_lessonpart} WHERE lessonId = :lid AND fileId = :field',array(':lid'=>$lid, ':field'=>$ls->iidd))->fetchAll();
+            if(!empty($lv)) {
+						  $text = $lv[0]->lessonText;
+						  $tab = $lv[0]->lessonTab;	
+            }
+					}
+					$re = strpos($text,'view_image');
+					if ($re !== false) {
+					  watchdog('Lesson Fix','Change Image code in lesson !name',array('!name'=> $node->title));
+					}
+					$free = 1;
+					if (!empty($node->field_free_parts_al['und'][0]['value'])) {
+					  $pts = explode(",",$node->field_free_parts_al['und'][0]['value']);
+						if (in_array($weight, $pts)) {
+						  $free = 0;
+						}
+					}
+          
+          $pubcount = db_query("SELECT * FROM {ds2_icp.lm2_lessonpart} WHERE fileId = :id", array(':id' => $ls->iidd))->rowCount();
+         
+					_inserting_filesv($file->fid,$node->nid,$free,$weight,$tab,$text, $pubcount);
+
+          $fp = file_get_contents($path2.$ls->iidd.$ls->extension);
+          $lsfilename = str_replace(' ', '_', $ls->filename);
+          $xpath = 'public://uploads/'.$node->nid."/high_".$lsfilename;
+					$file = file_save_data($fp, $xpath,FILE_EXISTS_REPLACE);
+					$file->status = FILE_STATUS_PERMANENT;
+					$file->uid = $node->uid;
+					file_save($file);
+					$weight++;
+          
+        }
+
+
+				if (file_exists($path.$ls->converted_big) || $ls->extension == '.flv') {
+          
+          if(is_file($path.$ls->converted)) {
+				    if ($ls->extension == '.flv') {
+					    $ls->converted_big = $ls->converted;
+					  }
+					  $fp = file_get_contents($path.$ls->converted_big);
+            $lsfilename = str_replace(' ', '_', $ls->filename);
+             $xpath = 'public://uploads/'.$node->nid."/".$lsfilename;
+					  $file = file_save_data($fp, $xpath, FILE_EXISTS_REPLACE);
+					  $file->status = FILE_STATUS_PERMANENT;
+					  $file->uid = $node->uid;
+					  file_save($file);
+					  $text = $ls->lessonText;
+            $tab = $ls->lessonTab;
+					  if (empty($text) && empty($tab)) {
+					    $lv = db_query('SELECT * FROM {ds2_icp.lm2_lessonpart} WHERE lessonId = :lid AND fileId = :field',array(':lid' => $lid, ':field' => $ls->iidd))->fetchAll();
+              if(!empty($lv)) {
+						    $text = $lv[0]->lessonText;
+						    $tab = $lv[0]->lessonTab;	
+              }
+					  }
+					  $re = strpos($text,'view_image');
+					  if ($re !== false) {
+					    watchdog('Lesson Fix','Change Image code in lesson !name',array('!name'=> $node->title));
+					  }
+					  $free = 1;
+					  if (!empty($node->field_free_parts_al['und'][0]['value'])) {
+					    $pts = explode(",",$node->field_free_parts_al['und'][0]['value']);
+						  if (in_array($weight, $pts)) {
+						    $free = 0;
+						  }
+					  }
+            $pubcount = db_query("SELECT * FROM {ds2_icp.lm2_lessonpart} WHERE fileId = :id", array(':id' => $ls->iidd))->rowCount(); 
+					  _inserting_filesv($file->fid,$node->nid,$free,$weight,$tab,$text, $pubcount);
+            $weight++;
+              watchdog('Lesson2 Fix','File !name and !fid',array('!name'=> $ls->filename, '!fid' => $file->fid));
+
+          }
+          watchdog('Lesson Fix','File !name and !fid',array('!name'=> $ls->filename, '!fid' => $file->fid));
+				}
+			  $thumb = '/opt/web/guitarmasterclass.net/public_html/icp/lm2/files/clips/clipbig'.$datai.'.jpg';
+			  $smallthumb = '/opt/web/guitarmasterclass.net/public_html/icp/lm2/files/clips/clip'.$datai.'.jpg';
+			  if (file_exists($thumb)) {
+					
+			  $fp = file_get_contents($thumb);
+			  $file = file_save_data($fp,"public://uploads/".$node->nid."/big_".$node->nid.".jpg",FILE_EXISTS_REPLACE);
+			  $file->status = FILE_STATUS_PERMANENT;
+			  $file->uid = $node->uid;
+			  file_save($file);
+			  
+			  }
+			
+			  if (file_exists($smallthumb)) {
+				
+			  $fp = file_get_contents($smallthumb);
+			  $file = file_save_data($fp,"public://uploads/".$node->nid."/small_".$node->nid.".jpg",FILE_EXISTS_REPLACE);
+			  $file->status = FILE_STATUS_PERMANENT;
+			  $file->uid = $node->uid;
+			  file_save($file);
+			  }
+
+  		 if (file_exists($path.$ls->converted) && $ls->extension != '.flv' && is_file($path.$ls->converted)) {
+				  $fp = file_get_contents($path.$ls->converted);
+          $lsfilename = str_replace(' ', '_', $ls->filename);
+          $xpath = 'public://uploads/'.$node->nid."/medium_".$lsfilename;
+					$file = file_save_data($fp, $xpath,FILE_EXISTS_REPLACE);
+					$file->status = FILE_STATUS_PERMANENT;
+					$file->uid = $node->uid;
+					file_save($file);
+			  }
+				if (file_exists($path.$ls->converted_small) && $ls->extension != '.flv' && is_file($path.$ls->converted_small)) {
+				  $fp = file_get_contents($path.$ls->converted_small);
+          $lsfilename = str_replace(' ', '_', $lsfilename);
+          $xpath = 'public://uploads/'.$node->nid."/small_".$ls->filename;
+					$file = file_save_data($fp, $xpath,FILE_EXISTS_REPLACE);
+					$file->status = FILE_STATUS_PERMANENT;
+					$file->uid = $node->uid;
+					file_save($file);
+				}
+				if (file_exists($path.$ls->converted_big) && $ls->extension != '.flv' && is_file($path.$ls->converted_big)) {
+				  $fp = file_get_contents($path.$ls->converted_big);
+          $lsfilename = str_replace(' ', '_', $ls->filename);
+          $xpath = 'public://uploads/'.$node->nid."/high_".$lsfilename;
+					$file = file_save_data($fp, $xpath,FILE_EXISTS_REPLACE);
+					$file->status = FILE_STATUS_PERMANENT;
+					$file->uid = $node->uid;
+					file_save($file);
+				}
+        $path = '/opt/web/guitarmasterclass.net/public_html/icp/lm2/files/uploads'.$ls->path;
+       // print $path.$ls->filename; exit;
+        if (file_exists($path.$ls->filename)) {
+				  $fp = file_get_contents($path.$ls->filename);
+          $lsfilename = str_replace(' ', '_', $ls->filename);
+          $xpath = 'public://uploads/'.$node->nid."/".$lsfilename;
+  				$file = file_save_data($fp, $xpath,FILE_EXISTS_REPLACE);
+					$file->status = FILE_STATUS_PERMANENT;
+					$file->uid = $node->uid;
+					file_save($file);
+					_inserting_filesv($file->fid,$node->nid, 0, $weight, '', '', $pubcount);
+          $weight++;
+				}  
+        
+      } 
+      else {
+        if (file_exists($path.$ls->filename) && is_file($path.$ls->filename) ) {
+			    $fp = file_get_contents($path.$ls->filename);
+          $xpath = 'public://uploads/'.$node->nid."/".$ls->filename;
+  				$file = file_save_data($fp, $xpath,FILE_EXISTS_REPLACE);
+				  $file->status = FILE_STATUS_PERMANENT;
+				  $file->uid = $node->uid;
+				  file_save($file);
+          if ($ls->extension == '.mp3') {
+            $csd = db_query("SELECT * FROM {ds2_icp.lm2_lessonBacking} WHERE lesson_id = :lid AND file_id = :id", array(':id' => $ls->iidd, ':lid' => $l->lesson_id))->rowCount(); 
+            if ($csd > 0) {
+               _inserting_filesv($file->fid,$node->nid,0,$weight2, '', '', 1);
+             } else {
+               _inserting_filesv($file->fid,$node->nid,0,$weight2, '', '', 0);
+             }
+          } else {
+            _inserting_filesv($file->fid,$node->nid,0,$weight2, '', '', 1);
+          }
+				  
+          $weight2++;
+			  } 
+        else if (file_exists($path2.$ls->iidd.$ls->extension)) {
+          
+          $fp = file_get_contents($path2.$ls->iidd.$ls->extension);
+          $lsfilename = str_replace(' ', '_', $ls->filename);
+          $xpath = 'public://uploads/'.$node->nid."/".$lsfilename;
+					$file = file_save_data($fp, $xpath, FILE_EXISTS_REPLACE);
+					$file->status = FILE_STATUS_PERMANENT;
+					$file->uid = $node->uid;
+					file_save($file);
+					$text = $ls->lessonText;
+					$tab = $ls->lessonTab;
+					if (empty($text) && empty($tab)) {
+					  $lv = db_query('select * from {ds2_icp.lv_lessonpart} where lessonId = :lid and fileId = :field',array(':lid'=>$lid, ':field'=>$ls->iidd))->fetchAll();
+            if ($lv) {
+						  $text = $lv[0]->lessonText;
+						  $tab = $lv[0]->lessonTab;	
+            }
+					}
+					$re = strpos($text,'view_image');
+					if ($re !== false) {
+					  watchdog('Lesson Fix','Change Image code in lesson !name',array('!name'=> $node->title));
+					}
+					$free = 1;
+					if (!empty($node->field_free_parts_al['und'][0]['value'])) {
+					  $pts = explode(",",$node->field_free_parts_al['und'][0]['value']);
+						if (in_array($weight,$pts)) {
+						  $free = 0;
+						}
+					}
+         if ($ls->extension == '.mp3') {
+            $csd = db_query("SELECT *  FROM {ds2_icp.lv_lessonBacking} WHERE lesson_id = :lid AND file_id = :id", array(':id' => $ls->iidd, ':lid' => $ls->lesson_id))->rowCount(); 
+            if ($csd > 0) {
+               _inserting_filesv($file->fid,$node->nid,$free,$weight2,$tab,$text, 1);
+             } else {
+               _inserting_filesv($file->fid,$node->nid,$free,$weight2,$tab,$text, 0);
+             }
+          } else {
+            _inserting_filesv($file->fid,$node->nid,$free,$weight2,$tab,$text, 1);
+          }
+					//_inserting_filesv($file->fid, $node->nid,$free,$weight2,$tab,$text, $pubcount);
+          $weight2++;
+        }
+       
+      } 
+	  }
+    
+  } else {
+    $weight2 = 100;
+    $pubcount = 1;
+    $doneid = db_query('SELECT liveid FROM lesson_data_video_import WHERE nid = :nid LIMIT 0, 1', array(':nid' => $node->nid))->fetchField();
+    $records = db_query("SELECT * FROM ds2_oskar.LessonAll l WHERE l.ID = :ID", array(':ID' =>  $doneid))->fetchAll();
+    $records = $records[0];
+    $uss = $records->Url;
+    //$uss = drupal_get_path_alias('node/'.$node->nid);
+	  $path = '/opt/web/guitarmasterclass.net/public_html/lessondata/'.$uss;
+	  if (file_exists($path)) {
+		  $thumb = $path."/clipbig.jpg";
+		  $smallthumb = $path."/clip.jpg";
+			if (file_exists($thumb)) {
+			  $fp = file_get_contents($thumb);
+				$file = file_save_data($fp, 'public://uploads/'.$node->nid.'/big_'.$node->nid.'.jpg', FILE_EXISTS_REPLACE);
+				$file->status = FILE_STATUS_PERMANENT;
+				$file->uid = $node->uid;
+				file_save($file);
+			}
+		  if (file_exists($smallthumb)) {
+			  $fp = file_get_contents($smallthumb);
+			  $file = file_save_data($fp, 'public://uploads/'.$node->nid.'/small_'.$node->nid.'.jpg', FILE_EXISTS_REPLACE);
+				$file->status = FILE_STATUS_PERMANENT;
+				$file->uid = $node->uid;
+				file_save($file);
+			}
+	  }
+	  $folders[] = 'filmer';
+	  $folders[] = 'filmer_mo';
+	  foreach($folders as $key => $folds) {
+		  if (file_exists($path."/".$folds)) {
+			  $files = file_scan_directory($path."/".$folds, '/.*\.mp4$/');
+			  $k = 0;
+				foreach($files as $key => $f) {
+				  $fp = file_get_contents($f->uri);
+					$file = file_save_data($fp, 'public://uploads/'.$node->nid."/".$f->filename, FILE_EXISTS_REPLACE);
+					$file->status = FILE_STATUS_PERMANENT;
+					$file->uid = $node->uid;
+					file_save($file);
+					$fid = $file->fid;
+					$ex = explode(".",$f->filename);
+					$weight = ($ex[0] == 'main')? 0:$ex[0];
+					$free = 1;
+					if ( !empty($node->freeParts) ) {
+					  $pts = explode(",",$node->freeParts);
+						if ( in_array($weight,$pts) ) {
+						  $free = 0;
+						}
+					}
+          if ($k == 0) {
+            if (file_exists($path."/tab/tab.txt")){
+              $n2 = fopen($path."/tab/tab.txt","r");
+              $notes2 = fread($n2,filesize($path."/tab/tab.txt"));
+              fclose($n2);
+            }
+          } else {
+            $notes2 = '';
+          }
+					$k++;
+					$notes = "";
+					$text = "";
+					if (file_exists($path."/text/".$ex[0].".htm")) {
+					  $t = fopen($path."/text/".$ex[0].".htm","r");
+					  $text = fread($t,filesize($path."/text/".$ex[0].".htm"));
+					  $text = utf8_encode($text);
+					  fclose($t);
+						$n = fopen($path."/text/".$ex[0]."_scale.htm","r");
+						$notes = fread($n,filesize($path."/text/".$ex[0]."_scale.htm"));
+						fclose($n);
+
+					}
+					$graphics = file_scan_directory($path."/bilder", '/.*\.*$/');	
+          ksort($graphics);
+					$img = array();
+					foreach($graphics as $key => $g) {
+            $gx = explode("-",$g->name);
+						if ($gx[1] == $ex[0]) {
+						  // echo $key.'<br>';
+							$fp = file_get_contents($key);
+							$file = file_save_data($fp, 'public://uploads/'.$node->nid."/".$g->filename,FILE_EXISTS_REPLACE);
+							$file->status = FILE_STATUS_PERMANENT;
+							$file->uid = $node->uid;
+							file_save($file);
+							_inserting_filesv($file->fid,$node->nid,0,$weight2, '', '', $pubcount, '');
+							$text .= '<br><img src="/sites/default/files/uploads/'.$node->nid.'/'.$g->filename.'" />';
+              $weight2++;
+					  }
+					}
+					_inserting_filesv($fid,$node->nid,$free,$weight, htmlentities($notes, ENT_QUOTES, "UTF-8"),$text, $pubcount, $notes2);
+           }
+					$backing = file_scan_directory($path."/backingtracks", '/.*\.mp3$/');	
+					foreach($backing as $key => $b) {
+					  $fp = file_get_contents($key);
+						$file = file_save_data($fp, 'public://uploads/'.$node->nid."/".$b->filename,FILE_EXISTS_REPLACE);
+						$file->status = FILE_STATUS_PERMANENT;
+						$file->uid = $node->uid;
+						file_save($file);
+						$weight = $file->filesize;
+						_inserting_filesv($file->fid,$node->nid,0,$weight2, '', '', $pubcount, '');
+            $weight2++;
+					}
+					if (file_exists($path."/tab/guitarpro.gp5")) {
+					  $fp = file_get_contents($path."/tab/guitarpro.gp5");
+						$file = file_save_data($fp, 'public://uploads/'.$node->nid."/guitarpro.gp5",FILE_EXISTS_REPLACE);
+						$file->status = FILE_STATUS_PERMANENT;
+						$file->uid = $node->uid;
+						file_save($file);
+						_inserting_filesv($file->fid,$node->nid,0,$weight2,'', '', 1, '');
+            $weight2++;
+					}
+					if (file_exists($path."/tab/guitarpro.gp4")) {
+					  $fp = file_get_contents($path."/tab/guitarpro.gp4");
+						$file = file_save_data($fp, 'public://uploads/'.$node->nid."/guitarpro.gp5",FILE_EXISTS_REPLACE);
+						$file->status = FILE_STATUS_PERMANENT;
+						$file->uid = $node->uid;
+						file_save($file);
+						_inserting_filesv($file->fid,$node->nid,0,$weight2,'', '', 1, '');
+            $weight2++;
+					}
+					$fp = file_get_contents($path."/".$folds."/".$ex[0].".flv");
+					$file = file_save_data($fp, 'public://uploads/'.$node->nid."/".$ex[0].".flv",FILE_EXISTS_REPLACE);
+					$file->status = FILE_STATUS_PERMANENT;
+					$file->uid = $node->uid;
+					file_save($file);
+				
+		  }
+	  }
+  }
+}
+
+function _inserting_filesv($v,$nid,$s,$w,$n = NULL,$t = NULL, $p, $nn = NULL) {
+  $nn = bbcodeHtml($nn);
+  db_merge('lesson_files')
+    ->key(array('fid' => $v))
+    ->fields(array(
+      'nid' => $nid,
+      'fid' => $v,
+      'status' => $s,
+	    'weight' => $w,
+	    'notes' => $n,
+      'description' => $t,
+      'publish' => $p,
+      'tab' => 'teee',
+    ))
+    ->execute();
+}
+
+
+
+/**
+  *  function make a batch opration for publish/unpublish with publish date.
+  */
+
+function import_data_lessondata_batch_9 () {
+  ini_set('memory_limit', '-1');
+  drupal_set_time_limit(1000);
+  $records = db_query("select l.ID, ld.nid, ld.liveid, l.Date, l.cp_status, n.status, n.created from ds2_oskar.LessonAll l LEFT Join dev_syn_drupal.lesson_data_video_import ld on ld.liveid = l.ID LEFT join dev_syn_drupal.node n on n.nid=ld.nid Where l.cp_status =2 AND l.Date < now() AND l.Date != 0 AND n.nid !='' ORDER BY `n`.`status` ASC")->fetchAll();
+  foreach ($records as $value) {
+    $operations[] = array('import_ldata_op_9', array($value, t('(Operation @operation)', array('@operation' => $i))));
+    $i++;
+  }
+  drupal_set_message(t('Creating an array of @num operations', array('@num' => $i)));
+  $batch = array(
+    'operations' => $operations,
+    'finished' => 'import_data_finished',
+  );
+  return $batch;
+}
+
+
+/**
+  *  call bactch opration for publish/unpublish with publish date.
+  */
+
+
+function import_ldata_op_9($value, $operation_details, &$context) {
+    $num_updated = db_update('node') // Table name no longer needs {}
+      ->fields(array(
+        'status' => 1,
+      ))
+      ->condition('nid', $value->nid, '=')
+      ->execute();
+    $num_updated_rev = db_update('node_revision') // Table name no longer needs {}
+      ->fields(array(
+        'status' => 1,
+      ))
+      ->condition('nid', $value->nid, '=')
+      ->execute();
+     db_merge('publication_date')
+      ->key(array('nid' => $value->nid))
+      ->fields(array(
+          'nid' => $value->nid,
+          'published_at'  => $value->created,
+        ))  
+        ->execute();  
+}
+
+
+/**
+  *  function make a batch opration for create and update time with publish date.
+  */
+
+function import_data_lessondata_batch_8 () {
+  ini_set('memory_limit', '-1');
+  drupal_set_time_limit(1000);
+  $records = db_query("select * from ds2_oskar.LessonAll l order by l.ID ASC")->fetchAll();
+  foreach ($records as $value) {
+    $operations[] = array('import_ldata_op_8', array($value, t('(Operation @operation)', array('@operation' => $i))));
+    $i++;
+  }
+  drupal_set_message(t('Creating an array of @num operations', array('@num' => $i)));
+  $batch = array(
+    'operations' => $operations,
+    'finished' => 'import_data_finished',
+  );
+  return $batch;
+}
+
+
+/**
+  *  callbactch opration for update url alias
+  */
+
+
+function import_ldata_op_8($value, $operation_details, &$context) {
+  //print '<pre>';print_r($value);
+  $node = new stdClass();
+  $datas = db_query("select * from dev_syn_drupal.node WHERE title LIKE :title AND type = 'lessons'", array(':title' => str_replace('##', '',$value->Title)))->fetchAll();
+  $node = new stdClass();
+  $nid = $datas[0]->nid;
+  $dta  = explode('-', $value->Date);
+  if ($dta[0] == 0000) {
+    $value->Date = '2017-09-21 00:00:00';  
+  } 
+  if ($dta[0] == 3000) {
+    $value->Date = '2017-09-21 00:00:00';  
+  } 
+  if ($dta[0] == 3007) {
+    $value->Date = '2017-09-21 00:00:00';  
+  }
+   if ($dta[0] == 3008) {
+    $value->Date = '2017-09-21 00:00:00';  
+  }
+   if ($dta[0] == 3009) {
+    $value->Date = '2017-09-21 00:00:00';  
+  }
+   if ($dta[0] == 3017) {
+    $value->Date = '2017-09-21 00:00:00';  
+  }
+  if ($dta[0] == 3010) {
+    $value->Date = '2017-09-21 00:00:00';  
+  }
+  if ($dta[0] == 3025) {
+    $value->Date = '2017-09-21 00:00:00';  
+  }
+  if ($dta[0] == 3011) {
+    $value->Date = '2017-09-21 00:00:00';  
+  }
+  if ($dta[0] == 3026) {
+    $value->Date = '2017-09-21 00:00:00';  
+  }
+  if ($dta[0] == 3050) {
+    $value->Date = '2017-09-21 00:00:00';  
+  } 
+  if ($dta[0] > 3019) {
+    $value->Date = '2017-09-21 00:00:00'; 
+  }
+  if ($dta[0] == 3015) {
+    $value->Date = '2017-09-21 00:00:00'; 
+  }
+  $created = strtotime($value->Date);
+  if ($nid != '') {
+    // print  $xxx = $nid.'===='.$value->Date.'---'.$created.'{----}'. strtotime($value->Date) .'<<----'.$datas[0]->nid; 
+    $num_updated = db_update('node') // Table name no longer needs {}
+      ->fields(array(
+        'created' => $created,
+        'changed' => $created,
+      ))
+      ->condition('nid', $nid, '=')
+      ->execute();
+    $num_updated_rev = db_update('node_revision') // Table name no longer needs {}
+      ->fields(array(
+        'timestamp' => $created,
+      ))
+      ->condition('nid', $nid, '=')
+      ->execute();
+  }
+}
+
+
+/**
+  *  function make a batch opration for update url alias
+  */
+
+function import_data_lessondata_batch_7 () {
+  ini_set('memory_limit', '-1');
+  db_query("DELETE u FROM node n JOIN url_alias u ON CONCAT('node/', n.nid) = u.source WHERE n.type='lessons' AND n.nid >= 114051")->execute();
+  drupal_set_time_limit(1000);
+  $records = db_query("select * from ds2_oskar.LessonAll l where ID >= 3692 order by l.ID ASC")->fetchAll();
+  foreach ($records as $value) {
+    $operations[] = array('import_ldata_op_7', array($value, t('(Operation @operation)', array('@operation' => $i))));
+    $i++;
+  }
+  drupal_set_message(t('Creating an array of @num operations', array('@num' => $i)));
+  $batch = array(
+    'operations' => $operations,
+    'finished' => 'import_data_finished',
+  );
+  return $batch;
+}
+
+
+/**
+  *  callbactch opration for update url alias
+  */
+
+
+function import_ldata_op_7($value, $operation_details, &$context) {
+  //print '<pre>';print_r($value);
+  $node = new stdClass();
+  $datas = db_query("select * from dev_syn_drupal.node WHERE title LIKE :title AND type = 'lessons'", array(':title' => str_replace('##', '',$value->Title)))->fetchAll();
+  $node = new stdClass();
+  $node = node_load($datas[0]->nid);
+  $ex_path = explode("/",$value->Url);
+  if (!empty($ex_path[1])) 
+     $alternate_url = $ex_path[1]."/".$ex_path[2];
+  $default_node_path = "node/" . $node->nid;
+  $path = array('source' => $default_node_path, 'alias' =>$alternate_url, 'und');
+  path_save($path);
+}
+
+
+
+function import_data_lessondata_batch_6 () {
+ // $records = db_query("select l.ID, n.title as t1, l.Title as t2, n.nid, l.ID from ds2_oskar.LessonAll l left join dev_syn_drupal.node n on n.title != l.Title where n.type = 'lessons' order by l.ID ASC")->fetchAll();
+  $doneid = db_query('SELECT MAX(liveid) FROM {dev_syn_drupal.lesson_data_video_import}')->fetchField();
+  $records = db_query("select * from ds2_oskar.LessonAll l WHERE l.ID > :LID order by l.ID ASC", array(':LID' => $doneid))->fetchAll();
+  $datax = array();
+  foreach ($records as $values) {
+    if (!empty($values->Title)) {
+      $node = new stdClass();
+    // print_r($values->ID); //exit;
+   //  $datas = db_query("select title from dev_syn_drupal.node WHERE title LIKE :title AND type = 'lessons'", array(':title' => str_replace('##', '',$values->Title)))->rowCount();
+        
+    //  if ($datas == 0) {
+        
+        $datass = db_query('select l.* , unix_timestamp(l.Date) as dt,c.Name as category ,t.Name as type,tc.Name as technique, v.guest as guest, v.member as member from {ds2_oskar.LessonAll} l left join {ds2_oskar.Technique} tc on  (tc.ID = l.Technique) left join ds2_oskar.LessonType t on (t.ID = l.LessonType) left join ds2_oskar.MusicCategory c on (c.ID = l.MusicCategory) left join {ds2_oskar.visit_counter} v on (v.iValue = l.ID) and l.Instructor != 0 Where l.ID = :ID ', array(':ID' => $values->ID))->fetchAll();
+       // print_r($data); exit;
+        
+        $data = $datass[0];
+        if($data->Title != '') {
+        $datad = db_query("select * from ds2_oskar.LessonAll l Left Join ds2_oskar.Instructor I on I.ID = l.Instructor where l.ID = :ID", array(':ID' => $values->ID))->fetchAll();
+        if (!empty($data->category)) {
+          $music_category = _get_term_from_name($data->category, 8); 
+        }
+        if (!empty($data->type)) {
+          $lesson_type = _get_term_from_name($data->type, 7); 
+        }
+        if (!empty($data->technique)) {
+          $technique = _get_term_from_name($data->technique, 9); 
+        }
+        if ($data->Instructor != 0) {
+          $ins = db_query('SELECT * from {ds2_oskar.Instructor} where ID = :id',array(':id'=>$data->Instructor))->fetchAll();  
+          $ins = $ins[0];
+          //print_r($data->Instructor); exit;
+          $u = user_load_by_name($ins->FName.' '.$ins->LName);
+          
+          if ( empty($ins->Email) ) $ins->Email = strtolower($ins->FName.'.'.$ins->LName).'@guitarmasterclass.net';
+          $u = user_load_by_name($ins->FName.' '.$ins->LName);
+          if (!is_object($u)) {
+          $u = user_load_by_mail($ins->Email);
+          }
+        } else {
+          $u = new stdClass;
+          $u->uid = 0;
+        }
+        if(!empty($data->Tags)) {
+          $tags = explode(",",$data->Tags);
+        //  print_r($tags); exit;
+          if (count($tags[0])) {
+            foreach($tags as $key => $t) {
+              $tid = $ttid = taxonomy_get_term_by_name($t, 'tags');;
+            //  print_r($tid); exit;
+              if (key($tid) != 0 && key($tid) != '') {
+                $node->field_tags['und'][$key]['tid'] = key($tid);
+              } /*else {
+                // print_r($tags); exit;
+                $tid =  taxonomy_term_save((object) array(
+                   'name' => $t,
+                   'vid' => 1,
+                 ));
+                
+               // print_r($tid);exit;
+              }*/
+            }
+          }
+        }
+        $node->field_spoken_video['und'][0]['value'] = $data->SpokenVideo;
+        $node->type = 'lessons';
+        if (!empty($data->category)) {
+          if ($music_category) {
+            $node->field_music_category['und'][0]['tid'] = $music_category;
+          }
+        }
+        if (!empty($data->type)) {
+          if ($lesson_type) {
+           $node->field_lesson_type['und'][0]['tid'] = $lesson_type;
+          }
+        }
+        if (!empty($data->technique)) {
+          if ($technique) {
+            $node->field_technique['und'][0]['tid'] = $technique;
+          }
+        }
+        $node->field_guest_views['und'][0]['value'] = $data->guest;
+        $node->field_member_views['und'][0]['value'] = $data->member;
+        $node->field_camera_angles['und'][0]['value'] = $data->CameraAngles;
+        $node->uid = $u->uid;
+        $node->field_scales_and_key['und'][0]['value'] = $data->TheoryInAction;
+        $node->field_is_cover_lesson['und'][0]['value'] = $data->cover_lesson;
+        $node->field_the_style_of['und'][0]['value'] = ($data->InTheStyleOf) ? $data->InTheStyleOf : 0;
+        $node->field__mobile['und'][0]['value'] = $data->is_mobile;
+        $node->field_backing['und'][0]['value'] = $data->NonDownloadableBacking;
+        $node->field_music_sub_genre['und'][0]['value'] = $data->MusicStyle;
+        $node->field_bonus_lesson['und'][0]['value'] = $data->BonusLesson;
+
+        $node->title = $data->Title;
+        
+        $dta  = explode('-', $data->Date);
+        if ($dta[0] > 2020) {
+         $data->Date = '2017-09-21 00:00:00';
+        } elseif ($dta[0] == 0000) {
+          $data->Date = '2017-09-21 00:00:00';  
+        } 
+        
+        $node->created = strtotime($data->Date);
+        $node->revision_timestamp = strtotime($data->Date);
+        $node->changed = strtotime($data->Date);
+        $node->status = 0;
+        $node->field_difficulty_level['und'][0]['value'] = $data->DifficultyLevel;
+        //$node->tags['und'][0]['value'] = $data->Tags;
+        $node->promote = 0;      // If you want promoted to front page, else use 0
+        $node->sticky = 0;
+       // print '<pre>';
+        //print_r($data); exit;
+        $node->body['und'][0]['value'] = $data->ShortDescription;
+        $node->body['und'][0]['format'] = 'full_html';       // Filtered HTML  
+       // $node->language = 'und';
+        $ex_path = explode("/",$data->Url);
+        if (!empty($ex_path[1])) 
+          $node->path['alias'] = $ex_path[1]."/".$ex_path[2];
+        // $node->comment = 2;
+        //   print_r($node); exit;
+        $node->field_free_parts_al['und'][0]['value'] = $data->fria_delar;
+        $node->field_free_parts['und'][0]['value'] = $data->Free;
+      //  print '<pre>';
+       //print_r($node); exit;
+        //$node = node_submit($node);
+        node_save($node);  //print_r($node);                                                               
+       // $datad['dd'] = $values;
+       $datax[] = $datass;
+      db_insert('lesson_data_video_import') // Table name no longer needs {}
+        ->fields(array(
+          'liveid' => $values->ID,
+          'nid' => $node->nid,
+          'videocountlive' => 0,
+          'videocountdrupal' => 0,
+          'other' => $values->LM2_LessonId,
+        ))->execute();
+        }
+     // }
+    } 
+     
+  }
+
+  //print_r('<pre>');
+  //print_r($datax);exit;
+}
+
+function import_data_lessondata_batch_5 () {
+   // $records = db_query("SELECT * FROM lv_lessonpart Limit 0, 30")->fetchAll();
+   // print '<pre>';
+  //  print_r($records); exit;
+ //left join livedata_icp.lm2_file lf on lf.lesson_id = l.ID 
+  $records = db_query("select l.ID, n.title as t1, l.Title as t2, n.nid, l.ID from ds2_oskar.LessonAll l left join dev_syn_drupal.node n on n.title = l.Title where n.type = 'lessons' order by l.ID ASC")->fetchAll();
+  $datas = array();
+  foreach ($records as $key => $tagsx) {
+    $datas[$key]['ds'] = $tagsx;
+    $dsa = db_query("SELECT * FROM lm2_lessonpart WHERE lessonId=:ldi", array(':ldi' => $tagsx->ID))->fetchAll();
+$datas[$key]['das'] = $dsa;
+  //  $datas[$key]['das1'] = $dsa1;
+     // print_r($dsa); print_r($tagsx); exit;
+  }
+  print_r('<pre>');
+  print_r($datas);exit;
+}
+
+/*
+ *
+ */
+function lesson_tems_ans() {
+  return 'offring';
+}
+
+/*
+ * Implement function callback function operation
+ */
+function _import_lessondata_update_http_requests() {
+  $_SESSION['http_request_count']++;
+}
+
+
+/*
+ * Implement function to get http request on starting on batch function operation
+ */
+function _import_lessondata_get_http_requests() {
+  return !empty($_SESSION['http_request_count']) ? $_SESSION['http_request_count'] : 0;
+}
+
+/*
+ * Implement function to get batch opration request on starting on batch function operation
+ */
+function import_lessondata_import_submit($form, &$form_state){ 
+  $function = 'import_data_lessondata_' . $form_state['values']['batch'];
+  $_SESSION['http_request_count'] = 0; // reset counter for debug information.
+  $batch = $function();
+  batch_set($batch);
+} 
+function import_data_lessondata_batch_4 () {
+  //left join livedata_icp.lm2_file lf on lf.lesson_id = l.ID 
+  $records = db_query("select l.ID, n.title as t1, l.Title as t2, n.nid, l.ID from livedata_27_nov.LessonAll l left join dev_syn_drupal.node n on n.title = l.Title where n.type = 'lessons' order by l.ID ASC")->fetchAll();
+  $datas = array();
+  foreach ($records as $key => $tagsx) {
+    $datas[$key]['ds'] = $tagsx;
+    $dsa = db_query("select * From livedata_icp.lm2_file lf where lf.lesson_id = :dq order by lf.lesson_id ASC", array(':dq' => $tagsx->ID))->fetchAll();
+    $dsa1 = db_query("select * From livedata_icp.lv_file lf where lf.lesson_id = :dq order by lf.lesson_id ASC", array(':dq' => $tagsx->ID))->fetchAll();
+    $datas[$key]['das'] = $dsa;
+    $datas[$key]['das1'] = $dsa1;
+     // print_r($dsa); print_r($tagsx); exit;
+  }
+  print_r('<pre>');
+  print_r($datas);exit;
+}
+
+
+function import_data_lessondata_batch_3 () {
+  $records = db_query("select * from ds2_oskar.LessonAll l left join dev_syn_drupal.lesson_data_video_import n on n.liveid = l.ID order by l.ID DESC")->fetchAll();
+  $tasss = array();
+  $nidss = array();
+  $txnidss = array();
+  $i = 0;
+  foreach ($records as $data) {
+  //if(empty($data->field_tags)) {
+  // print_r($data);  exit;
+  //$datass = node_load($data->nid);
+  // print_r($datass);
+  // exit;
+    $tags = explode(",", $data->Tags);
+    foreach ($tags as $tagsx) {
+
+      if (!empty($tagsx)) {
+        $tasss[] = strtolower(trim($tagsx)); 
+        $name = strtolower(trim($tagsx));
+        //$ttid = taxonomy_get_term_by_name($name, 'tags');
+       // print_r('<pre>');
+       // print_r(key($ttid)); exit;
+        $txnidss[$data->nid][] = strtolower(trim($tagsx));
+           if($getmy == 40000) {
+//print_r('<pre>');
+ // print_r($txnidss); exit;
+           }
+                $getmy++;
+      }
+    }
+    $dataxx['data'] = $txnidss[$data->nid];
+    $dataxx['key'] = $data->nid;
+    $operations[] = array('import_ldata_op_3', array($dataxx, t('(Operation @operation)', array('@operation' => $i))));
+    $i++;
+  }
+  drupal_set_message(t('Creating an array of @num operations', array('@num' => $i)));
+  $batch = array(
+    'operations' => $operations,
+    'finished' => 'import_data_finished',
+  );
+  return $batch;
+}
+
+
+function import_ldata_op_3($data, $operation_details, &$context) {
+  //print_r($data); exit;
+  if ($data['key'] != 0 && !empty($data['data'])) {
+    $txnidss = array();
+    if ($data['key'] != 36484) {
+      $node = node_load($data['key']);
+      $key = 0; 
+      foreach ($data['data'] as $tagsx) {
+        if (!empty($tagsx)) {
+          $name = strtolower(trim($tagsx));
+          $ttid = taxonomy_get_term_by_name($name, 'tags');
+          if ($ttid > 0 ){
+           $txnidss[$data['key']][] = strtolower(trim($tagsx)).'--'.key($ttid);
+           $node->field_tags['und'][$key]['tid'] = key($ttid);
+          } else {
+            $term = new stdClass();
+            $term->name = $name;
+            $term->vid = 1; 
+            taxonomy_term_save($term);
+            $node->field_tags['und'][$key]['tid'] = $term->tid;
+          }
+        }
+        $key++;
+      }
+      field_attach_presave('node', $node);
+      field_attach_update('node', $node);
+    }
+  }
+  //exit;
+  //print_r($txnidss);
+}
+
+
+function custom_create_taxonomy_term($name, $vid) {
+  $term = new stdClass();
+  $term->name = $name;
+  $term->vid = $vid;
+  taxonomy_term_save($term);
+  return $term->tid;
+}
+
+
+function import_data_lessondata_batch_1 () {
+  $records = db_query('select *, l.* ,unix_timestamp(l.Date) as dt,c.Name as category ,t.Name as type,tc.Name as technique, v.guest as guest, v.member as member from livedata_27_nov.LessonAll l left join livedata_27_nov.Technique tc on  (tc.ID = l.Technique) left join livedata_27_nov.LessonType t on (t.ID = l.LessonType) left join livedata_27_nov.MusicCategory c on (c.ID = l.MusicCategory) left join livedata_27_nov.visit_counter v on (v.iValue = l.ID) and l.Instructor != 0 order by l.ID DESC')->fetchAll();
+  print_r($records );die;
+  //$tids = db_select('livedata_27_nov.LessonAll', 'tc')->fields('tc')->orderBy('tc.id', 'ASC')->execute();
+  $operations = array();
+  $i = 0;
+  // while ($data = $tids->fetchAssoc()) {
+  foreach ($records as $data) {
+    //   print '<pre>';
+   //   print_r($data); exit;
+    $smallthumb = '/opt/web/guitarmasterclass.net/public_html/icp/lm2/files/clips/clip'.$data->ID.'.jpg';  
+    //  if (empty($result)) {
+    $data->smallthumb = $smallthumb;
+    $operations[] = array('import_ldata_op_1', array($data, t('(Operation @operation)', array('@operation' => $i))));
+    $i++;
+  //  } 
+  }
+  //print_r(); exit;
+  drupal_set_message(t('Creating an array of @num operations', array('@num' => $i)));
+  $batch = array(
+    'operations' => $operations,
+    'finished' => 'import_data_finished',
+  );
+  return $batch;
+}
+
+/**
+ * import_ldata_op_1 call back function.
+ */
+function import_ldata_op_1($data, $operation_details, &$context) {
+
+  $selectnew = db_query('SELECT * from node WHERE title LIKE :title AND type LIKE :lesson', array(':title' =>  $data->Title, ':lesson' => 'lessons'))->fetchAll();
+  // print_r($selectnew); exit;
+  $node = node_load($selectnew[0]->nid);
+ // print_r($node); print_r($data); exit;
+  if ($node->nid >= 111904) {
+    
+   //  print_r($node); print_r($data); $ins
+     if ($data->LM2_LessonId != 0) {
+      //attachFiles($node, $data->LM2_LessonId);
+      $ins = db_query('SELECT * from livedata_icp.lm2_file f Left join livedata_icp.lm2_lessonpart lv on (fileId = f.id) where f.lesson_id = :id order by lv.lessonId ASC',array(':id'=> $data->LM2_LessonId ))->fetchAll();
+       print_r($ins);
+     }
+    // else {
+    //  attachLessons($node);  
+        
+    // }
+    // print_r($node); print_r('------'); print_r($data); exit;
+    // print_r($data); 
+    // print_r(strtotime($data->Date));
+    //  exit;
+    // print_r($data); exit;
+  /*  if(!empty($data->category)) {
+      $music_category = _get_term_from_name($data->category, 8); 
+    }
+    if(!empty($data->type)) {
+      $lesson_type = _get_term_from_name($data->type, 7); 
+    }
+    if (!empty($data->technique)) {
+      $technique = _get_term_from_name($data->technique, 9); 
+    }
+
+    $ins = db_query('SELECT * from {admin_oskar.Instructor} where ID = :id',array(':id'=>$data->Instructor))->fetchAll();  
+    $ins = $ins[0];
+   // print_r($data); exit;
+    $u = user_load_by_name($ins->FName.' '.$ins->LName);
+      
+    if ( empty($ins->Email) ) $ins->Email = strtolower($ins->FName.'.'.$ins->LName).'@guitarmasterclass.net';
+    $u = user_load_by_name($ins->FName.' '.$ins->LName);
+    if (!is_object($u)) {
+    $u = user_load_by_mail($ins->Email);
+    }
+
+     //$uid = get_instrcterid($data->Instructor);
+     //if (lessonAlreadyLoaded($data->Title)) continue;
+    //if ($data->Instructor == 0) continue;
+    //if ($data->LM2_LessonId == 0) continue;
+
+    //$ins = loadInstructor($data->Instructor);
+ //  $node->field_display_name = $data->field_first_name['und'][0]['value']." ".$data->field_last_name['und'][0]['value'];
+    //  $node = setRefference($data->category,$node,'category','music_category');
+    //  $node = setRefference($data->type,$node,'lesson_type','lesson_type');  
+    //  $node = setRefference($data->technique,$node,'technique','technique');    
+
+    $tags = explode(",",$data->Tags);
+
+    if (count($tags)) {
+      foreach($tags as $key => $t) {
+        $tid = _get_term_from_tagsname($t, 1);
+      //  print_r($tid); exit;
+        if ($tid != 0) {
+          $node->field_tags['und'][$key]['tid'] = $tid;
+        } else {
+          // print_r($tags); exit;
+          $tid =  taxonomy_term_save((object) array(
+             'name' => $t,
+             'vid' => 1,
+           ));
+          
+         // print_r($tid);exit;
+        }
+      }
+    }
+    $node->field_spoken_video['und'][0]['value'] = $data->SpokenVideo;
+    $node->type = 'lessons';
+    if ($music_category) {
+      $node->field_music_category['und'][0]['tid'] = $music_category;
+    }
+    if ($lesson_type) {
+     $node->field_lesson_type['und'][0]['tid'] = $lesson_type;
+    }
+    if ($technique) {
+      $node->field_technique['und'][0]['tid'] = $technique;
+    }
+    $node->field_guest_views['und'][0]['value'] = $data->guest;
+    $node->field_member_views['und'][0]['value'] = $data->member;
+    //  $node->nid = $data->ID;
+    // $node->vid = $data->ID;
+      //$node->field_likes['und'][0]['value'] = likes('http://guitarmasterclass.net'.$data->Url);
+    $node->field_camera_angles['und'][0]['value'] = $data->CameraAngles;
+    $node->uid = $u->uid;
+    $node->field_scales_key['und'][0]['value'] = $data->TheoryInAction;
+    $node->field_is_cover_lesson['und'][0]['value'] = $data->cover_lesson;
+    $node->field_the_style_of['und'][0]['value'] = ($data->InTheStyleOf) ? $data->InTheStyleOf:0;
+    $node->field__mobile['und'][0]['value'] = $data->is_mobile;
+    $node->field_backing['und'][0]['value'] = $data->NonDownloadableBacking;
+    $node->field_music_sub_genre['und'][0]['value'] = $data->MusicStyle;
+    $node->field_bonus_lesson['und'][0]['value'] = $data->BonusLesson;
+
+    $node->title = $data->Title;
+    $node->body['und'][0]['value'] = $data->ShortDescription;
+  $dta  = explode('-', $data->Date);
+  if ($dta[0] > 2020) {
+   $data->Date = '2017-09-21 00:00:00';
+  } elseif ($dta[0] == 0000) {
+    $data->Date = '2017-09-21 00:00:00';  
+  } 
+  
+  $node->created = strtotime($data->Date);
+  $node->revision_timestamp = strtotime($data->Date);
+  $node->changed = strtotime($data->Date);
+  if ($dta[0] > 2013) {
+    $node->status = 0;
+    
+  } else {
+    $node->status = ($data->cp_status == 2) ? 1 : 0;
+  }
+  
+    $node->field_difficulty_level['und'][0]['value'] = $data->DifficultyLevel;
+    $node->tags['und'][0]['value'] = $data->Tags;
+    $node->promote = 0;      // If you want promoted to front page, else use 0
+    $node->sticky = 0;
+    $node->body['und'][0]['format'] = 'full_html';       // Filtered HTML  
+    $node->language = 'und';
+    $ex_path = explode("/",$data->Url);
+    $node->path['und'][0]['alias'] = $ex_path[1]."/".$ex_path[2];
+   // $node->comment = 2;
+    //   print_r($node); exit;
+    $node->field_free_parts_al['und'][0]['value'] = $data->fria_delar;
+    $node->field_free_parts['und'][0]['value'] = $data->Free;
+   // print_r($node); exit;
+    $node = node_submit($node);
+   node_save($node);
+  //  print_r($node);exit;
+    //node_insert_with_defined_nid($node);
+  //  print_r($node); exit;
+    //$nid = $node->nid;
+    /* $dir = " public://uploads/".$nid;
+    $all_files = file_scan_directory($dir,'/.*\.mp4$/');
+
+    foreach ($all_files as $key => $data) {
+    //  print_r($data); exit;
+    //  _get_video_files_scale_file($data->uri, $data->name, $nid);
+    }
+    print_r($all_files); exit;
+    */
+
+
+
+    /*
+    //watchdog('Transfer Process','Started for lesson !name',array('!name'=> $node->title));
+    // updateBookMarkLessonId($node,$data->ID);
+    //watchdog('Transfer Process','Bookmark Updated for lesson !name',array('!name'=> $node->title));
+    $dir = " public://uploads/".$node->nid;
+    if (!file_exists($dir)) mkdir($dir);
+    $thumb = '/opt/web/guitarmasterclass.net/public_html/icp/lm2/files/files/clips/clipbig'.$data->ID.'.jpg';
+    $smallthumb = '/opt/web/guitarmasterclass.net/public_html/icp/lm2/files/files/clips/clip'.$data->ID.'.jpg';
+    if (file_exists($thumb)) {
+      $fp = file_get_contents($thumb);
+      $file =   file_unmanaged_save_data($fp," public://uploads/".$node->nid."/big_".$node->nid.".jpg",FILE_EXISTS_REPLACE);
+      $file->status = FILE_STATUS_PERMANENT;
+      $file->uid = $node->uid;
+      file_save($file);
+    }
+    if (file_exists($smallthumb)) {
+      $fp = file_get_contents($smallthumb);
+      $file =   file_unmanaged_save_data($fp," public://uploads/".$node->nid."/small_".$node->nid.".jpg",FILE_EXISTS_REPLACE);
+      $file->status = FILE_STATUS_PERMANENT;
+      $file->uid = $node->uid;
+      file_save($file);
+    }
+
+    attachComments($node,$data->topic_id);
+    watchdog('Transfer Process','Comments transfered for lesson !name',array('!name'=> $node->title));
+    attachRecs($data->ID,$node);
+    watchdog('Transfer Process','RECs Attached for lesson !name',array('!name'=> $node->title));
+
+    watchdog('Transfer Process','Attaching Files for lesson !name',array('!name'=> $node->title));
+      if ($data->LM2_LessonId != 0) {
+        attachFiles($node,$data->LM2_LessonId);
+      }
+      else {
+        attachLessons($node);  
+      }
+    watchdog('Transfer Process','Files Attached for lesson !name',array('!name'=> $node->title));  
+    //$user = user_load($data->Instructor);
+    //$user->status = 1;
+    //user_save($user);
+    watchdog('Transfer Process','Completed for lesson !name',array('!name'=> $node->title));*/
+   
+  }
+}
+
+
+function import_data_lessondata_batch_2() { 
+  $query = db_query("SELECT nr.* FROM `node_revision` nr left join node n on n.nid=nr.nid WHERE nr.title LIKE '%##%' AND type LIKE 'lessons'")->fetchAll();
+  print_r('<pre>');
+  foreach ($query as $key => $value) {
+    print_r($value);
+     $title = str_replace('##', '',$value->title);
+    
+     db_update('node_revision')
+      ->fields(array(
+        'title' => $title,
+          ))
+        ->condition('nid', $value->nid, '=')
+        ->execute();
+
+  }
+  exit;
+
+}
+
+function get_instrcterid($id) {
+  $uid = db_query('SELECT u.uid FROM users u LEFT JOIN ds2_gmc.ibf_members im ON u.mail = im.email WHERE im.id = :id LIMIT 0 , 1', array(':id'=> $id))->fetchAll();
+  return 22;
+}
+
+/**
+* Helper function to dynamically get the tid from the term_name
+*
+* @param $term_name Term name
+* @param $vocabulary_name Name of the vocabulary to search the term in
+*
+* @return Term id of the found term or else FALSE
+*/
+function _get_term_from_name($name, $vid) {
+ /* $query = new EntityFieldQuery;
+  $result = $query
+    ->entityCondition('entity_type', 'taxonomy_term')
+    ->propertyCondition('name', '%'.$name.'%')
+    ->propertyCondition('vid', $vid)
+    ->execute();
+  $result = array_shift($result['taxonomy_term']);
+  $tid = $result->tid;
+  return $tid;*/
+  $query =  db_query('SELECT * FROM taxonomy_term_data WHERE vid = :vid AND name LIKE :tags', array(':tags' => $name, ':vid' => $vid))->fetchAll();
+  $tid = $query[0]->tid;
+  return $tid;
+}
+
+
+/**
+* Helper function to dynamically get the tid from the term_name
+*
+* @param $term_name Term name
+* @param $vocabulary_name Name of the vocabulary to search the term in
+*
+* @return Term id of the found term or else FALSE
+*/
+function _get_term_from_tagsname($name, $vid) {
+ // $query =  db_query('SELECT * FROM dev_syn_drupal.taxonomy_term_data WHERE name LIKE :tags AND vid = :vid', array(':tags' => $name, ':vid' => 1))->fetchAll();
+//  print_r($query); exit;
+$query = db_select('taxonomy_term_data', 'td')
+      ->fields('td',array('tid', 'name'))
+      ->condition('td.name', $name)
+      ->condition('td.vid', 1,'=')
+      ->execute();
+  while($record = $query->fetchAssoc()) {
+       $xx[] = $record;
+    }
+  if ($xx[0]->tid) {
+    $tid = $xx[0]->tid;
+  } else {
+    $tid = 0;
+  }
+  return $tid;
+}
+
+/**
+* hook_alter function to dynamically get the tid from the term_name
+*
+* @param $term_name Term name
+* @param $vocabulary_name Name of the vocabulary to search the term in
+*
+* @return Term id of the found term or else FALSE
+*/
+
+function lessondata_import_form_lesson_part_node_form_alter(&$form, &$form_state, $form_id) {
+  $form['actions']['submit']['#submit'][]='my_callback_function';
+}
+
+//my code here!!
+//execute after the user submit the node form
+//and then redirect user to another place,after executing the code above
+function my_callback_function($form,$form_state) {
+  print_r($form);
+}
+
+/**
+* Implements saving a node with a defined nid value.
+*
+* This function is basically an override of the standard node_save()
+* function.
+*/
+function node_insert_with_defined_nid(&$node) {
+  // Here we will remove the nid from the object to trick the rest of
+  // the function into thinking it is dealing with a normal insert.
+  // We will then re-introduce the nid when needed.
+  $defined_nid = $node->nid;
+  unset($node->nid);
+  // Let modules modify the node before it is saved to the database.
+  //  node_invoke_nodeapi($node, 'presave');
+  global $user;
+  // Insert a new node.
+  $node->is_new = empty($node->nid);
+  if ($node->is_new || !empty($node->revision)) {
+    // When inserting a node, $node->log must be set because
+    // {node_revisions}.log does not (and cannot) have a default
+    // value.  If the user does not have permission to create
+    // revisions, however, the form will not contain an element for
+    // log so $node->log will be unset at this point.
+    if (!isset($node->log)) {
+      $node->log = '';
+    }
+  }
+  // For the same reasons, make sure we have $node->teaser and
+  // $node->body set.
+  if (!isset($node->teaser)) {
+    $node->teaser = '';
+  }
+  if (!isset($node->body)) {
+    $node->body = '';
+  }
+  $time = time();
+  if (empty($node->created)) {
+    $node->created = $time;
+  }
+  // The changed timestamp is always updated for bookkeeping purposes
+  // (revisions, searching, ...)
+  $node->changed = $time;
+  $node->timestamp = $time;
+  $node->format = isset($node->format) ? $node->format : FILTER_FORMAT_DEFAULT;
+  // Generate the node table query and the node_revisions table query.
+  if ($node->is_new) {
+    _node_save_revision($node, $user->uid);
+    // Call our modified function after putting the nid back into the
+    // object.
+    $node->nid = $defined_nid;
+    drupal_write_record_via_insert_with_defined_id('node', $node);
+    db_query('UPDATE {node_revisions} SET nid = %d WHERE vid = %d', $node->nid, $node->vid);
+    $op = 'insert';
+  }
+  // Call the node specific callback (if any).
+  node_invoke($node, $op);
+  node_invoke_nodeapi($node, $op);
+  // Update the node access table for this node.
+  node_access_acquire_grants($node);
+  // Clear the page and block caches.
+  cache_clear_all();
+}
+
+
+/**
+* Implements inserting a record with a defined id value.
+*
+* Overrides the standard drupal_write_record() function.
+*/
+function drupal_write_record_via_insert_with_defined_id($table, &$object, $update = array()) {
+  // Standardize $update to an array.
+  if (is_string($update)) {
+    $update = array($update);
+  }
+  $schema = drupal_get_schema($table);
+  if (empty($schema)) {
+    return FALSE;
+  }
+  // Convert to an object if needed.
+  if (is_array($object)) {
+    $object = (object) $object;
+    $array = TRUE;
+  }
+  else {
+    $array = FALSE;
+  }
+  $fields = $defs = $values = $serials = $placeholders = array();
+  // Go through our schema, build SQL, and when inserting, fill in defaults for
+  // fields that are not set.
+
+  foreach ($schema['fields'] as $field => $info) {
+    // For inserts, populate defaults from Schema if not already provided.
+    if (!isset($object->$field) && !count($update) && isset($info['default'])) {
+      $object->$field = $info['default'];
+    }
+    // Build arrays for the fields, placeholders, and values in our query.
+    if (isset($object->$field)) {
+      $fields[] = $field;
+      $placeholders[] = $info['type'];
+      if (empty($info['serialize'])) {
+        $values[] = $object->$field;
+      }
+      else {
+        $values[] = serialize($object->$field);
+      }
+    }
+  }
+  // Build the SQL.
+  $query = '';
+  if (!count($update)) {
+    $query = 'INSERT INTO {' . $table . '} (' . implode(', ', $fields) . ') VALUES (' . implode(', ', $placeholders) . ')';
+    $return = SAVED_NEW;
+  }
+  // Execute the SQL.
+  if (!db_query($query, $values)) {
+    $return = FALSE;
+  }
+  // If we began with an array, convert back so we don't surprise the caller.
+  if ($array) {
+    $object = (array) $object;
+  }
+  return $return;
+}
+
+function list_all_imported_lesson() {
+ini_set('memory_limit', '-1');
+  drupal_set_time_limit(1000);
+//  $queries = db_query('SELECT *, l.* ,unix_timestamp(l.Date) as dt,c.Name as category ,t.Name as type,tc.Name as technique, v.guest as guest, v.member as member FROM dev_syn_drupal.node n LEFT JOIN livedata_27_nov.LessonAll l on l.Title Like n.title LEFT JOIN admin_icp.lm2_file lm on lm.lesson_id = l.ID left join livedata_27_nov.Technique tc on  (tc.ID = l.Technique) left join livedata_27_nov.LessonType t on (t.ID = l.LessonType) left join livedata_27_nov.MusicCategory c on (c.ID = l.MusicCategory) left join livedata_27_nov.visit_counter v on (v.iValue = l.ID) and l.Instructor != 0 WHERE n.type LIKE :lessons order by n.nid ASC LIMIT 0, 3', array(':lessons' => 'lessons'))->fetchAll();
+    $queries = db_query('select *, l.* ,unix_timestamp(l.Date) as dt,c.Name as category ,t.Name as type,tc.Name as technique, v.guest as guest, v.member as member from livedata_27_nov.LessonAll l left join livedata_27_nov.Technique tc on  (tc.ID = l.Technique) left join livedata_27_nov.LessonType t on (t.ID = l.LessonType) left join livedata_27_nov.MusicCategory c on (c.ID = l.MusicCategory) left join livedata_27_nov.visit_counter v on (v.iValue = l.ID) and l.Instructor != 0 left join node n on n.title like l.Title WHERE n.type LIKE :lessons order by l.ID ASC LIMIT 0, 30', array(':lessons' => 'lessons'))->fetchAll();
+
+  print '<pre>';
+ // $sec = new stdClass();
+  foreach ( $queries as $key => $query ) {
+   // print_r($query);
+    $data = $query;
+    $sec = node_load($query->nid); 
+  //  print_r($sec); 
+    print $music_category = _get_term_from_name($data->category, 8).'dd---'; 
+    print $lesson_type = _get_term_from_name($data->type, 7).'dd----';   
+    print $technique = _get_term_from_name($data->technique, 9).'dd-----'; 
+    //print_r($data); exit;
+  
+    $ins = db_query('SELECT u.uid  FROM users u LEFT JOIN ds2_gmc.ibf_members im ON u.mail = im.email WHERE im.id = :id LIMIT 0 , 1',array(':id'=> $data->Instructor))->fetchAll();
+     //$uid = get_instrcterid($data->Instructor);
+     //if (lessonAlreadyLoaded($data->Title)) continue;
+    //if ($data->Instructor == 0) continue;
+    //if ($data->LM2_LessonId == 0) continue;
+    
+
+    //$ins = loadInstructor($data->Instructor);
+    $node->field_display_name = $data->field_first_name['und'][0]['value']." ".$data->field_last_name['und'][0]['value'];
+    //  $node = setRefference($data->category,$node,'category','music_category');
+    //  $node = setRefference($data->type,$node,'lesson_type','lesson_type');  
+    //  $node = setRefference($data->technique,$node,'technique','technique');    
+
+    $tags = explode(",",$data->Tags);
+    
+    if (count($tags)) {
+      foreach($tags as $key => $t) {
+      $tid = _get_term_from_tagsname($t, 1); print_r($t); print_r($tid);   exit;
+        if (!empty($tid) && !is_object($tid)) { 
+          $node->field_tags['und'][$key]['tid'] = $tid;
+        } else {
+          $tr =  taxonomy_term_save((object) array(
+              'name' => $t,
+              'vid' => 1,
+             ));
+         // print_r($tr);exit;
+        }
+      }
+    }
+    $sec->field_spoken_video['und'][0]['value'] = $data->SpokenVideo;
+    $sec->type = 'lessons';
+    $sec->field_music_category['und'][0]['tid'] = $music_category;
+    $sec->field_lesson_type['und'][0]['tid'] = $lesson_type;
+    $sec->field_technique['und'][0]['tid'] = $technique;
+    $sec->field_guest_views['und'][0]['value'] = $data->guest;
+    $sec->field_member_views['und'][0]['value'] = $data->member;
+    $sec->nid = $data->ID;
+    $sec->vid = $data->ID;
+    $sec->field_camera_angles['und'][0]['value'] = $data->CameraAngles;
+    $sec->field_scales_and_key['und'][0]['value'] = $data->TheoryInAction;
+    $sec->field_is_cover_lesson['und'][0]['value'] = $data->cover_lesson;
+    $sec->field_the_style_of['und'][0]['value'] = ($data->InTheStyleOf) ? $data->InTheStyleOf:0;
+    $sec->field__mobile['und'][0]['value'] = $data->is_mobile;
+    $sec->field_music_sub_genre['und'][0]['value'] = $data->MusicStyle;
+    $sec->field_bonus_lesson['und'][0]['value'] = $data->BonusLesson;
+    $sec->title = $data->Title;
+    $sec->body['und'][0]['value'] = $data->ShortDescription;
+    $sec->created = $data->dt;
+    $sec->changed = $node->created;
+    $sec->status = 1;
+    $sec->field_difficulty_level['und'][0]['value'] = $data->DifficultyLevel;
+    $sec->promote = 0;      // If you want promoted to front page, else use 0
+    $sec->sticky = 0;
+    $sec->body['und'][0]['format'] = 'full_html';       // Filtered HTML  
+    $sec->language = 'und';
+    $ex_path = explode("/",$data->Url);
+    $sec->comment = 2;
+    $sec->field_free_parts_al['und'][0]['value'] = $data->fria_delar;
+    $sec = node_submit($sec);
+   // node_save($sec);
+    print_r($sec);
+   // exit;
+  }
+  exit;
+  return 'ddd';
+}
+
+/**
+ * _get_video_files_scale function for genrated video with diffrent rate.
+ */
+function _get_video_files_scale_file($datauri, $dataname, $nid) {
+  drupal_set_time_limit(1000);
+  $finfo = new finfo(FILEINFO_MIME);
+  $type = $finfo->file($datauri); 
+  if ($type == 'video/mp4' || $type = 'video/x-flv' ) {
+    $srcFile = drupal_realpath($datauri); 
+    $ff = new ffmpeg_movie(drupal_realpath($datauri));
+    $low = "public://uploads/".$nid."/small_".$dataname.".mp4";
+    $medium = "public://uploads/".$nid."/medium_".$dataname.".mp4";
+    $high = "public://uploads/".$nid."/high_".$dataname.".mp4";
+    $mobile = "public://uploads/".$nid."/mobile_".$dataname.".mp4";
+    $srcWidth = $ff->getFrameWidth();
+    $srcWidth -= $srcWidth & 1;
+    $srcHeight = $ff->getFrameHeight();
+    $srcHeight -= $srcHeight & 1;
+    $thumbname = " public://uploads/".$nid."/".$dataname."_thumb.png";
+    if ($srcHeight == 1080) {
+      $rate = '5000k';  
+      $srcsize = $srcWidth.'x'.$srcHeight;
+    }
+    elseif ($srcHeight == 720) {
+      $rate = '5000k';  
+      $srcsize = $srcWidth.'x'.$srcHeight;
+    } else {
+      $srcsize = '720x560';
+      $rate = '3000k';
+    }
+    exec("/usr/local/bin/ffmpeg -i $srcFile -f image2 -vframes 1  $thumbname");
+     //print_r($high);exit;
+    if (!file_exists($high)) {
+      drupal_set_time_limit(1000);
+      exec("/usr/local/bin/ffmpeg -i $srcFile -vcodec libx264 -preset fast -acodec copy -ab 256 -b:v $rate -s $srcsize -f mp4 $high 2>&1",$output);
+      //  exec("ffmpeg -i $srcFile -ss 00:00:14.435 -f image2 -vframes 1 {$name}_thumb_out.png");
+      //  exec("qt-faststart ".drupal_realpath($high)." ".drupal_realpath($high)."_qtfast.mp4");
+      //// unlink(drupal_realpath($high));
+    }
+    if (!file_exists($medium)) {
+      drupal_set_time_limit(1000);
+      exec("/usr/local/bin/ffmpeg -i $srcFile -vcodec libx264 -preset fast -acodec copy -ab 256 -b:v 900k -s 640x360 -f mp4 $medium 2>&1",$output);
+      //  exec("/usr/bin/qt-faststart ".drupal_realpath($medium)." ".drupal_realpath($medium)."_qtfast.mp4");
+      //  unlink(drupal_realpath($medium));
+    }
+    if (!file_exists($low)) {
+      drupal_set_time_limit(1000);
+      exec("/usr/local/bin/ffmpeg -i $srcFile -vcodec libx264 -preset fast -acodec copy -ab 256 -b:v 300k -s 512x288 -f mp4 $low 2>&1",$output);
+      //   exec("/usr/bin/qt-faststart ".drupal_realpath($low)." ".drupal_realpath($low)."_qtfast.mp4");
+      //   unlink(drupal_realpath($low));
+    }
+  } 
+}
+
+function list_all_not_impotedfile() {
+ /* $records = db_query('select *, l.* ,unix_timestamp(l.Date) as dt,c.Name as category ,t.Name as type,tc.Name as technique, v.guest as guest, v.member as member from livedata_27_nov.LessonAll l left join livedata_27_nov.Technique tc on  (tc.ID = l.Technique) left join livedata_27_nov.LessonType t on (t.ID = l.LessonType) left join livedata_27_nov.MusicCategory c on (c.ID = l.MusicCategory) left join livedata_27_nov.visit_counter v on (v.iValue = l.ID) and l.Instructor != 0 order by l.ID ASC')->fetchAll();
+  //$tids = db_select('livedata_27_nov.LessonAll', 'tc')->fields('tc')->orderBy('tc.id', 'ASC')->execute();*/
+  //$records = db_query('SELECT * from node WHERE type LIKE :lesson', array(':lesson' => 'lessons'))->fetchAll();
+$queries = db_query('SELECT *, l.* ,unix_timestamp(l.Date) as dt,c.Name as category ,t.Name as type,tc.Name as technique, v.guest as guest, v.member as member FROM dev_syn_drupal.node n LEFT JOIN livedata_27_nov.LessonAll l on l.Title Like n.title LEFT JOIN admin_icp.lm2_file lm on lm.lesson_id = l.ID left join livedata_27_nov.Technique tc on  (tc.ID = l.Technique) left join livedata_27_nov.LessonType t on (t.ID = l.LessonType) left join livedata_27_nov.MusicCategory c on (c.ID = l.MusicCategory) left join livedata_27_nov.visit_counter v on (v.iValue = l.ID) and l.Instructor != 0 WHERE n.type LIKE :lessons order by n.nid ASC DESC 0, 3', array(':lessons' => 'lessons'))->fetchAll();
+  $operations = array();
+  
+  $i = 0;
+  // while ($data = $tids->fetchAssoc()) {
+  foreach ($records as $data) {
+    print_r($data);exit;
+   // $selectnew = db_query('SELECT nid from node WHERE title LIKE :title AND type LIKE :lesson', array(':title' =>  $data->Title, ':lesson' => 'lessons'))->fetchAll();
+  $node = node_load($data->nid);
+ // $dta  = explode('-', date("Y-m-d H:i:s",$node->created));
+  //if ($dta[0] > 2013) {
+   //if ($node->status == 1) {
+      print $node->nid.'----'.$node->title.'---'.$node->status.'+++++'.$node->created.'---'.$node->status.'-'.date("Y-m-d H:i:s",$node->created).'<br/>';  
+      $node->status = 0;
+    //  node_save($node);
+      
+  //  }
+ // }
+   
+
+   /* if ($data->cp_status == 2) {
+      if (empty($selectnew[0]->nid)) {
+        $dataxx =  db_query('SELECT nid from node WHERE title LIKE :title AND type LIKE :lesson', array(':title' =>  $data->Title, ':lesson' => 'lessons'))->fetchAll();
+       // print $data->Title.'----'.$selectnew[0]->nid.'---'.$data->LM2_LessonId.'<br/>'; 
+  $selectnew = db_query('SELECT * from node WHERE title LIKE :title AND type LIKE :lesson', array(':title' =>  $data->Title, ':lesson' => 'lessons'))->fetchAll();
+
+  $node = node_load($selectnew[0]->nid);
+//  print_r($data); 
+
+  if (empty($node->nid)) {
+  //     print_r($data); 
+ // print_r(strtotime($data->Date));
+//  exit;
+    // print_r($data); exit;
+    if(!empty($data->category)) {
+      $music_category = _get_term_from_name($data->category, 8); 
+    }
+    if(!empty($data->type)) {
+      $lesson_type = _get_term_from_name($data->type, 7); 
+    }
+    if (!empty($data->technique)) {
+      $technique = _get_term_from_name($data->technique, 9); 
+    }
+
+  $ins = db_query('SELECT * from {admin_oskar.Instructor} where ID = :id',array(':id'=>$data->Instructor))->fetchAll();  
+  $ins = $ins[0];
+ // print_r($data); exit;
+  $u = user_load_by_name($ins->FName.' '.$ins->LName);
+    
+  if ( empty($ins->Email) ) $ins->Email = strtolower($ins->FName.'.'.$ins->LName).'@guitarmasterclass.net';
+  $u = user_load_by_name($ins->FName.' '.$ins->LName);
+  if (!is_object($u)) {
+  $u = user_load_by_mail($ins->Email);
+  }
+  // print_r($u);
+ //  print_r($ins); exit;
+ //  $node = setRefference($data->technique,$node,'technique','technique');    
+
+   $tags = explode(",",$data->Tags);
+
+    if (count($tags)) {
+      foreach($tags as $key => $t) {
+        $tid = _get_term_from_tagsname($t, 1);
+      //  print_r($tid); exit;
+        if ($tid != 0) {
+          $node->field_tags['und'][$key]['tid'] = $tid;
+        } else {
+          // print_r($tags); exit;
+          $tid =  taxonomy_term_save((object) array(
+             'name' => $t,
+             'vid' => 1,
+           ));
+          
+         // print_r($tid);exit;
+        }
+      }
+    }
+    $node->field_spoken_video['und'][0]['value'] = $data->SpokenVideo;
+    $node->type = 'lessons';
+    if ($music_category) {
+      $node->field_music_category['und'][0]['tid'] = $music_category;
+    }
+    if ($lesson_type) {
+     $node->field_lesson_type['und'][0]['tid'] = $lesson_type;
+    }
+    if ($technique) {
+     $node->field_technique['und'][0]['tid'] = $technique;
+    }
+    $node->field_guest_views['und'][0]['value'] = $data->guest;
+    $node->field_member_views['und'][0]['value'] = $data->member;
+    //  $node->nid = $data->ID;
+    // $node->vid = $data->ID;
+    //  $node->field_likes['und'][0]['value'] = likes('http://guitarmasterclass.net'.$data->Url);
+    $node->field_camera_angles['und'][0]['value'] = $data->CameraAngles;
+   // $node->uid = $ins[0]->uid;
+    $node->field_scales_key['und'][0]['value'] = $data->TheoryInAction;
+    $node->field_is_cover_lesson['und'][0]['value'] = $data->cover_lesson;
+    $node->field_the_style_of['und'][0]['value'] = ($data->InTheStyleOf) ? $data->InTheStyleOf:0;
+    $node->field__mobile['und'][0]['value'] = $data->is_mobile;
+    $node->field_backing['und'][0]['value'] = $data->NonDownloadableBacking;
+    $node->field_music_sub_genre['und'][0]['value'] = $data->MusicStyle;
+    $node->field_bonus_lesson['und'][0]['value'] = $data->BonusLesson;
+    $node->uid = $u->uid;
+    $node->title = $data->Title;
+    $node->body['und'][0]['value'] = $data->ShortDescription;
+    $dta  = explode('-', $data->Date);
+    if ($dta[0] > 2020 || $dta[0] == 0000) {
+      $data->Date ='2017-09-21 00:00:00';
+    }
+    $node->created = strtotime($data->Date);
+    $node->revision_timestamp = strtotime($data->Date);
+    $node->changed = strtotime($data->Date);
+    //if ($dta[0] > 2013) {
+ //   $node->status = 0;
+ // } else {
+    $node->status = ($data->cp_status == 2) ? 1 : 0;
+ // }
+  //print_r($node); exit;
+    $node->field_difficulty_level['und'][0]['value'] = $data->DifficultyLevel;
+    $node->tags['und'][0]['value'] = $data->Tags;
+    $node->promote = 0;      // If you want promoted to front page, else use 0
+  //  $node->sticky = 0;
+    $node->body['und'][0]['format'] = 'full_html';       // Filtered HTML  
+    $node->language = 'und';
+    $ex_path = explode("/",$data->Url);
+    $node->path['und'][0]['alias'] = $ex_path[1]."/".$ex_path[2];
+    $node->comment = 2;
+   //   print_r($node); exit;
+    $node->field_free_parts_al['und'][0]['value'] = $data->fria_delar;
+   // $node->field_free_parts['und'][0]['value'] = $data->Free;
+    $node = node_submit($node);
+    node_save($node);
+    print_r($node);
+      }
+    }
+  }  */
+  
+  }
+}
+/*
+ * Import LM1 files.
+ */
+/*
+function attachFiles($node,$lid) {
+  $dir = drupal_realpath(" public://uploads/".$node->nid);
+  if (!file_exists($dir)) mkdir($dir);
+//  print_r($node); print_r( $dir);
+  $ccount = db_query('SELECT * from {livedata_icp.lm2_file} where lesson_id = :id ',array(':id'=> $lid ))->rowCount();
+ // print $ccount; 
+  if ($ccount != 0) {
+  //   print_r($lid); print_r( $dir); 
+    $ins = db_query('SELECT * from livedata_icp.lm2_file f Left join livedata_icp.lv_lessonpart lv on (fileId = f.id) where f.lesson_id = :id order by lv.lessonId ASC',array(':id'=> $lid ))->fetchAll();
+  //  print_r($ins); exit;
+    if (empty($ins)) return;
+    $weight = 0;
+    foreach($ins as $key => $ls) {
+      $path = '/opt/web/guitarmasterclass.net/public_html/icp/lm2/files/files/flv';
+      $path2 = '/opt/web/guitarmasterclass.net/public_html/icp/lm2/files/files/uploads'.$ls->path;
+
+      if (file_exists($ls->converted_big) && $ls->extension == '.flv') {
+//  print_r($ls); print_r($node); exit;
+        if ($ls->extension == '.flv') {
+            $ls->converted_big  = $ls->converted_small;
+        }
+        $fp = file_get_contents($path.$ls->converted_big);
+        $file = file_save_data($fp,  'public://uploads/'.$node->nid."/".$ls->filename, FILE_EXISTS_REPLACE);
+        $file->status = FILE_STATUS_PERMANENT;
+        $file->uid = $node->uid;
+        file_save($file);
+        $text = $ls->lessonText;
+        $tab = $ls->lessonTab;
+        if (empty($text) && empty($tab)) {
+          $lv = db_query('select * from {admin_icp.lm2_lessonpart} where lessonId = :lid and fileId = :field',array(':lid'=>$lid, ':field'=>$ls->id))->fetchAll();
+          $text = $lv[0]->lessonText;
+          $tab = $lv[0]->lessonTab;  
+        }
+        //$text = $lv[0]->lessonText;
+        $re = strpos($text,'view_image');
+        if ($re !== false) {
+          watchdog('Lesson Fix','Change Image code in lesson !name',array('!name'=> $node->title));
+        }
+        $free = 1;
+        if ( !empty($node->freeParts) ) {
+          $pts = explode(",",$node->freeParts);
+          if ( in_array($weight,$pts) ) {
+            $free = 0;
+          }
+        }
+        _inserting_filesv($file->fid,$node->nid,$free,$weight,$tab,$text);
+        $weight++;
+      }
+
+      if (file_exists($path.$ls->converted) && $ls->extension != '.flv') {
+        $fp = file_get_contents($path.$ls->converted);
+        $file =   file_save_data($fp, 'public://uploads/'.$node->nid."/medium_".$ls->filename,FILE_EXISTS_REPLACE);
+        $file->status = FILE_STATUS_PERMANENT;
+        $file->uid = $node->uid;
+        
+        file_save($file);
+      }
+
+      if (file_exists($path.$ls->converted_small) && $ls->extension != '.flv') {
+        $fp = file_get_contents($path.$ls->converted_small);
+        $file =   file_save_data($fp, 'public://uploads/'.$node->nid."/small_".$ls->filename,FILE_EXISTS_REPLACE);
+        $file->status = FILE_STATUS_PERMANENT;
+        $file->uid = $node->uid;
+        file_save($file);
+      }
+      if (file_exists($path.$ls->converted_big) && $ls->extension != '.flv') {
+        $fp = file_get_contents($path.$ls->converted_big);
+        $file =   file_save_data($fp, 'public://uploads/'.$node->nid."/high_".$ls->filename,FILE_EXISTS_REPLACE);
+        $file->status = FILE_STATUS_PERMANENT;
+        $file->uid = $node->uid;
+        file_save($file);
+      }
+      $path = '/opt/web/guitarmasterclass.net/public_html/icp/lm2/files/files/uploads'.$ls->path;
+      // $fp = file_get_contents($path.$ls->filename);
+      if (file_exists($path.$ls->filename)) {
+        $file =   file_save_data($fp, 'public://uploads/'.$node->nid."/".$ls->filename,FILE_EXISTS_REPLACE);
+        $file->status = FILE_STATUS_PERMANENT;
+        $file->uid = $node->uid;
+        file_save($file);
+        _inserting_filesv($file->fid,$node->nid,0,1);
+      }
+    }
+print_r($node); print_r( $dir); exit;
+  }
+  
+}
+*/
+
+/*
+ * implemetentation for import LM2 files into new nodes.
+ **/
+
+/*
+function attachLessons($node) {
+  $dir = "/opt/web/admin/public_html/sites/default/files/uploads/".$node->nid;
+  if (!file_exists($dir)) mkdir($dir);  
+  $path = '/opt/web/guitarmasterclass.net/public_html/lessondata/lessondata/'.$node->path['alias'];
+  if (file_exists($path)) {
+    $thumb = $path."/clipbig.jpg";
+    $smallthumb = $path."/clip.jpg";
+    if (file_exists($thumb)) {
+      $fp = file_get_contents($thumb);
+      $file =   file_save_data($fp," public://uploads/".$node->nid."/big_".$node->nid.".jpg",FILE_EXISTS_REPLACE);
+      $file->status = FILE_STATUS_PERMANENT;
+      $file->uid = $node->uid;
+      file_save($file);
+    }
+    if (file_exists($smallthumb)) {
+      $fp = file_get_contents($smallthumb);
+      $file =   file_save_data($fp," public://uploads/".$node->nid."/small_".$node->nid.".jpg",FILE_EXISTS_REPLACE);
+      $file->status = FILE_STATUS_PERMANENT;
+      $file->uid = $node->uid;
+      file_save($file);
+    }
+  }
+  $folders[] = 'filmer';
+  $folders[] = 'filmer_mo';
+  foreach($folders as $key => $folds) {  
+    if (file_exists($path."/".$folds)) {
+      $files = file_scan_directory($path."/".$folds, '/.*\.mp4$/');
+      $k = 0;
+      foreach($files as $key => $f) {
+        $fp = file_get_contents($f->uri);
+        $file =   file_save_data($fp, 'public://uploads/'.$node->nid."/".$f->filename,FILE_EXISTS_REPLACE);
+        $file->status = FILE_STATUS_PERMANENT;
+        $file->uid = $node->uid;
+        file_save($file);
+        $fid = $file->fid;
+        $ex = explode(".",$f->filename);
+        $weight = ($ex[0] == 'main')? 0:$ex[0];
+        $free = 1;
+        if ( !empty($node->freeParts) ) {
+          $pts = explode(",",$node->freeParts);
+          if ( in_array($weight,$pts) ) {
+            $free = 0;
+          }
+        }
+        $k++;
+        $notes = "";
+        $text = "";
+        if (file_exists($path."/text/".$ex[0].".htm")) {
+          $t = fopen($path."/text/".$ex[0].".htm","r");
+          $text = fread($t,filesize($path."/text/".$ex[0].".htm"));
+          $text = utf8_encode($text);
+          fclose($t);
+          $n = fopen($path."/text/".$ex[0]."_scale.htm","r");
+          $notes = fread($n,filesize($path."/text/".$ex[0]."_scale.htm"));
+          fclose($n);
+        }
+        $graphics = file_scan_directory($path."/bilder", '/.*\.jpg$/');  
+        $img = array();
+        foreach($graphics as $key => $g) {
+          $gx = explode("-",$g->name);
+          if ($gx[1] == $ex[0]) {
+            echo $key.'<br>';
+            $fp = file_get_contents($key);
+            $file =   file_save_data($fp, 'public://uploads/'.$node->nid."/".$g->filename,FILE_EXISTS_REPLACE);
+            $file->status = FILE_STATUS_PERMANENT;
+            $file->uid = $node->uid;
+            file_save($file);
+            _inserting_filesv($file->fid,$node->nid,0,$weight);
+            $text .= '<br><img src="'.file_create_url($file->uri).'" />';
+          }
+        }
+        _inserting_filesv($fid,$node->nid,$free,$weight,htmlentities($notes, ENT_QUOTES, "UTF-8"),$text);
+        $backing = file_scan_directory($path."/backingtracks", '/.*\.mp3$/');  
+        foreach($backing as $key => $b) {
+          $fp = file_get_contents($key);
+          $file =   file_save_data($fp, 'public://uploads/'.$node->nid."/".$b->filename,FILE_EXISTS_REPLACE);
+          $file->status = FILE_STATUS_PERMANENT;
+          $file->uid = $node->uid;
+          file_save($file);
+          $weight = $file->filesize;
+          _inserting_filesv($file->fid,$node->nid,0,$weight);
+        }
+        if (file_exists($path."/tab/guitarpro.gp5")) {
+          $fp = file_get_contents($path."/tab/guitarpro.gp5");
+          $file =   file_save_data($fp, 'public://uploads/'.$node->nid."/guitarpro.gp5",FILE_EXISTS_REPLACE);
+          $file->status = FILE_STATUS_PERMANENT;
+          $file->uid = $node->uid;
+          file_save($file);
+          _inserting_filesv($file->fid,$node->nid,0,$weight);
+        }
+        $fp = file_get_contents($path."/".$folds."/".$ex[0].".flv");
+        $file =   file_save_data($fp, 'public://uploads/'.$node->nid."/".$ex[0].".flv",FILE_EXISTS_REPLACE);
+        $file->status = FILE_STATUS_PERMANENT;
+        $file->uid = $node->uid;
+        file_save($file);
+      }
+    }
+  }
+}
+*/
+/*
+ * Import file with new node.
+ */
+/*
+function _inserting_filesvx($v,$nid,$s,$w,$n = NULL,$t = NULL) {
+  try {
+   db_insert('lesson_files')
+     ->fields(array(
+      'nid' => $nid,
+      'fid' => $v,
+      'status' => $s,
+      'weight' => $w,
+      'notes' => $n,
+      'description' => $t,
+    ))
+    ->execute();
+  } catch (PDOException $e) {
+    print_r($e->getMessage());
+  }
+}
+*/
+
+function list_all_images_dilie() {
+  $user = user_load(1);
+  $dd =  $user->picture;
+  theme_image_style(array('style_name'=>'thum', 'path'=> $dd->uri));
+}
+
+function _add_member($author_id,$name) {
+	$u = user_load_by_name($name);
+	if (is_object($u) && $u->uid) return $u;
+	$ex = explode("@",$name);
+  if ($ex[1] != NULL && $ex[0] != NULL) {
+	  $name = $ex[0]."@";	
+	}
+	$u = user_load_by_name($name);
+	if (is_object($u) && $u->uid) return $u;	
+	$ins = db_query('SELECT *,mm.name as display_name from  {ds2_gmc.gmc_user} g left join {ds2_gmc.medlemmar} md on (md.medlem_id = g.old_id) left join {ds2_gmc.ibf_member_extra} m on (m.id = g.ipb_id) left join {ds2_gmc.ibf_members} mm on (mm.id = g.ipb_id) where g.ipb_id = :id',array(':id'=>$author_id))->fetchAll();	
+	if (!empty($ins[0])) {
+	  $ins = $ins[0];
+	}
+	if ( !empty($ins->display_name) ) {
+		$name = $ins->display_name;
+	}
+	$u = user_load_by_name($name);
+	if (is_object($u) && $u->uid) return $u;
+	list($fname,$lname) = explode(" ",$name);
+	if (!is_object($u) ) {
+    $u = user_load_by_mail($ins->email);
+	}
+	if (is_object($u) && $u->uid) return $u;
+	$role = user_role_load_by_name('member');
+	if (!$role->rid) {
+		$role = new stdClass();
+		$role->name = 'member';
+		user_role_save($role);
+	}
+	$new_user_roles = array(DRUPAL_AUTHENTICATED_RID => 'authenticated user',	$role->rid => ( date('Y-m-d',strtotime($ins->slut)) > date('Y-m-d') ) ? TRUE:FALSE);	
+	$password = user_password(8);
+	if ( !is_object($u) ) {
+	  $new_user = new stdClass();
+	}
+	else {
+		$new_user = $u;
+	}
+	$new_user->name = $name;
+	$new_user->pass = $password; // plain text, hashed later
+	$new_user->mail = (!$ins->email) ? $name."@guitarmatserclass.net":$ins->email;
+	$new_user->roles = $new_user_roles;
+	$new_user->field_first_name['und'][0]['value'] = $fname;
+	$new_user->field_last_name['und'][0]['value'] = $lname;
+	$new_user->status = 1; 
+	user_save($new_user);
+	$picture = '/opt/web/guitarmasterclass.net/public_html/guitar_forum/'.$ins->avatar_type."s/".$ins->avatar_location;
+	if (file_exists($picture)) {
+		$fp = file_get_contents($picture);	
+	  $file = file_save_data($fp,"public://pictures/".$ins->avatar_location,FILE_EXISTS_REPLACE);
+		if (is_object($file)) {
+	    $file->status = FILE_STATUS_PERMANENT;
+	    $file->uid = $new_user->uid;
+	    $file = file_save($file);
+	    $new_user->picture = $file;
+	  }
+	}
+	$new_user = user_save($new_user);
+	return $new_user;	
+}
+
+function admin_lesson_tabdata(){
+   $form['description'] = array(
+    '#type' => 'markup',
+    '#markup' => t('Listing/Importing the Lesson Complete Tabs data.'),
+  );
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => 'Go',
+  );
+  return $form;
+}
+
+function admin_lesson_tabdata_submit($form, &$form_state){ 
+  ini_set('memory_limit', '-1');
+  drupal_set_time_limit(1000);
+  $result = db_query("SELECT lm.id, lm.lessonTab, la.ID, li.nid, ft.field_complete_tab_value FROM ds2_icp.lm2_lm2lesson lm Left Join ds2_oskar.LessonAll la on la.LM2_LessonId= lm.id Left Join dev_syn_drupal.lesson_data_video_import li on la.ID = li.liveid Left Join dev_syn_drupal.field_data_field_complete_tab ft on ft.entity_id = li.nid Where li.nid != ''");
+  foreach($result as $value) {
+    $node = node_load($value->nid);
+    if (!empty($node->nid)) {
+      $node->field_complete_tab['und'][0]['value'] = $value->lessonTab;
+      field_attach_presave('node', $node);
+      field_attach_update('node', $node);
+    }
+   // print $value->nid.'--'.$value->lessonTab.'--'.$value->field_complete_tab_value.'<br />';
+  }
+  //print 'Done'; exit;
+}
+
+/**
+  * Function for batch function 18 for Update Tags. 
+  */
+function import_data_lessondata_batch_19 () {
+  ini_set('memory_limit', '-1');
+  drupal_set_time_limit(1000);
+  $records = db_query("SELECT dv.nid, lm.lesson_id, dv.liveid, dv.other, COUNT(id) as Cont FROM ds2_icp.lm2_file as lm left join dev_syn_drupal.lesson_data_video_import as dv on lm.lesson_id = dv.other   WHERE `extension` LIKE '%pdf%'  group By lesson_id having Cont > 1")->fetchAll();
+  $i=1;
+  foreach ($records as $values) {
+    $operations[] = array('import_ldata_op_19', array($values, t('(Operation @operation)', array('@operation' => $i))));
+    $i++;
+  }
+  $batch = array(
+    'operations' => $operations,
+    'finished' => 'import_data_finished',
+  );
+  return $batch;  
+}
+
+function import_ldata_op_19($data, $operation_details, &$context) {
+ 
+  $records = db_query("SELECT lf.fid, fm.filemime, lf.publish, lf.nid FROM {lesson_files} as lf left join file_managed as fm on fm.fid=lf.fid WHERE nid = :nid AND filemime like '%application/pdf%'", array(':nid' =>  $data->nid))->fetchAll();
+  $count = count($records); 
+  $k = 1;
+  foreach ($records as $values) {
+    if ($count == $k ) {
+       $publish = 1;
+    } else {
+      $publish = 0;
+    }
+    db_update('lesson_files')
+        ->fields(array(
+            'publish' => $publish,
+      ))
+      ->condition('nid', $data->nid, '=')
+      ->condition('fid', $values->fid, '=')
+      ->execute();
+    $k++;
+  }
+}
+/* import individual node comment.
+ *
+ */
+function admin_import_comment_nid($nid){
+  $node = node_load($nid);
+  $topicIDdata = db_query("SELECT la.topic_id FROM lesson_data_video_import as ld left join ds2_oskar.LessonAll as la on la.ID = ld.liveid WHERE ld.nid  = :nid", array(':nid'=>$nid))->fetchAll();
+  $topicID = $topicIDdata[0]->topic_id;
+  if ($topicID == 0) return;
+	$ins = db_query('SELECT * from {ds2_gmc.ibf_posts} where topic_id = :id order by post_date ASC',array(':id'=>$topicID))->fetchAll();	
+	if (empty($ins)) return;
+  db_delete('lessons_comments_posts')->condition('nid',$node->nid)->execute();
+	foreach($ins as $key => $c) {
+	  $member = _add_member($c->author_id,$c->author_name);
+	  $comment = db_insert('lessons_comments_posts') 
+            ->fields(array(
+              'cid' => 0,
+              'pid' => 0,
+              'nid' => $node->nid,
+              'uid' => $member->uid,
+              'subject' => substr($node->title,0,30),
+              'created' => $c->post_date,
+              'changed' => $c->post_date,
+              'mail' => $member->mail,
+              'name' => $member->name,
+              'comment_body_value' => $c->post,
+              'comment_body_types' => 'filtered_html',
+              'status' => 1,
+              'language' => 'und'
+            ))
+            ->execute();
+    /*$comment = new stdClass();
+    $comment->nid = $node->nid; 
+    $comment->status = COMMENT_PUBLISHED;
+    $comment->cid = 0; // leave it as is
+    $comment->pid = 0; 
+    $comment->is_anonymous = 0;
+    $comment->subject = substr($node->title,0,30);
+    $comment->created = $c->post_date;
+    $comment->changed = $comment->created;
+    $comment->uid = $member->uid;
+    $comment->mail = $member->mail; // user's email
+    $comment->name = $member->name;
+    $comment->comment_body['und'][0]['value'] = $c->post; // Everything here is pretty much like with a node
+    $comment->comment_body['und'][0]['format'] = 'filtered_html'; 
+    comment_submit($comment); // saving a comment
+    $comment->created = $c->post_date;
+    $comment->changed = $comment->created;
+    comment_save($comment);*/
+	}
+  print 'Done';
+}
+
+/**
+ * Implements hook_cron_queue_info()
+ */
+function lessondata_import_cron_queue_info() {
+  $queues['lessondata_import_queue1'] = array(
+    'worker callback' => 'lessondata_import_queue_1',
+    'time' => 600,
+  );
+/*  $queues['lessondata_import_queue'] = array(
+    'worker callback' => 'import_queue_2',
+    'time' => 300,
+  );
+  $queues['lessondata_import_queue'] = array(
+    'worker callback' => 'import_queue_3',
+    'time' => 300,
+  );
+  $queues['lessondata_import_queue'] = array(
+    'worker callback' => 'import_queue_4',
+    'time' => 300,
+  );
+  $queues['lessondata_import_queue1'] = array(
+    'worker callback' => 'import_queue_5',
+    'time' => 300,
+  );
+  $queues['lessondata_import_queue2'] = array(
+    'worker callback' => 'import_queue_6',
+    'time' => 300,
+  );
+  $queues['lessondata_import_queue3'] = array(
+    'worker callback' => 'import_queue_7',
+    'time' => 300,
+  );
+  $queues['lessondata_import_queue4'] = array(
+    'worker callback' => 'import_queue_8',
+    'time' => 300,
+  );
+  $queues['lessondata_import_queue4'] = array(
+    'worker callback' => 'import_queue_9',
+    'time' => 300,
+  );
+  $queues['lessondata_import_queue4'] = array(
+    'worker callback' => 'import_queue_11',
+    'time' => 300,
+  );
+  $queues['lessondata_import_queue4'] = array(
+    'worker callback' => 'import_queue_12',
+    'time' => 300,
+  );*/
+  return $queues;
+}
+
+
+/**
+ * Implements hook_cron()
+ */
+function lessondata_import_cron() {
+    try {
+    // some code
+     /* $my_queue1 = DrupalQueue::get('lessondata_import_queue1');
+      $doneid = db_query('SELECT MAX(liveid) FROM {dev_syn_drupal.lesson_data_video_import}')->fetchField();
+      $records = db_query("select * from ds2_oskar.LessonAll l WHERE l.ID > :LID order by l.ID ASC LIMIT 0,1", array(':LID' => $doneid))->fetchAll();
+      foreach ($records as $values) {
+       $my_queue1->createItem($values); 
+         lessondata_import_queue_1($values);
+      }  */
+      import_data_lessondata_batch_6();
+      update_lesson_record_compare_live();
+    } catch (Exception $e) {
+        _watchdog_log($e->getMessage());
+    }
+
+/*  $my_queue2 = DrupalQueue::get('lessondata_import_queue2');
+  while ($item = $items->fetchAssoc()) {
+    $my_queue2->createItem($item);
+  }
+  
+  $my_queue3 = DrupalQueue::get('lessondata_import_queue3');
+  while ($item = $items->fetchAssoc()) {
+    $my_queue3->createItem($item);
+  }
+  
+  $my_queue4 = DrupalQueue::get('lessondata_import_queue4');
+  while ($item = $items->fetchAssoc()) {
+    $my_queue4->createItem($item);
+  }
+  
+  $my_queue5 = DrupalQueue::get('lessondata_import_queue5');
+  while ($item = $items->fetchAssoc()) {
+    $my_queue5->createItem($item);
+  }
+  
+  $my_queue6 = DrupalQueue::get('lessondata_import_queue6');
+  while ($item = $items->fetchAssoc()) {
+    $my_queue6->createItem($item);
+  }
+  
+  $my_queue7 = DrupalQueue::get('lessondata_import_queue7');
+  while ($item = $items->fetchAssoc()) {
+    $my_queue7->createItem($item);
+  }
+  
+  $my_queue8 = DrupalQueue::get('lessondata_import_queue8');
+  while ($item = $items->fetchAssoc()) {
+    $my_queue8->createItem($item);
+  }
+  
+  $my_queue9 = DrupalQueue::get('lessondata_import_queue9');
+  while ($item = $items->fetchAssoc()) {
+    $my_queue9->createItem($item);
+  }
+  
+  $my_queue11 = DrupalQueue::get('lessondata_import_queue11');
+  while ($item = $items->fetchAssoc()) {
+    $my_queue11->createItem($item);
+  }
+  
+  $my_queue12 = DrupalQueue::get('lessondata_import_queue12');
+  while ($item = $items->fetchAssoc()) {
+    $my_queue12->createItem($item);
+  }*/
+}
+
+
+function lessondata_import_queue_1($data) {
+    if (!empty($data->Title)) {
+      $node = new stdClass();
+      $datass = db_query('select l.* , unix_timestamp(l.Date) as dt,c.Name as category ,t.Name as type,tc.Name as technique, v.guest as guest, v.member as member from {ds2_oskar.LessonAll} l left join {ds2_oskar.Technique} tc on  (tc.ID = l.Technique) left join ds2_oskar.LessonType t on (t.ID = l.LessonType) left join ds2_oskar.MusicCategory c on (c.ID = l.MusicCategory) left join {ds2_oskar.visit_counter} v on (v.iValue = l.ID) and l.Instructor != 0 Where l.ID = :ID ', array(':ID' => $data->ID))->fetchAll();
+       // print_r($data); exit;
+        
+      $data = $datass[0];
+      if($data->Title != '') {
+        $datad = db_query("select * from ds2_oskar.LessonAll l Left Join ds2_oskar.Instructor I on I.ID = l.Instructor where l.ID = :ID", array(':ID' => $values->ID))->fetchAll();
+        if (!empty($data->category)) {
+          $music_category = _get_term_from_name($data->category, 8); 
+        }
+        if (!empty($data->type)) {
+          $lesson_type = _get_term_from_name($data->type, 7); 
+        }
+        if (!empty($data->technique)) {
+          $technique = _get_term_from_name($data->technique, 9); 
+        }
+        if ($data->Instructor != 0) {
+          $ins = db_query('SELECT * from {ds2_oskar.Instructor} where ID = :id',array(':id'=>$data->Instructor))->fetchAll();  
+          $ins = $ins[0];
+          //print_r($data->Instructor); exit;
+          $u = user_load_by_name($ins->FName.' '.$ins->LName);
+          
+          if ( empty($ins->Email) ) $ins->Email = strtolower($ins->FName.'.'.$ins->LName).'@guitarmasterclass.net';
+          $u = user_load_by_name($ins->FName.' '.$ins->LName);
+          if (!is_object($u)) {
+          $u = user_load_by_mail($ins->Email);
+          }
+        } else {
+          $u = new stdClass;
+          $u->uid = 0;
+        }
+        if(!empty($data->Tags)) {
+          $tags = explode(",",$data->Tags);
+        //  print_r($tags); exit;
+          if (count($tags[0])) {
+            foreach($tags as $key => $t) {
+              $tid = $ttid = taxonomy_get_term_by_name($t, 'tags');;
+            //  print_r($tid); exit;
+              if (key($tid) != 0 && key($tid) != '') {
+                $node->field_tags['und'][$key]['tid'] = key($tid);
+              } 
+            }
+          }
+        }
+        $node->field_spoken_video['und'][0]['value'] = $data->SpokenVideo;
+        $node->type = 'lessons';
+        if (!empty($data->category)) {
+          if ($music_category) {
+            $node->field_music_category['und'][0]['tid'] = $music_category;
+          }
+        }
+        if (!empty($data->type)) {
+          if ($lesson_type) {
+           $node->field_lesson_type['und'][0]['tid'] = $lesson_type;
+          }
+        }
+        if (!empty($data->technique)) {
+          if ($technique) {
+            $node->field_technique['und'][0]['tid'] = $technique;
+          }
+        }
+        $node->field_guest_views['und'][0]['value'] = $data->guest;
+        $node->field_member_views['und'][0]['value'] = $data->member;
+        $node->field_camera_angles['und'][0]['value'] = $data->CameraAngles;
+        $node->uid = $u->uid;
+        $node->field_scales_and_key['und'][0]['value'] = $data->TheoryInAction;
+        $node->field_is_cover_lesson['und'][0]['value'] = $data->cover_lesson;
+        $node->field_the_style_of['und'][0]['value'] = ($data->InTheStyleOf) ? $data->InTheStyleOf : 0;
+        $node->field__mobile['und'][0]['value'] = $data->is_mobile;
+        $node->field_backing['und'][0]['value'] = $data->NonDownloadableBacking;
+        $node->field_music_sub_genre['und'][0]['value'] = $data->MusicStyle;
+        $node->field_bonus_lesson['und'][0]['value'] = $data->BonusLesson;
+
+        $node->title = $data->Title;
+        
+        $dta  = explode('-', $data->Date);
+        if ($dta[0] > 2020) {
+         $data->Date = '2017-09-21 00:00:00';
+        } elseif ($dta[0] == 0000) {
+          $data->Date = '2017-09-21 00:00:00';  
+        } 
+        
+        $node->created = strtotime($data->Date);
+        $node->revision_timestamp = strtotime($data->Date);
+        $node->changed = strtotime($data->Date);
+        $node->status = ($data->cp_status == 2) ? 1 : 0;
+        $node->field_difficulty_level['und'][0]['value'] = $data->DifficultyLevel;
+        $node->promote = 0;      // If you want promoted to front page, else use 0
+        $node->sticky = 0;
+
+        $node->body['und'][0]['value'] = $data->ShortDescription;
+        $node->body['und'][0]['format'] = 'full_html';       // Filtered HTML  
+        $ex_path = explode("/",$data->Url);
+        if (!empty($ex_path[1])) 
+          $node->path['alias'] = $ex_path[1]."/".$ex_path[2];
+        $node->field_free_parts_al['und'][0]['value'] = $data->fria_delar;
+        $node->field_free_parts['und'][0]['value'] = $data->Free;
+
+        node_save($node);  //print_r($node);                                                               
+        $ex_path = explode("/",$value->Url);
+        if (!empty($ex_path[1])) 
+          $alternate_url = $ex_path[1]."/".$ex_path[2];
+        $default_node_path = "node/" . $node->nid;
+        $path = array('source' => $default_node_path, 'alias' =>$alternate_url, 'und');
+        path_save($path);
+        updatenodedata1($data, $node->nid);
+        updatestatusnode1($data, $node->nid);
+        addnodevideo1($data, $node);
+        db_insert('lesson_data_video_import') // Table name no longer needs {}
+          ->fields(array(
+            'liveid' => $values->ID,
+            'nid' => $node->nid,
+            'videocountlive' => 0,
+
+            'videocountdrupal' => 0,
+            'other' => $values->LM2_LessonId,
+          ))->execute();
+        }
+    } 
+}
+
+function updatenodedat1($value, $nid) {
+  $node = new stdClass();
+  $datas = db_query("select * from dev_syn_drupal.node WHERE title LIKE :title AND type = 'lessons'", array(':title' => str_replace('##', '',$value->Title)))->fetchAll();
+  $node = new stdClass();
+  $nid = $datas[0]->nid;
+  $dta  = explode('-', $value->Date);
+  if ($dta[0] == 0000) {
+    $value->Date = '2017-09-21 00:00:00';  
+  } 
+  if ($dta[0] == 3000) {
+    $value->Date = '2017-09-21 00:00:00';  
+  } 
+  if ($dta[0] == 3007) {
+    $value->Date = '2017-09-21 00:00:00';  
+  }
+   if ($dta[0] == 3008) {
+    $value->Date = '2017-09-21 00:00:00';  
+  }
+   if ($dta[0] == 3009) {
+    $value->Date = '2017-09-21 00:00:00';  
+  }
+   if ($dta[0] == 3017) {
+    $value->Date = '2017-09-21 00:00:00';  
+  }
+  if ($dta[0] == 3010) {
+    $value->Date = '2017-09-21 00:00:00';  
+  }
+  if ($dta[0] == 3025) {
+    $value->Date = '2017-09-21 00:00:00';  
+  }
+  if ($dta[0] == 3011) {
+    $value->Date = '2017-09-21 00:00:00';  
+  }
+  if ($dta[0] == 3026) {
+    $value->Date = '2017-09-21 00:00:00';  
+  }
+  if ($dta[0] == 3050) {
+    $value->Date = '2017-09-21 00:00:00';  
+  } 
+  if ($dta[0] > 3019) {
+    $value->Date = '2017-09-21 00:00:00'; 
+  }
+  $created = strtotime($value->Date);
+  if ($nid != '') {
+    // print  $xxx = $nid.'===='.$value->Date.'---'.$created.'{----}'. strtotime($value->Date) .'<<----'.$datas[0]->nid; 
+    $num_updated = db_update('node') // Table name no longer needs {}
+      ->fields(array(
+        'created' => $created,
+        'changed' => $created,
+      ))
+      ->condition('nid', $nid, '=')
+      ->execute();
+    $num_updated_rev = db_update('node_revision') // Table name no longer needs {}
+      ->fields(array(
+        'timestamp' => $created,
+      ))
+      ->condition('nid', $nid, '=')
+      ->execute();
+  }
+
+}
+
+function updatestatusnode1($value, $nid) {
+  if ($nid != '') {
+    // print  $xxx = $nid.'===='.$value->Date.'---'.$created.'{----}'. strtotime($value->Date) .'<<----'.$datas[0]->nid; 
+    $num_updated = db_update('node') // Table name no longer needs {}
+      ->fields(array(
+        'status' => $status,
+      ))
+      ->condition('nid', $nid, '=')
+      ->execute();
+    $num_updated_rev = db_update('node_revision') // Table name no longer needs {}
+      ->fields(array(
+        'status' => $status,
+      ))
+      ->condition('nid', $nid, '=')
+      ->execute();
+  }
+
+}
+
+function addnodevideo1($value, $node) {
+     if ($node->nid != '') {
+            $doneid = db_query('SELECT liveid FROM lesson_data_video_import WHERE nid = :nid LIMIT 0, 1', array(':nid' => $node->nid))->fetchField();
+            $records = db_query("SELECT * FROM ds2_oskar.LessonAll l WHERE l.ID = :ID", array(':ID' =>  $doneid))->fetchAll();
+            $records = $records[0];
+            $xx = $records->LM2_LessonId;
+            $cc = $records->ID;
+            if($records->LM2_LessonId != 0) {
+              _attach_lm2_files($node, 1, $xx, $cc);
+            } else {
+              _attach_lm2_files($node, 2, $xx, $cc);  
+            }
+    }
+}
+
+/*
+ * this function update live site lesson views count to drupal lessons//
+ */
+
+function admin_lession_visit_users() {
+  $result = db_query("SELECT ls.liveid, ls.nid, vc.member, vc.guest FROM dev_syn_drupal.lesson_data_video_import ls left join ds2_oskar.visit_counter vc on ls.liveid =  vc.iValue where vc.member != '' OR vc.guest != '' ORDER BY ls.liveid  DESC")->fetchAll();
+  foreach ($result as $resultvalue) {
+  //  print $resultvalue->nid.'--'.$resultvalue->member.'<br/>';
+        $node = node_load($resultvalue->nid);
+    if (!empty($node->nid)) {
+      $node->field_member_views['und'][0]['value'] = $resultvalue->member;
+      $node->field_guest_views['und'][0]['value'] = $resultvalue->guest;
+      field_attach_presave('node', $node);
+      field_attach_update('node', $node);
+    }
+    print $resultvalue->nid.'<br/>';
+  }
+}
+
+
+/*
+ **
+ **
+ */
+function admin_lession_diffrence_list() {
+  //$query = db_query('SELECT * FROM lesson_data_video_import ip left join ds2_oskar.LessonAll la on ip.liveid =la.ID Where la.LM2_LessonId !=0')->fetchAll();
+  $query = db_query('SELECT * FROM lesson_data_video_import ip left join node n on n.nid = ip.nid left join ds2_oskar.LessonAll la on ip.liveid =la.ID Where la.LM2_LessonId !=0 and n.status =1')->fetchAll();
+  $datap = '';
+  $i =1;
+  foreach ($query as $key => $data) {
+     $result = db_query("SELECT Count(*) as count FROM lesson_files lf left join file_managed fm on lf.fid = fm.fid WHERE nid = :nid AND fm.type LIKE 'video'  AND publish = 1 order by weight", array(':nid' => $data->nid))->fetchAll();
+    $resultlive = db_query("SELECT Count(*) as count from ds2_icp.lm2_file f Left join ds2_icp.lm2_lessonpart lv on (lv.fileId = f.id) where lesson_id = :lid  AND (f.extension LIKE '.flv' OR f.extension LIKE '.mp4') AND lv.lessonid != '' order by lv.lessonId ASC, lv.id ASC", array(':lid' => $data->LM2_LessonId ))->fetchAll();
+   //print $result[0]->count.'--'.$resultlive[0]->count.'---'.$data->nid;
+   if ($result[0]->count != $resultlive[0]->count) {
+    $datap .= $i.': title :'.l($data->nid, 'node/'.$data->nid).' -- nid : '. $data->nid .'-----'. $result[0]->count.'--'.$resultlive[0]->count.' delete : '.l('Delete', 'admin/node/nid/'.$data->nid.'/delete').' update : '.l('update', 'admin/import/videodata/nid/'.$data->nid).'<br/>';
+    $i++;
+   }
+   
+  }
+  return $datap;
+}
+
+function update_lessions_pem() {
+  $query = db_query("select *, n.nid as nids from node n left join node_access na on na.nid = n.nid where n.type = 'lessons' ORDER BY n.nid DESC")->fetchAll();
+  foreach ($query as $key => $data) { 
+
+    db_merge('node_access')
+      ->key(array('nid' => $data->nids))
+      ->fields(array(
+          'nid' => $data->nids,
+          'realm'  => 'all',
+          'grant_view'  => 1,
+        ))  
+      ->execute();
+  }
+}
+
+function update_lesson_record_compare_live() {
+  $result = db_query("SELECT ll.Tags, ll.Instructor, ll.DifficultyLevel, l.liveid, l.nid as mainnid, n.nid, pd.published_at, FROM_UNIXTIME(n.created) AS your_date, n.title, ll.Title, n.created, n.status,ll.cp_status, UNIX_TIMESTAMP(ll.Date) as maindate, ll.ID, ll.URL, ll.Date, ll.LM2_LessonId FROM lesson_data_video_import l left join node n on n.nid = l.nid left join ds2_oskar.LessonAll ll on ll.ID = l.liveid LEFT Join publication_date pd on pd.nid = n.nid Where ll.cp_status  = 2 AND ll.Date < NOW() AND ll.Date != '0000-00-00 00:00:00' ORDER BY ll.ID DESC")->fetchAll();
+  foreach ($result as $key => $value) {
+    $created = $value->maindate;
+    $nid = $value->mainnid;
+    if($value->published_at != $value->maindate) {
+      if ($value->status != 1 && ($value->cp_status == 2 OR $value->cp_status == 1)) {
+         if($nid != '36484') {
+           // print $nid.'----'.$url[0]->alias.'-----'.$value->URL.'<br/>';
+            if ($value->status == 0) {
+              db_update('node')
+                ->fields(array(
+                  'title' => $value->Title,
+                  'created' => $created,
+                  'changed' => $created,
+                  'status' => 1
+                ))
+                ->condition('nid', $nid, '=')
+                ->execute();
+              db_update('node_revision')
+                ->fields(array(
+                  'title' => $value->Title,
+                  'timestamp' => $created,
+                  'status' => 1
+                ))
+                ->condition('nid', $nid, '=')
+                ->execute();
+              db_merge('publication_date')
+                ->key(array('nid' => $nid))
+                ->fields(array(
+                    'nid' => $nid,
+                    'published_at'  => $created,
+                  ))  
+                  ->execute();  
+            }  
+           // db_query("DELETE From url_alias WHERE source = :nid", array(':nid' => 'node/'.$nid))->execute();
+            $ex_path = explode("/",$value->URL);
+            if (!empty($ex_path[1])) {
+                $alternate_url = $ex_path[1]."/".$ex_path[2];
+                $default_node_path = "node/" . $nid;
+                $path = array('source' => $default_node_path, 'alias' => $alternate_url, 'und');
+                path_save($path);
+            }
+          if ($value->LM2_LessonId != 0) {
+             $node = node_load($nid);
+            _attach_lm2_files($node, 1, $value->LM2_LessonId, $value->ID);
+          }
+        }
+      }
+
+          
+      $tags = $value->Tags;
+      if (!empty($tags)) {
+        $difff = $value->DifficultyLevel;
+        $nid = $value->mainnid;
+        $nodex = node_load($nid)->field_tags;
+        $tidss = explode(",", $tags);
+        if (count($nodex['und']) != count($tidss) ) {
+          $node = node_load($nid);
+          $node->field_tags['und'] = '';
+          foreach ($tidss as $key => $tagsx) {
+            if (!empty($tagsx)) {
+              $name = strtolower(trim($tagsx));
+              $ttid = taxonomy_get_term_by_name($name, 'tags');
+              $first_value = reset($ttid);
+              if (key($ttid) > 0 ){
+               $txnidss[$data['key']][] = strtolower(trim($tagsx)).'--'.key($ttid);
+               $node->field_tags['und'][$key]['tid'] = key($ttid);
+              } else {
+                $term = new stdClass();
+                $term->name = $name;
+                $term->vid = 1; 
+                taxonomy_term_save($term);
+               $node->field_tags['und'][$key]['tid'] = $term->tid;
+              }
+            }
+          }
+          field_attach_presave('node', $node);
+          field_attach_update('node', $node);
+          //print '---'.$nid.'---'.$tags.'<br />';
+        }
+      }
+      update_lesson_record_compare_live_free_diff($nid);
+      $valuenid['nid'] = $nid;
+      $valuenid['id'] = $value->LM2_LessonId;
+      $operation_details = 0;
+      $context = 0;
+      import_ldata_op_12($valuenid, $operation_details, $context);
+      admin_import_comment_nid($nid);
+    }
+  }    
+  drupal_flush_all_caches();   
+  global $base_url;
+  exec("drush cache-warmer --hub-pages-file=hub_pages.txt ".$base_url);
+}
+
+function update_lesson_record_compare_live_diff_tag() {
+  $result = db_query("SELECT ll.Tags, ll.DifficultyLevel, l.liveid, l.nid as mainnid, n.nid, pd.published_at, FROM_UNIXTIME(n.created) AS your_date, n.title, ll.Title, n.created, n.status,ll.cp_status, UNIX_TIMESTAMP(ll.Date) as maindate, ll.ID, ll.URL, ll.Date, ll.LM2_LessonId FROM lesson_data_video_import l left join node n on n.nid = l.nid left join ds2_oskar.LessonAll ll on ll.ID = l.liveid LEFT Join publication_date pd on pd.nid = n.nid Where ll.cp_status  = 2 AND ll.Date < NOW() AND ll.Date != '0000-00-00 00:00:00' ORDER BY l.liveid  DESC")->fetchAll();
+  foreach ($result as $key => $value) {
+    
+    $tags = $value->Tags;
+    if (!empty($tags)) {
+      $difff = $value->DifficultyLevel;
+      $nid = $value->mainnid;
+      $nodex = node_load($nid)->field_tags;
+      $tidss = explode(",", $tags);
+      if (count($nodex['und']) != count($tidss) ) {
+        $node = node_load($nid);
+        $node->field_tags['und'] = '';
+        foreach ($tidss as $key => $tagsx) {
+          if (!empty($tagsx)) {
+            $name = strtolower(trim($tagsx));
+            $ttid = taxonomy_get_term_by_name($name, 'tags');
+            $first_value = reset($ttid);
+            if (key($ttid) > 0 ){
+             $txnidss[$data['key']][] = strtolower(trim($tagsx)).'--'.key($ttid);
+             $node->field_tags['und'][$key]['tid'] = key($ttid);
+            } else {
+              $term = new stdClass();
+              $term->name = $name;
+              $term->vid = 1; 
+              taxonomy_term_save($term);
+             $node->field_tags['und'][$key]['tid'] = $term->tid;
+            }
+          }
+        }
+        field_attach_presave('node', $node);
+        field_attach_update('node', $node);
+       // print '---'.$nid.'---'.$tags.'<br />';
+      }
+    }
+  }
+}
+
+
+
+function update_lesson_record_compare_live_free_diff($mnid) {
+  if (!empty($mnid)) {
+    $result = db_query("SELECT ll.*, ll.fria_delar, ll.DifficultyLevel, l.liveid, l.nid as mainnid, n.nid, pd.published_at, FROM_UNIXTIME(n.created) AS your_date, n.title, ll.Title, n.created, n.status,ll.cp_status, UNIX_TIMESTAMP(ll.Date) as maindate, ll.ID, ll.URL, ll.Date, ll.LM2_LessonId FROM lesson_data_video_import l left join node n on n.nid = l.nid left join ds2_oskar.LessonAll ll on ll.ID = l.liveid LEFT Join publication_date pd on pd.nid = n.nid Where ll.cp_status  = 2 AND ll.Date < NOW() AND ll.Date != '0000-00-00 00:00:00' AND n.nid = :mnid ORDER BY l.liveid  DESC", array(':mnid' => $mnid))->fetchAll();
+  } else {
+   $result = db_query("SELECT ll.*, ll.fria_delar, ll.DifficultyLevel, l.liveid, l.nid as mainnid, n.nid, pd.published_at, FROM_UNIXTIME(n.created) AS your_date, n.title, ll.Title, n.created, n.status,ll.cp_status, UNIX_TIMESTAMP(ll.Date) as maindate, ll.ID, ll.URL, ll.Date, ll.LM2_LessonId FROM lesson_data_video_import l left join node n on n.nid = l.nid left join ds2_oskar.LessonAll ll on ll.ID = l.liveid LEFT Join publication_date pd on pd.nid = n.nid Where ll.cp_status  = 2 AND ll.Date < NOW() AND ll.Date != '0000-00-00 00:00:00' ORDER BY l.liveid  DESC")->fetchAll();
+  } 
+  foreach ($result as $key => $value) {
+    $nid = $value->mainnid;
+    $node = node_load($nid);
+    if($value->title != str_replace('##', '',$value->Title)) {
+      db_update('node')
+        ->fields(array(
+          'title' => $value->Title,
+        ))
+        ->condition('nid', $nid, '=')
+        ->execute();
+      db_update('node_revision')
+        ->fields(array(
+          'title' => $value->Title,
+        ))
+        ->condition('nid', $nid, '=')
+        ->execute();
+    }
+  $datass = db_query('select l.* , unix_timestamp(l.Date) as dt,c.Name as category ,t.Name as type,tc.Name as technique, v.guest as guest, v.member as member from {ds2_oskar.LessonAll} l left join {ds2_oskar.Technique} tc on  (tc.ID = l.Technique) left join ds2_oskar.LessonType t on (t.ID = l.LessonType) left join ds2_oskar.MusicCategory c on (c.ID = l.MusicCategory) left join {ds2_oskar.visit_counter} v on (v.iValue = l.ID) and l.Instructor != 0 Where l.ID = :ID ', array(':ID' => $value->ID))->fetchAll();
+    
+    $data = $datass[0];
+    if (!empty($data->category)) {
+      $music_category = _get_term_from_name($data->category, 8); 
+    }
+    if (!empty($data->type)) {
+      $lesson_type = _get_term_from_name($data->type, 7); 
+    }
+    if (!empty($data->technique)) {
+      $technique = _get_term_from_name($data->technique, 9); 
+    }
+    if (!empty($data->category)) {
+      if ($music_category) {
+        $node->field_music_category['und'][0]['tid'] = $music_category;
+      }
+    }
+    if (!empty($data->type)) {
+      if ($lesson_type) {
+       $node->field_lesson_type['und'][0]['tid'] = $lesson_type;
+      }
+    }
+    if (!empty($data->technique)) {
+      if ($technique) {
+        $node->field_technique['und'][0]['tid'] = $technique;
+      }
+    }
+    if (!empty($data->FrontPage_Title)) {
+      $node->field_front_page_title['und'][0]['value'] = $data->FrontPage_Title;
+    }
+    if (!empty($data->fria_delar)) {
+      $node->field_free_parts_al['und'][0]['value'] = $data->fria_delar;
+    }
+    if (!empty($data->DifficultyLevel)) {
+      $node->field_difficulty_level['und'][0]['value'] = $data->DifficultyLevel;
+    }
+    if (!empty($data->guest)) {
+       $node->field_guest_views['und'][0]['value'] = $data->guest;
+    }
+    if (!empty($data->member)) {
+       $node->field_member_views['und'][0]['value'] = $data->member;
+    }
+    if (!empty($data->TheoryInAction)) {
+      $node->field_scales_and_key['und'][0]['value'] = $data->TheoryInAction;
+    }
+    if (!empty($data->cover_lesson)) {
+      $node->field_is_cover_lesson['und'][0]['value'] = $data->cover_lesson;
+    }
+   // if (!empty($value->fria_delar)) {
+      $node->field_the_style_of['und'][0]['value'] = ($data->InTheStyleOf) ? $data->InTheStyleOf : 0;
+ //   }
+    if (!empty($data->is_mobile)) {
+      $node->field__mobile['und'][0]['value'] = $data->is_mobile;
+    }
+    if (!empty($data->NonDownloadableBacking)) {
+      $node->field_backing['und'][0]['value'] = $data->NonDownloadableBacking;
+    }
+    if (!empty($data->MusicStyle)) {
+      $node->field_music_sub_genre['und'][0]['value'] = $data->MusicStyle;
+    }
+    if (!empty($data->BonusLesson)) {
+      $node->field_bonus_lesson['und'][0]['value'] = $data->BonusLesson;
+    }
+    if (!empty($data->ShortDescription)) {
+      $node->body['und'][0]['value'] = $data->ShortDescription;
+      $node->body['und'][0]['format'] = 'full_html'; 
+    }
+    if (!empty($data->Free)) {
+      $node->field_free_parts['und'][0]['value'] = $data->Free;
+    }
+    field_attach_presave('node', $node);
+    field_attach_update('node', $node);
+    db_merge('node_access')
+      ->key(array('nid' => $mnid))
+      ->fields(array(
+          'nid' => $mnid,
+          'realm'  => 'all',
+          'grant_view'  => 1,
+        ))  
+      ->execute();
+    $entity = $node;
+    $type = 'node';
+    $env_id = apachesolr_default_environment();
+    $bundles_to_index = apachesolr_get_index_bundles($env_id, $type);
+
+    // Check if entity should be indexed
+    $info = entity_get_info($type);
+    if (!empty($info['entity keys']['bundle'])) {
+      $bundle = $entity->{$info['entity keys']['bundle']};
+    }
+    else {
+      $bundle = $type;
+    }
+
+    if (!in_array($bundle, $bundles_to_index)) {
+      return;
+    }
+
+    // Entity should be indexed, so send to solr
+    $ids = entity_extract_ids($type, $entity);
+
+    $item = new stdClass();
+    $item->entity_type = $type;
+    $item->entity_id = $ids[0];
+
+    module_load_include('inc', 'apachesolr', 'apachesolr.index');
+    $doc = apachesolr_index_entity_to_documents($item, $env_id);
+    apachesolr_index_send_to_solr($env_id, $doc);
+  }
+}
+
+
+
+function instructor_pro_up() {
+    $ins = db_query('SELECT * from {ds2_oskar.Instructor} ORDER BY ID DESC ')->fetchAll(); 
+    $i = 1; 
+    foreach ($ins as $key => $value) {
+      $u = user_load_by_name($value->FName.' '.$value->LName);
+      if ( empty($value->Email) ) $value->Email = strtolower($value->FName.'.'.$value->LName).'@guitarmasterclass.net';
+      $u = user_load_by_name($value->FName.' '.$value->LName);
+      if (!is_object($u)) {
+        $u = user_load_by_mail($value->Email);
+      }
+      if ($u->status == 1) {
+          $account = user_load($u->uid);
+          if ($u->uid > 0) {
+            $account = user_load($u->uid);
+           //print_r($account);exit;
+           /*  if (!empty($value->FName)) {
+               $account->name = $value->FName.' '.$value->LName
+             }*/
+             
+            $account->field_introduction['und'][0]['value'] = nl2br($value->Introduction);
+            /*$account->field_short_introduction['und'][0]['value'] = $value->ShortIntro;
+            $account->field_first_name['und'][0]['value'] = $value->FName;
+            $account->field_last_name['und'][0]['value'] = $value->LName;
+            $account->roles = array('2' => 'authenticated user', '4' => 'instructor', '5' => 'member');*/
+            user_save((object) array('uid' => $account->uid), (array) $account);
+          }
+         print  $i.'---->'.$u->uid.'-----'.$account->uid.'-----'.$value->ID.'-----'.$account->name.'----'.$value->FName.' '.$value->LName.'--'.$u->mail.'--'.$value->Email.'---'. $account->roles[4].'<br/>';
+         $i++;
+      }
+     
+    }
+}
+
+function image_brok_list() {
+ $query = db_select('lesson_files', 'it')->fields('it')->condition('description', '%../../lessonviewer/view_image.php?id=%', 'LIKE')->execute()->fetchAll();
+  foreach ($query as $value) {
+  $chars = preg_match_all('/<img [^>]*src="([^"]+)"/i', $value->description, $matches);
+  $imglist = $matches[1];
+  $x =0;
+  foreach ($imglist as $imgval) {
+      
+     print $id = str_replace("../../lessonviewer/view_image.php?id=", "", $imgval); 
+      if (isset($id) && is_numeric($id)) { 
+        $x=1;
+        $node_data = node_load($value->nid)->uid;
+        $result = db_query("SELECT * FROM ds2_icp.lv_file WHERE id = :id", array(":id" => $id))->fetchAll();	
+        if (count($result) < 0) {
+	        $result = db_query("SELECT * FROM ds2_icp.lm2_file WHERE id = :id", array(":id" => $id))->fetchAll();
+        }
+         
+        $type = $result[0]->extension;
+        $filename = str_replace(' ', '_', $result[0]->filename); 
+        $filename = str_replace('#', '_', $filename); 
+        $filename = str_replace('%', '_', $filename); 
+        $path = "public://lesson_image/".$filename;
+        $filepaths = "public://lesson_image/" . $filename;	
+     // if (!file_exists(drupal_realpath($path)) ) {
+	        $path = '/opt/web/guitarmasterclass.net/public_html/icp/lm2/files/uploads'.$result[0]->path.$result[0]->id.$result[0]->extension;
+	        $file_temp = file_get_contents($path);
+	        $file = file_save_data($file_temp, "public://lesson_image/" . $filename, FILE_EXISTS_RENAME);
+	        $file->status = FILE_STATUS_PERMANENT;
+	        $file->uid = $node_data;
+	        file_save($file);
+	        $filename = $file->name;
+          $value->description = str_replace("../../lessonviewer/view_image.php?id=".$id, '/lm2_get_clips?d2=7&d1='.$filename, $value->description);
+          //$value->description = str_replace("http://gmc.getonit.tk", "", $value->description);
+          db_update('lesson_files')
+              ->fields(array(
+                  'description' => $value->description,
+            ))
+            ->condition('nid', $value->nid, '=')
+            ->condition('fid', $value->fid, '=')
+            ->execute();
+     /*  } else {
+            $value->description = str_replace("../../lessonviewer/view_image.php?id=".$id, '/lm2_get_clips?d2=7&d1='.$filename, $value->description);
+          //$value->description = str_replace("http://gmc.getonit.tk", "", $value->description);
+          db_update('lesson_files')
+              ->fields(array(
+                  'description' => $value->description,
+            ))
+            ->condition('nid', $value->nid, '=')
+            ->condition('fid', $value->fid, '=')
+            ->execute();
+       }*/
+       
+     }
+  }
+  if ($x=1) {
+  print $value->nid.'<br/>';
+  }
+  /*  $value->description = str_replace("http://gmc.getonit.tk", "", $value->description);
+  db_update('lesson_files')
+      ->fields(array(
+          'description' => $value->description,
+    ))
+    ->condition('nid', $value->nid, '=')
+    ->condition('fid', $value->fid, '=')
+    ->execute();*/
+  }
+
+}
+
+
+
+function import_data_lessondata_batch_21 () {
+     $result = db_query("SELECT ll.*, ll.fria_delar, ll.DifficultyLevel, l.liveid, l.nid as mainnid, n.nid, pd.published_at, FROM_UNIXTIME(n.created) AS your_date, n.title, ll.Title, n.created, n.status,ll.cp_status, UNIX_TIMESTAMP(ll.Date) as maindate, ll.ID, ll.URL, ll.Date, ll.LM2_LessonId FROM lesson_data_video_import l left join node n on n.nid = l.nid left join ds2_oskar.LessonAll ll on ll.ID = l.liveid LEFT Join publication_date pd on pd.nid = n.nid Where ll.cp_status  = 2 AND ll.Date < NOW() AND ll.Date != '0000-00-00 00:00:00' ORDER BY l.liveid  DESC")->fetchAll();
+  $i=1;
+  foreach ($result as $values) {
+    $operations[] = array('update_lessons_views_countdata', array(array('data' => $values), t('(Operation @operation)', array('@operation' => $i))));
+    $i++;
+  }
+  $batch = array(
+    'operations' => $operations,
+    'finished' => 'import_data_finished',
+  );
+  return $batch;
+}
+
+
+function update_lessons_views_countdata($valuex, $operation_details, &$context) {
+  $value = $valuex['data'];
+  $nid = $value->mainnid;
+  $node = node_load($nid);
+  $datass = db_query('select l.* , unix_timestamp(l.Date) as dt,c.Name as category ,t.Name as type,tc.Name as technique, v.guest as guest, v.member as member from {ds2_oskar.LessonAll} l left join {ds2_oskar.Technique} tc on  (tc.ID = l.Technique) left join ds2_oskar.LessonType t on (t.ID = l.LessonType) left join ds2_oskar.MusicCategory c on (c.ID = l.MusicCategory) left join {ds2_oskar.visit_counter} v on (v.iValue = l.ID) and l.Instructor != 0 Where l.ID = :ID ', array(':ID' => $value->ID))->fetchAll();
+  if ($value->ID != 3577 && $value->ID != 3501 && $value->ID != 3128) {
+      $data = $datass[0];
+      if (!empty($data->guest)) {
+         $node->field_guest_views['und'][0]['value'] = $data->guest;
+      }
+      if (!empty($data->member)) {
+         $node->field_member_views['und'][0]['value'] = $data->member;
+      }
+      $tags = $value->Tags;
+    /*  if (!empty($tags)) {
+        $difff = $value->DifficultyLevel;
+        $nid = $value->mainnid;
+        $nodex = node_load($nid)->field_tags;
+        $tidss = explode(",", $tags);
+        if (count($nodex['und']) != count($tidss) ) {
+          $node = node_load($nid);
+          $node->field_tags['und'] = '';
+          foreach ($tidss as $key => $tagsx) {
+            if (!empty($tagsx)) {
+              $name = strtolower(trim($tagsx));
+              $ttid = taxonomy_get_term_by_name($name, 'tags');
+              $first_value = reset($ttid);
+              if (key($ttid) > 0 ){
+               $txnidss[$data['key']][] = strtolower(trim($tagsx)).'--'.key($ttid);
+               $node->field_tags['und'][$key]['tid'] = key($ttid);
+              } else {
+                $term = new stdClass();
+                $term->name = $name;
+                $term->vid = 1; 
+                taxonomy_term_save($term);
+               $node->field_tags['und'][$key]['tid'] = $term->tid;
+              }
+            }
+          }
+        }
+    }*/
+    field_attach_presave('node', $node);
+    field_attach_update('node', $node);
+  }
+}
+
+function get_nodechangeupdate() {
+  $queryz = db_query('SELECT * FROM lesson_data_video_import')->fetchAll();
+  foreach ($queryz as $key => $value) {
+  $result = db_query("SELECT f.id as iidd, f.lesson_id, lv.lessonText, lf.description, lf.nid, lf.fid from ds2_icp.lm2_file f Left join ds2_icp.lm2_lessonpart lv on (lv.fileId = f.id) left join dev_syn_drupal.lesson_data_video_import ld on ld.liveid=f.lesson_id left join dev_syn_drupal.lesson_files lf on lf.nid=ld.nid where lesson_id = :nnds AND (f.extension like '.mp4' OR f.extension like '.flv' OR f.extension like '.avi' OR f.extension like '.wmv') AND lf.weight=0 and lf.status =1 order by lv.lessonId ASC, lv.id ASC LIMIT 0,1", array(':nnds' => $value->liveid))->fetchAll();
+    print $result[0]->iidd.'---'.$result[0]->lessonText.'---'.$result[0]->fid.'---'.$result[0]->nid.'</br>';
+  }
+}

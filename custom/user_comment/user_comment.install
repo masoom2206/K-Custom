@@ -1,0 +1,55 @@
+<?php
+/**
+ * Implements hook_schema().
+ */
+function user_comment_schema() {
+  $schema['user_comment'] = array(
+    'fields' => array(
+      'comment_id' => array(
+        'type' => 'serial',
+        'not null' => TRUE,
+        'description' => 'Private Message Draft ID',
+      ),
+      'comment_for_member_id' => array(
+        'description'   => 'UID of the author',
+        'type'          => 'int',
+        'not null'      => TRUE,
+      ),
+      'comment_by_member_id' => array(
+        'description'   => 'UID of the commenter author',
+        'type'          => 'int',
+        'not null'      => TRUE,
+      ),
+      'comment_date'     => array(
+        'description'   => 'comment date',
+        'type'          => 'int',
+        'not null'      => TRUE,
+      ),
+      'comment_content' => array(
+        'description'   => 'Body of the message',
+        'type'          => 'text',
+        'not null'      => TRUE,
+        'size'          => 'big',
+      ),
+      'comment_ip_address' => array(
+        'type'          => 'varchar',
+        'length'        => 255,
+        'not null'      => TRUE,
+        'description'   => 'The format of the message text.',
+      ),
+      'comment_approved' => array(
+        'description'   => 'comment status',
+        'type'          => 'int',
+        'not null'      => TRUE,
+        'default' => 0
+      ),	
+      
+    ),
+    'primary key' => array('comment_id'),
+    'indexes' => array(
+       'comment_id' => array('comment_id'),
+       'comment_date' => array('comment_date'),
+    ),
+  );
+  return $schema;
+}

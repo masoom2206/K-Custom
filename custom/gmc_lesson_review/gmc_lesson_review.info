@@ -1,0 +1,8 @@
+name = GMC Lessons Review
+description = GMC Lesson Review module to .
+package = Custom
+version = VERSION
+core = 7.x
+files[] = gmc_lesson_review.module
+; Information added by drupal.org packaging script on 2013-03-22
+version = "7.cx"

@@ -1,0 +1,10 @@
+name = REC Lessons Support
+description = Custom REC Lessons Support Module to upload REC lessons.
+package = Custom
+version = VERSION
+core = 7.x
+files[] = rec_lessons_support.module
+; Information added by drupal.org packaging script on 2013-02-20
+version = "7.custom"
+project = support
+

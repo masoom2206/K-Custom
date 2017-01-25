@@ -1,0 +1,565 @@
+<?php
+/**
+* Implementation of hook_menu
+*/
+function rec_lessons_support_menu() {
+  $items = array();
+  //Menu for Subscribe Lessons.
+  $items['lessons/create-rec-thread'] = array(
+    'title' => 'Create REC lessons thread',
+    'description' => 'Create REC lessons thread',
+	'page callback' => 'rec_lessons_thread',
+    'access callback' => TRUE,
+  );
+  //Menu for Subscribe Lessons.
+  $items['rec/add-thread'] = array(
+    'title' => 'Create REC lessons thread',
+    'description' => 'Create REC lessons thread',
+	'page callback' => 'rec_add_thread',
+    'access callback' => TRUE,
+  );
+  //Menu for admin to import user data from live site
+  $items['migrate/rec'] = array(
+    'title' => '',
+    'description' => 'migrate rec',
+	'page callback' => 'migrate_rec_data',
+    'access callback' => TRUE,
+  );
+  //Testing Batch Operation
+  $items['admin/config/rec_data/migrate'] = array(
+    'title' => '',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('gmc_admin_migrate_rec_data'),
+    'type' => MENU_LOCAL_TASK,
+    'access arguments' => array('access content'),
+  );
+ return $items;
+}
+/**
+ * Implementation of hook_node_delete
+ * delete rec node nid from lesson_rec table
+ */
+function rec_lessons_support_node_delete($node) {
+	if($node->type == 'forum' && $node->taxonomy_forums['und']['0']['tid'] == 4758) {
+		db_delete('lesson_rec')->condition('rec_nid', $node->nid)->execute();
+	}
+}
+/**
+* Callback function rec_lessons_thread
+* for create lessons thread of REC
+* @return ''
+*/
+function rec_lessons_thread() {
+	//global $user;
+	//print "<pre>";print_r($_POST);exit;
+	return drupal_render(drupal_get_form('rec_lessons_form'));
+}
+
+/**
+* Implements form API
+* Callback function rec_lessons_form
+* to upload REC lessons
+* @return $form
+*/
+function rec_lessons_form() {
+	$node_detail = node_load(arg(1));//node_load(36302);//
+	$form['lesson_id'] = array(
+		'#type' => 'hidden',
+		'#value' => $node_detail->nid,
+	);
+	$original_lesson = l($node_detail->title, 'node/'.$node_detail->nid, array('attributes' => array('target' => '_blank')));
+	$form['rec_markuo1'] = array(
+		'#markup' => '<ul><li>This will create a <a target="_blank" href="/guitar_forum/4758">REC</a> thread in the forum to get feedback from instructors on your progress.</li><li>Link to original lesson : '.$original_lesson.'</li><li>',
+	);
+	$form['comment'] = array(
+		'#title' => 'Other comments',
+		'#type' => 'textarea',
+		'#attributes' => array('class' => array('rec-comment-box')),
+	);
+	$form['rec_markuo2'] = array(
+		'#markup' => '</li><li><label for="youtubelink">Youtube link</label><span class="extrainfo"><br />(http://www.youtube.com/watch?v=aaBBccDD)</span>',
+	);
+	$form['youtubelink'] = array(
+		'#type' => 'textfield', 
+		'#title' => t(''),
+		'#attributes' => array('class' => array('youtubelink')),
+	);
+	$form['rec_markuo3'] = array(
+		'#markup' => '<span class="youtube_confirm"><img src="/sites/all/themes/gmc_v2/css/images/img/confirm_ok.png" class="confirm_ok" style="display:none;" /><img src="/sites/all/themes/gmc_v2/css/images/img/confirm_bad.png" class="confirm_bad" /></span></li><li style="display:none">',
+	);
+	$form['showAsLessonVideoResponse'] = array(
+		'#type' => 'checkbox', 
+		'#title' => t('Show as lesson video response.'),
+	);
+	$form['rec_markuo4'] = array(
+		'#markup' => '</li><li>',
+	);
+	$form['youtube-code'] = array(
+		'#type' => 'hidden',
+		'#value' => '',
+		'#attributes' => array('class' => array('youtube-code')),
+	);
+	$form['submit'] = array(
+		'#type' => 'submit',
+		'#value' => t('Submit Rec Thread'),
+		'#disabled' => TRUE,
+		'#attributes' => array('class' => array('submit')),
+	);
+	$form['rec_markuo5'] = array(
+		'#markup' => '</li></ul>',
+	);
+	//$form['#action'] = '/node/36302';
+	return $form;
+}
+/**
+ * hook_submit for create forum node of REC.
+ * @return lesson page.
+ */
+//function rec_lessons_form_submit(&$form, &$form_state) {
+function rec_add_thread(){
+	global $user, $base_url;
+	$nid = $_POST['nid'];
+	$node_detail = node_load($nid);
+	$user_detail = user_load($node_detail->uid);
+	$youtube_fid = $_POST['youtubefid'];
+	$youtube_link = 'http://www.youtube.com/v/'.$youtube_fid.'&amp;hl=en&amp;fs=1';
+	$comment = $_POST['comment'];
+	$fid_count = db_select('lesson_rec', 'lr')
+		->fields('lr', array('rid'))
+		->condition('fid', $youtube_fid, '=')
+		->execute()->rowCount();
+	if($fid_count == 0) {
+		$rec_post_count = db_select('lesson_rec', 'lr')
+			->fields('lr', array('rid'))
+			->condition('nid', $node_detail->nid, '=')
+			->condition('uid', $user->uid, '=')
+			->execute()->rowCount();
+		if($rec_post_count == 0) {
+			$title = $node_detail->title;
+			$previous_post = '&nbsp;';
+		}
+		else {
+			$rec_post_count = $rec_post_count + 1;
+			$title = 'Take '.$rec_post_count.': '.$node_detail->title;
+
+			$rec_nids = db_query("SELECT n.nid FROM node n INNER JOIN users u on u.uid = n.uid INNER JOIN field_data_field_lessons_node_id lni on lni.entity_id = n.nid WHERE lni.field_lessons_node_id_value = :nid and n.uid = :uid", array(':nid' => $node_detail->nid, ':uid' => $user->uid));
+			$previous_post = '<br/><br/>Links to previous attempts at this lesson:<br/>';
+			foreach($rec_nids as $rec_nid) {
+				$previous_post .= '<a href="/guitar_forum_topic/'.$rec_nid->nid.'" target="_blank">'.$base_url.'/guitar_forum_topic/'.$rec_nid->nid.'</a><br/>';
+			}
+		}
+		$message = '<div class="postcolor" id="post-'.$new_node->nid.'">
+		Original lesson: <a href="/node/'.$nid.'">'.$node_detail->title.'</a> by <a href="/user/'.$user_detail->uid.'">'.$user_detail->name.'</a>	
+		<br/><br/>'.$comment.'<br/><br/>
+		<object width="560" height="340">
+			<param name="movie" value="'.$youtube_link.'"/>
+			<param name="allowFullScreen" value="true"/>
+			<param name="allowscriptaccess" value="always"/>
+			<embed src="'.$youtube_link.'" type="application/x-shockwave-flash" allowscriptaccess="always" allowfullscreen="true" width="560" height="340"/>
+		</object>'.$previous_post.'
+		</div>';
+		$new_node = new stdClass();
+		$new_node->uid = $user->uid;
+		$new_node->title = $title;
+		$new_node->status = 1;
+		$new_node->comment = 2;
+		$new_node->promote = 0;
+		$new_node->revision = 1;
+		$new_node->sticky = 0;
+		$new_node->type = 'forum';
+		$new_node->language = 'und';
+		$new_node->created = time();
+		$new_node->changed = time();
+		$new_node->body['und']['0']['value'] = 'Lesson By '.$user_detail->name;
+		$new_node->body['und']['0']['summary'] = 'Lesson By '.$user_detail->name;
+		$new_node->taxonomy_forums['und']['0']['tid'] = 4758;
+		//$new_node->field_pin_topics['und']['0']['value'] = 1;
+		$new_node->field_lessons_node_id['und']['0']['value'] = $nid;
+		
+		node_validate($new_node);
+		node_submit($new_node);
+		node_save($new_node);
+		if($new_node->nid) {		
+			$comment = (object) array(
+				'nid' => $new_node->nid,
+				'cid' => 0,
+				'pid' => 0,
+				'uid' => $user->uid,
+				'mail' => '',
+				'is_anonymous' => 0,
+				'homepage' => '',
+				'status' => COMMENT_PUBLISHED,
+				'subject' => 'REC Lesson Takes',
+				'language' => LANGUAGE_NONE,
+				'comment_body' => array(
+				  LANGUAGE_NONE => array(
+					0 => array (
+					  'value' => $message,
+					  'format' => 'php_code'
+					)
+				  )
+				),
+			  );
+			  comment_submit($comment);
+			  comment_save($comment);
+			if($comment->cid){
+				db_insert('lesson_rec')
+					->fields(array('nid' => $node_detail->nid, 'rec_nid' => $new_node->nid, 'uid' => $user->uid, 'fid' => $youtube_fid, 'timestamp' => time()))
+					->execute();
+				print '/guitar_forum_topic/'.$new_node->nid;exit;
+			}
+		}
+	}
+	else {
+		print 'false';
+	}
+}
+
+/**
+ * Callback function rec_lessons_grade
+ * to display Grade form and result
+ * @return $output
+ */
+function rec_lessons_grade() {
+	global $user;
+	$nid = arg(1);
+	$node_detail = node_load($nid);
+	//print "<pre>";print_r($node_detail);exit;
+	$output = '';
+	$grade_id = db_select('gmc_rec_grade', 'grg')
+	  ->fields('grg', array('rec_grade_id'))
+	  ->condition('entity_id', $nid)
+	  ->condition('uid', $user->uid)
+	  ->execute();
+	$user_count = $grade_id->rowCount();
+	$grade_id = db_select('gmc_rec_grade', 'grg')
+	  ->fields('grg', array('rec_grade_id'))
+	  ->condition('entity_id', $nid)
+	  ->execute();
+	$vote_count = $grade_id->rowCount();
+	if($user_count == 0 && $node_detail->comment != 1 && !isset($_GET['show']) && (in_array("administrator", $user->roles) || in_array("moderator", $user->roles) || in_array("instructor", $user->roles))) {
+		$form = drupal_get_form('rec_lessons_grade_form');
+		$output .= drupal_render($form);
+	}
+	//if($vote_count != 0 || isset($_GET['show']))
+	else {
+		$output = rec_lessons_grade_result($nid);
+		if($user->uid == 0 && $node_detail->comment != 1) {
+			$output .= '<div class="row1 rec-grade-bottom" align="center">Guests cannot vote</div>';
+		}
+		else if($user_count != 0 && $node_detail->comment != 1) {
+			$output .= '<div class="row1 rec-grade-bottom" align="center">You have already voted in this poll</div>';
+		}
+		else {
+			$output .= '<div class="row1 rec-grade-bottom" align="center">&nbsp;</div>';
+		}
+	}
+	return $output;
+}
+/**
+ * Callback function rec_lessons_grade_result
+ * to display REC Grade result
+ * @return $output
+ */
+function rec_lessons_grade_result($nid){
+	global $user;
+	$node_detail = node_load($nid);
+	$output = ''; 
+	$output .= '<div class="borderwrap"><div class="row1 rec-grade-range"><span class="postdetails">1-10</span></div><table class="ipbtable" cellpadding="4" cellspacing="0"><tbody>';
+	$total_grade_count = db_select('gmc_rec_grade', 'grg')
+	  ->fields('grg', array('rec_grade_id'))
+	  ->condition('entity_id', $nid)
+	  ->execute();
+	$total_vote_count = $total_grade_count->rowCount();
+	for($x = 1; $x <= 10; $x++) {
+		$grade_count = db_select('gmc_rec_grade', 'grg')
+		  ->fields('grg', array('rec_grade_id'))
+		  ->condition('entity_id', $nid)
+		  ->condition('grade', $x)
+		  ->execute();
+		$vote_count = $grade_count->rowCount();
+		if($vote_count == 0) {
+			$width = 0;
+			$average = '0.00%';
+		}
+		else {
+			$average = sprintf('%0.2f', ($vote_count/$total_vote_count*100)) . '%';
+			$width = round($average * 2);
+		}
+		$output .= '<tr><td class="post2" width="25%">'.$x.'</td>
+			<td class="post2" width="10%" nowrap="nowrap"> [ <b>'.$vote_count.'</b> ] </td>
+			<td class="post2" width="70%" nowrap="nowrap"><img src="/sites/all/themes/gmc_v2/images/bar_left.gif" border="0" alt="*"><img src="/sites/all/themes/gmc_v2/images/bar.gif" width="0" height="11" align="middle" alt="" style="width: '.$width.'px; height: 11px; vertical-align: text-top;"><img src="/sites/all/themes/gmc_v2/images/bar_right.gif" border="0" alt="*">&nbsp;['.$average.']</td></tr>';
+	}
+	$output .= '</tbody></table></div>';
+	$output .= '<div class="row1 rec-grade-bottom" align="center"><b>Total Votes: '.$total_vote_count.'</b></div>';
+	if(isset($_GET['show']) && $_GET['show'] == 'result' && $user->uid != 0) {
+		$output .= '<div class="row1 rec-grade-bottom" align="center"><a href="/guitar_forum_topic/'.$nid.'" title="Go back and show the voting options" class="go-back-link">Show Vote Options</a></div>';
+	}
+	return $output;
+}
+/**
+* Implements form API
+* Callback function rec_lessons_form
+* to upload REC lessons
+* @return $form
+*/
+function rec_lessons_grade_form() {
+	global $user;
+	$form['grade_markuo1'] = array(
+		'#markup' => '<div class="borderwrap"><div class="row1 rec-grade-range"><span class="postdetails">1-10</span></div>',
+	);
+	$form['lesson_id'] = array(
+		'#type' => 'hidden',
+		'#value' => arg(1),
+	);
+	$form['rec_grade'] = array(
+		'#type' => 'radios',
+		'#title' => t(''),
+		'#options' => array(
+			1 => t('1'),
+			2 => t('2'),
+			3 => t('3'),
+			4 => t('4'),
+			5 => t('5'),
+			6 => t('6'),
+			7 => t('7'),
+			8 => t('8'),
+			9 => t('9'),
+			10 => t('10'),
+		),
+	);
+	$grade_id = db_select('gmc_rec_grade', 'grg')
+	  ->fields('grg', array('rec_grade_id'))
+	  ->condition('entity_id', arg(1))
+	  ->execute();
+	$count = $grade_id->rowCount();
+	$form['grade_markuo2'] = array(
+		'#markup' => '</div><div class="row1 rec-grade-bottom" align="center"><b>Total Votes: '.$count.'</b></div>',
+	);
+	$form['submit'] = array(
+		'#type' => 'submit',
+		'#value' => t('Vote!'),
+		'#attributes' => array('class' => array('button')),
+		'#prefix' => '<div class="rec-grade-bottom">',
+	);
+	$form['show_results'] = array(
+		'#type' => 'submit',
+		'#value' => t('Show Results'),
+		'#attributes' => array('class' => array('button')),
+		'#suffix' => '</div>',
+	);
+	return $form;
+}
+
+/**
+ * hook_submit for create forum node of REC.
+ * @return lesson page.
+ */
+function rec_lessons_grade_form_submit(&$form, &$form_state) {
+	global $user;
+	//print "<pre>";print_r($form_state['input']);exit;
+	$nid = $form_state['input']['lesson_id'];
+	if($form_state['input']['op'] == 'Show Results') {
+		drupal_goto('guitar_forum_topic/'.$nid, array('query' => array('show' => 'result')));
+	}
+	else {
+		$grade = $form_state['input']['rec_grade'];
+		db_insert('gmc_rec_grade')
+			->fields(array('uid' => $user->uid, 'entity_id' => $nid, 'grade' => $grade, 'grade_date' => time()))
+			->execute();
+	}
+}
+/**
+ * Callback function rec_takes_list()
+ * to display user list name
+ * whos post REC takes for lessons node
+ */
+function rec_takes_list($nid){
+	$output = '';
+	$rec_data = db_query("SELECT u.uid, u.name, n.nid, n.created, n.title FROM users u INNER JOIN node n on n.uid = u.uid INNER JOIN field_data_field_lessons_node_id lni on lni.entity_id = n.nid WHERE lni.field_lessons_node_id_value = :nid ORDER BY n.created DESC", array(':nid' => $nid));
+	$count = $rec_data->rowCount();
+	if($count != 0){
+		foreach($rec_data as $data) {
+			$user_name = ucwords($data->name);
+			$digit = explode('Take ',$data->title);
+			if(count($digit) > 1){
+				$digit = explode(':',$digit[1]);
+				if(!empty($digit[0])) {
+					$user_name .= ' (take '.$digit[0].')';
+				}
+			}
+			$time = date("Y/m/d h:i", $data->created);
+			$rec_cid = db_query("SELECT cid FROM comment WHERE nid = :nid ORDER BY cid ASC ", array(':nid' => $data->nid))->fetchField();
+			$output .= '<li>
+							<a href="/guitar_forum_topic/'.$data->nid.'#entry'.$rec_cid.'" target="_blank" title="'.$time.'">'.$user_name.'</a>
+						</li>';
+		}
+	}
+	else {
+		$output = '<div style="padding:3px 12px;">
+				This lesson does not have any REC takes yet. <br />
+				<a href="/guitar_forum_topic/102804" target="_blank" style="text-decoration:underline;">Here</a> is how to submit one.
+				</div>';
+	}
+	return $output;
+}
+
+/************************migrate_rec_data*************************/
+//migrate/rec
+function migrate_rec_data(){
+	$not_inserted = array();
+	$x = 0;
+	$live_recs = db_query("SELECT * FROM ds2_gmc.ibf_polls WHERE votes != 0 ORDER BY tid ASC");
+	foreach($live_recs as $live_rec) {
+		$drupal_nid = db_query("SELECT topic_id FROM dev_syn_drupal.import_topics_comment WHERE live_topic_id = :tid", array(':tid' => $live_rec->tid))->fetchField();
+		$node_detail = node_load($drupal_nid);
+		if($node_detail->taxonomy_forums['und']['0']['tid'] == 4758) {
+			$rec_grade_id = db_query("SELECT rec_grade_id FROM dev_syn_drupal.gmc_rec_grade WHERE entity_id = :nid", array(':nid' => $drupal_nid))->fetchField();
+			if(empty($rec_grade_id)) {
+				$not_inserted[$x]['drupal_nid'] = $drupal_nid;
+				$not_inserted[$x]['rec_grade_id'] = $live_rec->tid;
+				$x++;
+				
+				/*$choices = unserialize($live_rec->choices);
+				if(empty($choices)) {
+					$change = str_replace('\"', '"', $live_rec->choices);
+					$choices = unserialize($change);
+				}
+				if(!empty($choices)) {
+					$votes = array();
+					foreach($choices as $choicess) {
+						foreach($choicess['votes'] as $key => $choice) {
+							if($choice != 0 && $choice > 1) {
+								for($z = 1; $z <= $choice; $z++) {
+									$votes[] = $key;
+								}
+							}
+							else if($choice == 1){
+								$votes[] = $key;
+							}
+						}
+					}
+					$rec_voters = db_query("SELECT u.uid, u.mail FROM dev_syn_drupal.users u INNER JOIN ds2_gmc.ibf_members m ON u.mail = m.email INNER JOIN ds2_gmc.ibf_voters vo ON vo.member_id = m.id where vo.tid = :tid", array(':tid' => $live_rec->tid))->fetchAll();
+					$y = 0;
+					if(!empty($votes)) {
+						foreach($rec_voters as $rec_voter) {
+							$start_date = $live_rec->start_date;
+							$vote = $votes[$y];
+							$uid = $rec_voter->uid;
+							$insert[$y] = array('uid' => $uid, 'entity_id' => $drupal_nid, 'grade' => $vote, 'grade_date' => $start_date);
+							//db_insert('gmc_rec_grade')->fields(array('uid' => $uid, 'entity_id' => $drupal_nid, 'grade' => $vote, 'grade_date' => $start_date))->execute();
+							$y++;
+						}
+					}
+					
+					print "<pre>";print_r($insert);
+					print $live_rec->tid.'<br/>';
+					print $drupal_nid.'<br/>';
+					print "<pre>";print_r($votes);exit;
+				}*/
+			}
+		}
+	}
+	print "<pre>";print_r($not_inserted);exit;
+}
+/**************Batch Migration Start**************/
+//URL: admin/config/rec_data/migrate
+/**
+ * Form API for batch operation
+ **/
+function gmc_admin_migrate_rec_data() {
+  $form['description'] = array(
+    '#type' => 'markup',
+    '#markup' => t('Importing GMC Live data.'),
+  );
+  $form['batch'] = array(
+    '#type' => 'select',
+    '#title' => 'Choose batch',
+    '#options' => array(
+      'batch_1' => t('batch 1 - Import Live site REC Data'),
+    ),
+  );
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => 'Go',
+  );
+  return $form;
+}
+
+/**
+ * Form API Submit for batch operation
+ **/
+function gmc_admin_migrate_rec_data_submit($form, &$form_state){ 
+  $function = 'import_rec_data_live_' . $form_state['values']['batch'];
+  $_SESSION['http_request_count'] = 0; // reset counter for debug information.
+  $batch = $function();
+  batch_set($batch);
+} 
+/**
+ * Callback function to import
+ **/
+function import_rec_data_live_batch_1 () {
+  //$records = db_query("SELECT * FROM ds2_gmc.ibf_polls WHERE votes != 0 ORDER BY tid ASC");
+  $records = db_query("SELECT * FROM ds2_gmc.ibf_polls ip INNER JOIN dev_syn_drupal.import_topics_comment itc ON itc.live_topic_id = ip.tid INNER JOIN dev_syn_drupal.field_data_taxonomy_forums tf ON tf.entity_id = itc.topic_id LEFT JOIN dev_syn_drupal.gmc_rec_grade rg ON rg.entity_id = itc.topic_id WHERE tf.taxonomy_forums_tid = 4758 AND rg.entity_id IS NULL AND ip.votes != 0 ORDER BY ip.tid ASC");
+  $i=1;
+  foreach ($records as $values) {
+    $operations[] = array('import_rec_data_live_1', array($values, t('(Operation @operation)', array('@operation' => $i))));
+    $i++;
+  }
+  $batch = array(
+    'operations' => $operations,
+    'finished' => 'import_data_finished',
+  );
+  return $batch;
+}
+
+
+function import_rec_data_live_1($value, $operation_details, &$context) {
+	$drupal_nid = db_query("SELECT topic_id FROM dev_syn_drupal.import_topics_comment WHERE live_topic_id = :tid", array(':tid' => $value->tid))->fetchField();
+	if(!empty($drupal_nid)) {
+		$node_detail = node_load($drupal_nid);
+		if($node_detail->taxonomy_forums['und']['0']['tid'] == 4758) {
+			$rec_grade_id = db_query("SELECT rec_grade_id FROM dev_syn_drupal.gmc_rec_grade WHERE entity_id = :nid", array(':nid' => $drupal_nid))->fetchField();
+			if(empty($rec_grade_id)) {
+				$choices = unserialize($value->choices);
+				if(empty($choices)) {
+					$change = str_replace('\"', '"', $value->choices);
+					$choices = unserialize($change);
+				}
+				if(!empty($choices)) {
+					$votes = array();
+					foreach($choices as $choicess) {
+						foreach($choicess['votes'] as $key => $choice) {
+							if($choice != 0 && $choice > 1) {
+								for($z = 1; $z <= $choice; $z++) {
+									$votes[] = $key;
+								}
+							}
+							else if($choice == 1){
+								$votes[] = $key;
+							}
+						}
+					}
+					$rec_voters = db_query("SELECT u.uid, u.mail FROM dev_syn_drupal.users u INNER JOIN ds2_gmc.ibf_members m ON u.mail = m.email INNER JOIN ds2_gmc.ibf_voters vo ON vo.member_id = m.id where vo.tid = :tid", array(':tid' => $value->tid))->fetchAll();
+					$y = 0;
+					if(!empty($votes)) {
+						foreach($rec_voters as $rec_voter) {
+							$start_date = $value->start_date;
+							$vote = $votes[$y];
+							$uid = $rec_voter->uid;
+							db_insert('gmc_rec_grade')
+								->fields(array(
+									'uid' => $uid,
+									'entity_id' => $drupal_nid,
+									'grade' => $vote,
+									'grade_date' => $start_date,
+									))->execute();
+							$y++;
+						}
+					}
+				}
+			}
+		}
+	}
+}
+/**************Batch Migration END****************/

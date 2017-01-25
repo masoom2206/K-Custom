@@ -1,0 +1,1856 @@
+  <?php
+/**
+* Implementation of hook_menu
+*/
+function search_support_menu() {
+  $items = array();
+  //Menu for autocomplete search field.
+  $items['autocomplete/gmc-search'] = array(
+    'title' => 'Autocomplete Search',
+    'description' => 'Autocomplete Search Result',
+	'page callback' => 'get_all_search_result',
+    'access callback' => TRUE,
+  );
+  //Menu for private message draft page.
+  $items['gmc-search'] = array(
+    'title' => '',
+    'description' => 'Search Result Page',
+	  'page callback' => 'get_search_result_page',
+    'access callback' => TRUE,
+  );
+  //Menu for private message draft page.
+ /* $items['search'] = array(
+    'title' => '',
+    'description' => 'Search Result Page',
+	  'page callback' => 'get_search_result_page',
+    'access callback' => TRUE,
+  );*/
+  //Menu for private message draft page.
+  $items['search/%'] = array(
+    'title' => '',
+    'description' => 'Search Result Page',
+	  'page callback' => 'get_search_result_page',
+    'access callback' => TRUE,
+  );
+  //Menu for private message draft page.
+  $items['search/%/%/%/%/%/%/%/%/%'] = array(
+    'title' => '',
+    'description' => 'Search Result Page',
+	  'page callback' => 'get_search_result_page',
+    'access callback' => TRUE,
+  );
+  //Menu for private message draft page.
+  $items['actions/stumble'] = array(
+    'title' => '',
+    'description' => 'Redirect to Random Lessons Page',
+	'page callback' => 'random_lessons',
+    'access callback' => TRUE,
+  );
+  //Menu for private message draft page.
+  $items['disable/stumble'] = array(
+    'title' => '',
+    'description' => 'Disable user stumble',
+	'page callback' => 'disable_stumble',
+    'access callback' => TRUE,
+  );
+  //Menu for private message draft page.
+  $items['gmc-search-test/%'] = array(
+    'title' => 'Search:   ',
+    'description' => 'URL for Search Test',
+	  'page callback' => 'gmc_search_lessons_list',
+	//'page callback' => 'gmc_search_instructor_picture',
+	//'page callback' => 'gmc_search_result_test',
+	//'page callback' => 'gmc_search_forum_list',
+    'access callback' => TRUE,
+  );
+  $items['gmc-loadmore-search-session'] = array(
+    'title' => '',
+    'description' => 'Set session for load more of view',
+	'page callback' => 'gmc_loadmore_search_session',
+    'access callback' => TRUE,
+  );
+  $items['gmc/search/list/more'] = array(
+    'title' => '',
+    'description' => 'Lessons list at search pahe by ajax',
+	'page callback' => 'gmc_search_list_more',
+    'access callback' => TRUE,
+  );
+  $items['gmc/instructor/list/all'] = array(
+    'title' => '',
+    'description' => 'Lessons list at search pahe by ajax',
+	'page callback' => 'gmc_instructor_list_all',
+    'access callback' => TRUE,
+  );
+  $items['gmc-lessonload-session'] = array(
+    'title' => '',
+    'description' => 'Set session for load more of view',
+	  'page callback' => 'gmc_lessonload_session',
+    'access callback' => TRUE,
+  );
+ return $items;
+}
+
+
+/**
+ * Implements hook_block_info().
+ */
+function search_support_block_info() {
+  $blocks['search_lessons_list'] = array(
+    'info' => t('Search Lessons List'),
+    'cache' => DRUPAL_CACHE_PER_PAGE,
+  );
+  $blocks['search_forum_list'] = array(
+    'info' => t('Search Forum List'),
+    'cache' => DRUPAL_CACHE_PER_PAGE,
+  );
+  return $blocks;
+}
+/**
+ * Implements hook_block_view().
+ */
+function search_support_block_view($delta) {
+  $block = array();
+  switch ($delta) {
+    case 'search_lessons_list':
+	  $block['content'] = gmc_search_lessons_list();
+    break;
+    case 'search_forum_list':
+	  $block['content'] = gmc_search_forum_list();
+    break;
+	
+  }
+  return $block;
+}
+/**
+ * Callback function gmc_search_lessons_list
+ * to displayed the lessons list by searched keyword
+ * at search result page
+ * gmc/search-test
+ **/
+function gmc_search_lessons_list() {
+	$output = '<ul class="lesson-list">';
+	$data = array();
+	$arg = arg();
+	if(isset($arg[1]) && $arg[1] != 'n') {
+		$data = @get_search_result_key($arg);
+	}
+	else {
+		$arg[1] = '';
+		$data = @get_search_result_key($arg);
+	}
+
+	if(isset($_SESSION['loadmore_lesson']) && $_SESSION['loadmore_lesson'] != '') {
+		$total = (int)$_SESSION['loadmore_lesson'] * 9;
+		unset($_SESSION['loadmore_lesson']);
+	}
+	else {
+		$total = 9;
+	}
+	/*if(!empty($data)) {
+		$x=0;
+		for($x=0; $x<$total; $x++){
+			if(count($data)<=$x){
+				break;
+			}
+			
+			//$node_data = node_load($data[$x]);
+			//$user_detail = user_load($node_data->uid);
+			$free_parts = '';
+			if(isset($node_data->field_free_parts['und']['0']['value'])) {
+				if($node_data->field_free_parts['und']['0']['value'] == 1){
+					$free_parts = '<div class="free100bg"></div>';
+				}
+			}
+			$image = '<img src="/lm2_get_clip/'.$node_data->nid.'" />';
+			$time = $node_data->published_at;
+			$time_ago = 'Added '.post_time_ago($time).' ago'; 
+			$difficulty = $node_data->field_difficulty_level['und']['0']['value'];
+			$title = l($node_data->title, 'node/'.$node_data->nid);
+			if(strlen($node_data->title) > 20) {
+				$title = substr($node_data->title, 0, 20).'...';
+				$title = l($title, 'node/'.$node_data->nid);
+			}
+			$query = db_select('url_alias', 'ua');
+			$query->fields('ua', array('alias'));
+			$query->condition('ua.source', 'node/'.$node_data->nid, '=');
+			$lessons_url = $query->execute()->fetchField();
+			$output .= '<li>';
+			$output .= '<span class="title" title="'.$node_data->title.'">
+							<h3>'.$title.'</h3>
+						</span>
+						<div class="cover ">
+						<a class="title" href="/'.$lessons_url.'">
+								'.$free_parts.'
+								<div class="overlay"></div>
+								<div class="hardness-bg"></div>
+								<div class="hardness">
+									<span>Difficulty <span>'.$difficulty.'</span></span>
+								</div>
+								'.$image.'
+							</a>
+						</div>
+						<div class="info">
+							<a class="title" href="/'.$lessons_url.'">
+								<span class="by">by '.$user_detail->name.'</span>
+								<span class="date">'.$time_ago.'</span>
+							</a>
+						</div>';
+			$output .= '</li>';
+		}
+		$output .= '</ul>';
+	}*/
+  unset($data['count']);
+	foreach ($data as $key => $value) {
+    $image = '<img src="/lm2_get_clip/'.$value->entity_id.'" />';
+    $time = $value->is_published_at;
+    $time_ago = 'Added '.post_time_ago($time).' ago'; 
+    $difficulty = $value->is_diffeclty_at;
+    $title = l(html_entity_decode($value->label), 'node/'.$value->entity_id);
+    $difficulty = $value->is_diffeclty_at;
+    $lessons_url = $value->path_alias;
+    if(strlen($value->label) > 20) {
+      $title = substr(html_entity_decode($value->label), 0, 20).'...';
+      $title = l($title, 'node/'.$value->entity_id);
+    }
+    $free_parts = '';
+		if($value->is_view_freelesson == 1){
+			$free_parts = '<div class="free100bg"></div>';
+		}
+    $output .= '<li>';
+		$output .= '<span class="title" title="'.html_entity_decode($value->label).'">
+						<h3>'.html_entity_decode($title).'</h3>
+					</span>
+					<div class="cover ">
+					<a class="title" href="/'.$lessons_url.'">
+							'.$free_parts.'
+							<div class="overlay"></div>
+							<div class="hardness-bg"></div>
+							<div class="hardness">
+								<span>Difficulty <span>'.$difficulty.'</span></span>
+							</div>
+							'.$image.'
+						</a>
+					</div>
+					<div class="info">
+						<a class="title" href="/'.$lessons_url.'">
+
+							<span class="by">by '.$value->ss_name.'</span>
+							<span class="date">'.$time_ago.'</span>
+						</a>
+					</div>';
+		$output .= '</li>';
+	}
+	$output .= '</ul>';
+
+	return $output;
+	
+}
+/**
+ * Callback function gmc_search_list_more
+ * to displayed the lessons/forum list by ajax
+ * at click on show more button
+ * gmc/search/list/more
+ **/
+function gmc_search_list_more() {
+	$keyword = isset($_POST['pageArguments']) && $_POST['pageArguments'] != 'n' ? $_POST['pageArguments'] : '';
+	$type = $_POST['type'];
+	$data = array();
+	if($type == 'lesson') {
+		$page = $_POST['page'];
+		//$page = $page * 9;
+		$uid = isset($_POST['pageArgumentsUID']) && $_POST['pageArgumentsUID'] != '' ? $_POST['pageArgumentsUID'] : 'n';
+		$level1 = isset($_POST['pageArgumentsLevel1']) && $_POST['pageArgumentsLevel1'] != '' ? $_POST['pageArgumentsLevel1'] : '1';
+		$level2 = isset($_POST['pageArgumentsLevel2']) && $_POST['pageArgumentsLevel2'] != '' ? $_POST['pageArgumentsLevel2'] : '10';
+		$tid1 = isset($_POST['pageArgumentsTID1']) && $_POST['pageArgumentsTID1'] != '' ? $_POST['pageArgumentsTID1'] : 'n';
+		$tid2 = isset($_POST['pageArgumentsTID2']) && $_POST['pageArgumentsTID2'] != '' ? $_POST['pageArgumentsTID2'] : 'n';
+		$order = isset($_POST['pageArgumentsOrder']) && $_POST['pageArgumentsOrder'] != '' ? $_POST['pageArgumentsOrder'] : '0';
+		$descending = isset($_POST['pageArgumentsDescending']) && $_POST['pageArgumentsDescending'] != '' ? $_POST['pageArgumentsDescending'] : 'f';
+		$spoken = isset($_POST['pageArgumentsSpoken']) && $_POST['pageArgumentsSpoken'] != '' ? $_POST['pageArgumentsSpoken'] : 'f';
+		$argument = array();
+		$argument[1] = $keyword;
+		$argument[2] = $uid;
+		$argument[3] = $level1;
+		$argument[4] = $level2;
+		$argument[5] = $tid1;
+		$argument[6] = $tid2;
+		$argument[7] = $order;
+		$argument[8] = $descending;
+		$argument[9] = $spoken;
+		$argument['start'] = $page * 9;
+		$argument['end'] = ($page+1) * 9;
+		if ($keyword != 'n') {
+			$data = get_search_result_key($argument);
+		}
+		if(!empty($data)) {
+			$x=0;
+			$lessons = array();
+			unset($data['count']);
+			foreach($data as $key => $value){
+        $free_parts = '';
+        $image = '<img src="/lm2_get_clip/'.$value->entity_id.'" />';
+        $time = $value->is_published_at;
+        $time_ago = 'Added '.post_time_ago($time).' ago'; 
+        $difficulty = $value->is_diffeclty_at;
+        $title = l(html_entity_decode($value->label), 'node/'.$value->entity_id);
+        $difficulty = $value->is_diffeclty_at;
+        $lessons_url = $value->path_alias;
+        if(strlen($value->label) > 20) {
+          $title = substr(html_entity_decode($value->label), 0, 20).'...';
+          $title = l($title, 'node/'.$value->entity_id);
+        }
+        if($value->is_view_freelesson == 1){
+          $free_parts = '<div class="free100bg"></div>';
+        }
+				$free = isset($value->is_view_freelesson) ? $value->is_view_freelesson : 0;
+				$lessons[] = array(
+					'image' => '/lm2_get_clip/'.$value->entity_id,
+					'name' => html_entity_decode($value->label),
+					'genres' => '',
+					'creator' =>  'by '.$value->ss_name,
+					'creatorlink' => '/user/'.$value->uid,
+					'url' =>  '/'.$lessons_url,
+					'hardness' => $difficulty,
+					'date' => $time_ago,
+					'date_rel' => $time_ago,
+					'is_free' => $free,
+				);
+			}
+			$next_data['items'] = array();
+			$next_data['items'] = $lessons;
+		}
+	}	else if($type == 'forum') {
+	  unset($_SESSION['loadmore_forum']);
+		$page = $_POST['page'];
+		$start = $page * 10;
+		$rows = 10;
+		if ($keyword != 'n' && !empty($keyword)) {
+			$data = forum_serach_list($keyword, $start, $rows, 1);
+		}
+		if(!empty($data)) {
+			$x=0;
+			$forum = array();
+			foreach($data as $key => $value){
+				$forum_name = user_load($value->uid)->name;
+				$forum[] = array(
+					'title' => html_entity_decode($value->title),
+					'forum' => html_entity_decode($forum_name),
+					'url' => '/guitar_forum_topic/'.$value->taxonomy_forums_tid,
+				);
+
+			}
+			$next_data['items'] = array();
+			$next_data['items'] = $forum;
+		}
+	}
+	print json_encode($next_data);
+	exit;
+}
+
+/**
+ * Callback function gmc_search_lessons_list
+ * to displayed the lessons list by searched keyword
+ * at search result page
+ * gmc/search-test
+ **/
+function gmc_search_forum_list() {
+	$output = '<ul class="forum-search-list">';
+	$data = array();
+	$arg = arg();
+	if(isset($arg[1]) && $arg[1] != 'n') {
+		$keyword = $arg[1];
+		$data = get_search_result_forum_key($keyword);
+	}
+	if(isset($_SESSION['loadmore_forum']) && $_SESSION['loadmore_forum'] != '') {
+		$total = (int)$_SESSION['loadmore_forum'] * 10;
+	}
+	else {
+		$total = 10;
+	}
+	if(!empty($data)) {
+		$x=0;
+		if(count)
+		$half_list = round($total/2);
+		$left_list = '';
+		$right_list = '';
+		for($x=0; $x<$total; $x++){
+			if(count($data)<=$x){
+				break;
+			}
+			$node_data = node_load($data[$x]);
+			$tid = $node_data->taxonomy_forums['und']['0']['tid'];
+			$forum_name = taxonomy_term_load($tid)->name;
+			if($x < $half_list) {
+				$left_list .= '<li><a class="name" href="/guitar_forum_topic/'.$node_data->nid.'">'.html_entity_decode($node_data->title).'</a>';
+				$left_list .= '<a class="forum" href="/guitar_forum_topic/'.$node_data->nid.'">'.html_entity_decode($forum_name).'</a></li>';
+			}
+			else {
+				$right_list .= '<li><a class="name" href="/guitar_forum_topic/'.$node_data->nid.'">'.html_entity_decode($node_data->title).'</a>';
+				$right_list .= '<a class="forum" href="/guitar_forum_topic/'.$node_data->nid.'">'.html_entity_decode($forum_name).'</a></li>';
+			}
+		}
+		$output .= '<li class="child first-child"><ul>'.$left_list.'</ul></li>';
+		$output .= '<li class="child"><ul>'.$right_list.'</ul></li>';
+		$output .= '</ul>';
+	}
+	return $output;
+}
+/**
+* Implementation of hook_menu
+*/
+function search_support_menu_alter(&$items) {
+  $items['search']['page callback'] = 'get_search_result_page';
+  $items['search']['type'] = MENU_NORMAL_ITEM;
+  $items['search']['title'] = '';
+}
+/**
+ * Implements hook_init()
+ */
+function search_support_init(){
+	drupal_add_js(drupal_get_path('module', 'search_support') . '/js/search_support.js');
+	if(arg(0) == 'search') {
+		$_SESSION['items_per_page_search'] = 1;
+	}
+}
+/**
+ * Implements hook_theme()
+ * @return $themes
+ */
+function search_support_theme($existing, $type, $theme, $path) {
+	$themes = array (
+		'search_result_page' => array(
+			'template' => 'template/search_result_page',
+		),
+	);
+	return $themes;	
+}
+
+function earch_support_views_pre_view(&$view) {
+  if ($view->name == 'solarsearch' && $view->current_display == 'page') {
+    $view->display['default']->handler->options['filters']['keyword']['value'] = 'Georgia';
+  }
+}
+/**
+ * Implementation of hook_views_pre_build
+ * @param type $view
+ * @param type $query 
+ */
+function search_support_views_pre_build(&$view) {
+	if(arg(0) == 'search') {
+		if (isset($_SESSION['items_per_page_search']) && $_SESSION['items_per_page_search'] == 2) {
+			if($view->items_per_page > 9 && $view->current_display == 'block_2') {
+				$view->items_per_page = 9;
+			}
+			if($view->items_per_page > 10 && $view->current_display == 'block_1') {
+				$view->items_per_page = 10;
+			}
+			$_SESSION['items_per_page_search'] = 2;
+		}
+		else if(isset($_SESSION['items_per_page_search']) && $_SESSION['items_per_page_search'] == 1 && (isset($_SESSION['loadmore_lesson']) && $_SESSION['loadmore_lesson'] != '') && (isset($_SESSION['loadmore_forum']) && $_SESSION['loadmore_forum'] != '') ) {
+			if($view->name == 'site_search') {
+				if ($view->current_display == 'block_2') {
+					$view->items_per_page = (int)$_SESSION['loadmore_lesson'] * 9;
+				}
+				if ($view->current_display == 'block_1') {
+					$view->items_per_page = (int)$_SESSION['loadmore_forum'] * 10;
+				}
+			}
+		}
+	}
+}
+
+
+function search_support_views_pre_render(&$view) {
+
+  switch ($view->name) {
+    case 'site_search':
+       //  override the global custom text field value
+     // $view->field['nothing']->options['alter']['text'] = 'My custom text';
+    break;
+  }
+}
+
+
+/**
+ * Implementation of hook_views_query_alter
+ * @param type $view
+ * @param type $query 
+ */
+function search_support_views_query_alter(&$view, &$query) {
+  if ($view->name == 'site_search' && $view->current_display == 'block_1') {
+     $keyword = arg(1);
+     $level2 = array();
+     if ($keyword != 'n' && !empty($keyword)) {
+          $level2 = get_search_result_forum_key($keyword, 'forum');
+        	$query->where[1]['conditions'][0]['field'] = 'node.nid';
+					$query->where[1]['conditions'][0]['value'] = $level2;
+					$query->where[1]['conditions'][0]['operator'] = 'in';
+     } 
+	}
+   
+  if ($view->name == 'site_search' && $view->current_display == 'block_2') {
+     
+    unset($query->where[1]['conditions'][2]);
+    $keyword = arg(1);
+    $level = array();
+    $args2 = arg(2);
+    $level1 = arg(3);
+    $level2 = arg(4);
+    $args5 = arg(5);
+    $args6 = arg(6);
+	$arg = arg();
+	if($keyword != 'n' && !empty($keyword)) {
+    //if ($keyword != '*' && !empty($keyword)) {
+      $uid = !empty($args2) &&  $args2 != 'n' ? $args2 : '' ;
+      $tid1 = !empty($args5) &&  $args5 != 'n' ? $args5 : '' ;
+      $tid2 = !empty($args6) &&  $args6 != 'n' ? $args6 : '' ;
+      $level = get_search_result_key($arg);
+  
+      $query->where[0]['conditions'][0]['field'] = 'node.nid';
+  		$query->where[0]['conditions'][0]['value']= $level;
+      $query->where[0]['conditions'][0]['operator']= 'IN';
+    } else {
+      $query->where[0]['conditions'][0]['field'] = 'node.uid';           
+      $query->where[0]['conditions'][0]['value'] = array($args2);
+      $query->where[0]['conditions'][0]['operator'] = '=';
+
+    }
+
+    if (!empty($args5) && $args5 != 'n' && $args6 != 'n') {
+      $query->where[1]['conditions'][2]['field'] = 'taxonomy_index.tid';           
+      $query->where[1]['conditions'][2]['value'] = array($args5);
+      $query->where[1]['conditions'][2]['operator'] = '=';
+      $query->where[1]['conditions'][4]['field'] = 'taxonomy_index.tid';           
+      $query->where[1]['conditions'][4]['value'] = array($args6);
+      $query->where[1]['conditions'][4]['operator'] = '=';
+    } else if(!empty($args5) && $args5 != 'n') {
+      $query->where[1]['conditions'][2]['field'] = 'taxonomy_index.tid';           
+      $query->where[1]['conditions'][2]['value'] = array($args5);
+      $query->where[1]['conditions'][2]['operator'] = '=';
+    } else if(!empty($args6) && $args6 != 'n') {
+      $query->where[1]['conditions'][2]['field'] = 'taxonomy_index.tid';           
+      $query->where[1]['conditions'][2]['value'] = array($args6);
+      $query->where[1]['conditions'][2]['operator'] = '=';
+    }
+    if (!empty($args3) && ($args3 != 1 || $args4 != 10)) {
+      $lev = array();
+      foreach (range($args3, $args4) as $number) {
+          $lev[] = $number;
+      }
+      $query->where[1]['conditions'][3]['field'] = 'field_data_field_difficulty_level.field_difficulty_level_value';           
+      $query->where[1]['conditions'][3]['value'] = $lev;
+      $query->where[1]['conditions'][3]['operator'] = 'IN';
+   }
+   // $query->orderby[0]['field'] = 'search_index.score';
+   // $query->orderby[0]['direction'] = 'DESC';
+    
+    $order_by = arg(7);
+    $direction = (arg(8) == 't') ? 'DESC' : 'ASC';
+    if (!isset($order_by)) {
+      unset($query->orderby);
+      $query->orderby[0]['field'] = 'publication_date.published_at';
+      $query->orderby[0]['direction'] = 'DESC';
+    }
+    if (isset($order_by)) {
+      switch ($order_by){
+        case 'title':
+           $query->orderby[0]['field'] = 'node.title';
+           $query->orderby[0]['direction'] = $direction;
+	      break;
+	      case 'level':
+          // $query->orderby[0]['field'] = 'field_data_field_difficulty_level_field_difficulty_level_val';
+           $query->orderby[0]['direction'] = $direction;
+	      break;
+	      case 'instructor':
+           $query->orderby[0]['field'] = 'users_node.name';
+           $query->orderby[0]['direction'] = $direction;
+	      break;
+	      case 'music':
+           $query->orderby[0]['field'] = 'field_data_field_music_category_node_entity_type';
+           $query->orderby[0]['direction'] = $direction;
+	      break;
+	      case 'date':
+           $query->orderby[0]['field'] = 'publication_date.published_at';
+           $query->orderby[0]['direction'] = $direction;
+	      break;
+        case  0 :
+        case 'n' :
+        default:
+          // $query->orderby[0]['field'] = 'publication_date.published_at';
+          // $query->orderby[0]['direction'] = $direction;
+        break;
+      }
+    } 
+  }
+	if ($view->name == 'search_user' && $view->current_display == 'block' ) {
+    $argn = arg(1);
+    if ($argn != 'n' && !empty($argn)) {
+      $pizza = $argn;
+      $pieces = explode(" ", $pizza);
+      $uids = array();
+      foreach ($pieces as $keys => $value ) {
+        if (strlen($value) > 2) {
+        $user_uids = db_query("SELECT uid FROM {users} WHERE CAST(name AS CHAR) LIKE :name AND status = 1", array(':name' => $value.'%'));
+        foreach($user_uids as $user_uid) {
+				  $uids[] = $user_uid->uid;
+			  }
+       }
+      }
+      $query->where[1]['conditions'][2]['field'] = 'users.uid';
+      $query->where[1]['conditions'][2]['value'] = $uids;
+      $query->where[1]['conditions'][2]['operator'] = 'IN';
+    } else {
+      $name = '*';
+      $query->where[1]['conditions'][2]['field'] = 'users.uid';
+      $query->where[1]['conditions'][2]['value'] = $name;
+      $query->where[1]['conditions'][2]['operator'] = 'LIKE';
+    }
+	}
+	if ($view->name == 'search_user' && $view->current_display == 'block_1' ) {
+    $argn = arg(1);
+    $query->where[1]['conditions'][1]['value']= array(":views_combine" => "% $argn%");
+	}
+}
+/**
+ * Callback function for time ago format
+ * @return time ago
+ */
+function post_time_ago($time) {
+    $time = time() - $time; // to get the time since that moment
+    $tokens = array (
+        31536000 => 'year',
+        2592000 => 'month',
+        604800 => 'week',
+        86400 => 'day',
+        3600 => 'hour',
+        60 => 'minute',
+        1 => 'second'
+    );
+    foreach ($tokens as $unit => $text) {
+        if ($time < $unit) continue;
+        $numberOfUnits = floor($time / $unit);
+        return $numberOfUnits.' '.$text.(($numberOfUnits>1)?'s':'');
+    }
+}
+/**
+ * Form API for search lesson/forum/Instructors.
+ * @return form
+ */
+function gmc_site_search(){
+	global $user, $base_url;
+	$form['gmc_search_field'] = array(
+		'#type' => 'textfield', 
+		'#default_value' => 'Search for anything on the site...',
+		'#size' => 20, 
+		'#maxlength' => 128, 
+        '#autocomplete_path' => 'autocomplete/gmc-search',
+	);
+
+	$form['#action'] = url('search');
+	$form['submit'] = array(
+		'#type' => 'submit',
+		'#value' => t('Search'),
+	);
+	return $form;
+}
+/**
+ * Submit API for search lesson/forum/Instructors.
+ * @return ''
+ */
+function gmc_site_search_submit($form, &$form_state) {
+	global $user;
+
+	$search_data = trim($form_state['input']['gmc_search_field']);
+  $form_state['rebuild'] = TRUE;
+	if($search_data == 'Search for anything on the site...') {
+		$search_data = '';
+	  //$form_state['redirect'] = 'search/*';
+	  $form_state['redirect'] = 'search/';
+    drupal_goto($form_state['redirect']);
+	}
+	else {
+    $form_state['redirect'] = 'search/'.$search_data;
+    drupal_goto($form_state['redirect']);
+	}
+}
+
+
+
+/**
+ * Callback function for search textfield
+ * to return user/title list
+ * @return $title_matches
+ */
+function get_all_search_result($word = ''){
+	global $user;
+	$query = db_select('taxonomy_term_data', 'td');
+	$term_return = $query
+      ->fields('td', array('tid', 'name'))
+      ->condition('td.name', '%' . db_like($word) . '%', 'LIKE')
+	  ->condition('td.vid', '1', '=')
+	  //->orderBy('td.name', 'ASC')
+      ->range(0, 10)
+      ->execute()
+      ->fetchAllKeyed();
+
+	  
+	//Select User name
+	$query_name = db_select('users', 'u');
+	$query_name->join('users_roles', 'ur', 'u.uid = ur.uid');
+  $query_name->join('node', 'n', 'u.uid = n.uid');
+	$name_return = $query_name	  
+      ->fields('u', array('uid', 'name'))
+      ->condition('u.name', '%' . db_like($word) . '%', 'LIKE')
+      ->condition('u.status', '1', '=')
+	  ->condition('ur.rid', '4', '=')
+	  ->condition('n.type', 'lessons', 'LIKE')
+	  ->condition('n.status', '1', '=')
+      ->range(0, 10)
+      ->execute()
+      ->fetchAllKeyed();
+	  
+	 $title_matches = array();
+	 $x = 2;
+    foreach ($term_return as $nid => $name) {
+		$change_name = str_ireplace($word, "<span class=\"search_keyword\">".$word."</span>", check_plain($name));
+		if($x % 2 == 0){
+			$title_matches[$name] = '<div class="even">'.$change_name.'</div>';
+		}
+		else {
+			$title_matches[$name] = '<div class="odd">'.$change_name.'</div>';
+		}
+		$x++;
+    }
+    foreach ($name_return as $uid => $name) {
+		$change_name = str_ireplace($word, "<span class=\"search_keyword\">".$word."</span>", check_plain($name));
+		if($x % 2 == 0){
+			$title_matches[$name] = '<div class="even">'.$change_name.'</div>';
+		}
+		else {
+
+			$title_matches[$name] = '<div class="odd">'.$change_name.'</div>';
+		}
+		$x++;
+    }
+	drupal_json_output($title_matches);
+}
+/**
+ * Callback function for search result page
+ * @return $output
+ */
+/*
+
+
+function search_support_apachesolr_modify_query(&$query, &$params, $caller){
+ // $subquery = apachesolr_drupal_query();
+ // $subquery->add_filter("im_field_music_category", 4909);
+ // $query->add_subquery($subquery, "AND");
+
+}
+*/
+
+function get_search_result_page(){
+  return theme('search_result_page');
+}
+
+
+
+function get_search_result_key($arg) {
+  $key = $arg[1];
+  $key = str_replace('-', ' ', $key);
+  $key = str_replace('/', ' ', $key);
+  $key = str_replace('+', ' ', $key);
+  $serachkey = $key;
+  $cid = 'get_search_result:debo:lessons:'.md5($serachkey);
+  $cache = cache_get($cid);
+  if ($cache || (time() < $cache->expire)) {
+    $nidy = $cache->data;
+  } else {
+    $nidy = array();
+    if (!empty($key) && strlen($key) > 2) {
+      $pieces = explode(" ", $serachkey);
+      if (strlen($pieces[0]) == 1) {
+        $result = single_key_serach($serachkey);
+        foreach($result as $key => $value) {
+          if (!in_array($value->nid, $nidy)) {
+            $nidy[] = $value->nid;
+          }
+        }
+      }
+      $query = apachesolr_drupal_query("custom", array('q' => 'label:'.$serachkey), 'sort_label asc', 'search/path');
+      $query->setSolrsort('score', 'desc');
+      $query->addParam('qf', 'label^100');
+      $query->removeFilter('bundle');
+      $query->addParam('fq', "bundle:(lessons)");
+      $query->addParam('rows' , 10000);
+      $resp = $query->search();
+      $document = $resp->response->docs;
+      foreach($document as $key => $value) {
+        if (!in_array($value->entity_id, $nidy)) {
+          $nidy[] = $value->entity_id;
+        }
+      }
+      $ss = array();
+      foreach($pieces as $keyss => $valuess) {
+        if(strlen($valuess) > 2) {
+          $ss[] = strtolower($valuess);
+        }
+      }
+      if (count($ss) == 2) {
+        $query = apachesolr_drupal_query("custom", array('q' => 'label:'.$ss[0].' AND sm_vid_Tags:*'.$ss[1].'*'), 'sort_label asc', 'search/path');
+        $query->setSolrsort('score', 'desc');
+        $query->removeFilter('bundle');
+        $query->addParam('fq', "bundle:(lessons)");
+        $query->addParam('rows' , 10000);
+        $resp = $query->search();
+        $document = $resp->response->docs;
+        $count = count($document);
+        $dualmatch[0][0] = $count;
+        $dualmatch[0][1] = $document;
+        $query32 = apachesolr_drupal_query("custom", array('q' => 'label:'.$ss[1].' AND sm_vid_Tags:*'.$ss[0].'*'), 'sort_label asc', 'search/path');
+        $query32->setSolrsort('score', 'desc');
+        $query32->removeFilter('bundle');
+        $query32->addParam('fq', "bundle:(lessons)");
+        $query32->addParam('rows' , 10000);
+        $resp32 = $query32->search();
+        $document32 = $resp32->response->docs;
+        $count32 = count($document32);
+        $dualmatch[1][0] = $count32;
+        $dualmatch[1][1] = $document32;
+         usort($dualmatch, function($a, $b) {
+            return $a[0] - $b[0];
+        });
+        foreach ($dualmatch as $key => $value) {
+          $documentdil = $value[1];
+          foreach($documentdil as $key22 => $value22) {
+            if (!in_array($value22->entity_id, $nidy)) {
+              $nidy[] = $value22->entity_id;
+            }
+          }
+        }
+        $query26 = apachesolr_drupal_query("custom", array('q' => 'sm_vid_Tags:'.$ss[0].'*'.$ss[1].'~1'), 'sm_vid_Tags', 'search/path');
+        $query26->setSolrsort('score', 'desc');
+        $query26->addFilter('bundle', ('article OR page'));
+        $query26->removeFilter('bundle');
+        $query26->addParam('fq', "bundle:(lessons)");
+        $query26->addParam('rows' , 10000);
+        $resp26 = $query26->search();
+        $document26 = $resp26->response->docs;
+     
+        foreach($document26 as $key26 => $value26) {
+          if (!in_array($value26->entity_id, $nidy)) {
+            $nidy[] = $value26->entity_id;
+          }
+        }
+      }
+      if (count($ss) == 2) {
+        $query = apachesolr_drupal_query("custom", array('q' => 'label:'.$ss[0]), 'sort_label asc', 'search/path');
+        $query->setSolrsort('score', 'desc');
+        $query->removeFilter('bundle');
+        $query->addParam('fq', "bundle:(lessons)");
+        $query->addParam('rows' , 10000);
+        $resp = $query->search();
+        $document = $resp->response->docs;
+        $count = count($document);
+        $dualmatch[0][0] = $count;
+        $dualmatch[0][1] = $document;
+        $query32 = apachesolr_drupal_query("custom", array('q' => 'label:'.$ss[1]), 'sort_label asc', 'search/path');
+        $query32->setSolrsort('score', 'desc');
+        $query32->removeFilter('bundle');
+        $query32->addParam('fq', "bundle:(lessons)");
+        $query32->addParam('rows' , 10000);
+        $resp32 = $query32->search();
+        $document32 = $resp32->response->docs;
+        $count32 = count($document32);
+        $dualmatch[1][0] = $count32;
+        $dualmatch[1][1] = $document32;
+         usort($dualmatch, function($a, $b) {
+            return $a[0] - $b[0];
+        });
+        foreach ($dualmatch as $key => $value) {
+          $documentdil = $value[1];
+          foreach($documentdil as $key22 => $value22) {
+            if (!in_array($value22->entity_id, $nidy)) {
+              $nidy[] = $value22->entity_id;
+            }
+          }
+        }
+
+      }
+     // print '<pre>';
+      if (count($ss) >= 2) {
+        $data = preg_replace( '~((?:\S*?\s){2})~', "$1==", $serachkey );
+        $sss = explode(" ==", $data);
+        // natsort($ss);
+        $dualmatch = array();
+        $kk = 1;
+        foreach ($sss as $key => $value) { 
+          $query = apachesolr_drupal_query("custom", array('q' => 'label:'.$value), 'sort_label asc', 'search/path');
+          $query->addParam('qf', 'label^100');
+          $query->setSolrsort('score', 'desc');
+          $query->removeFilter('bundle');
+          $query->addParam('fq', "bundle:(lessons)");
+          $query->addParam('rows' , 10000);
+          $resp = $query->search();
+          $document = $resp->response->docs;
+          $count = count($document);
+          $dualmatch[$kk][0] = $count;
+          $dualmatch[$kk][1] = $document;
+      //    print_r($resp);
+          $kk++;
+        }
+        usort($dualmatch, function($a, $b) {
+            return $a[0] - $b[0];
+        });
+        foreach ($dualmatch as $key => $value) {
+          $documentdil = $value[1];
+          foreach($documentdil as $key22 => $value22) {
+            if (!in_array($value22->entity_id, $nidy)) {
+              $nidy[] = $value22->entity_id;
+            }
+          }
+        }
+       // return $nidy;
+      }
+      $serachkey2 = $arg[1];
+      $query1 = apachesolr_drupal_query("custom", array('q' => 'label:'.$serachkey2.'*'), 'sort_label asc', 'search/path');
+      $query->setSolrsort('score', 'desc');
+      $query1->addParam('qf', 'label^100');
+      $query1->addFilter('bundle', ('article OR page'));
+      $query1->removeFilter('bundle');
+      $query1->addParam('fq', "bundle:(lessons)");
+      $query1->addParam('rows' , 10000);
+      $query1->addParam('mm', 1);
+      $resp1 = $query1->search();
+      $document1 = $resp1->response->docs;
+      foreach($document1 as $key1 => $value1) {
+        if (!in_array($value1->entity_id, $nidy)) {
+          $nidy[] = $value1->entity_id;
+        }
+      }
+      if(substr($serachkey2, -4 ) == '^100') {
+        $serachkey2 =  str_replace("^100", "", $serachkey2).'*^100';
+      } else {
+        $serachkey2 = $serachkey2.'*';
+      }
+      $query11 = apachesolr_drupal_query("custom", array('q' => 'label:'.$serachkey2), 'sort_label asc', 'search/path');
+      $query->setSolrsort('score', 'desc');
+      $query1->addParam('qf', 'label^100');
+      $query11->addFilter('bundle', ('article OR page'));
+      $query11->removeFilter('bundle');
+      $query11->addParam('fq', "bundle:(lessons)");
+      $query11->addParam('rows' , 10000);
+      $query11->addParam('mm', 1);
+      $resp11 = $query11->search();
+      $document11 = $resp11->response->docs;
+      foreach($document11 as $key11 => $value11) {
+        if (!in_array($value11->entity_id, $nidy)) {
+         $nidy[] = $value11->entity_id;
+        }
+      }
+      $query221 = apachesolr_drupal_query("custom", array('q' => 'tm_vid_1_names:'.$serachkey), 'sort_label asc', 'search/path');
+      $query->setSolrsort('score', 'desc');
+      $query221->addFilter('bundle', ('article OR page'));
+      $query221->removeFilter('bundle');
+      $query221->addParam('fq', "bundle:(lessons)");
+      $query221->addParam('rows' , 10000);
+      $query221->addParam('mm', 1);
+      $resp221 = $query221->search();
+      $document221 = $resp221->response->docs;
+      foreach($document221 as $key221 => $value221) {
+        if (!in_array($value221->entity_id, $nidy)) {
+          $nidy[] = $value221->entity_id;
+        }
+      }
+      $query2 = apachesolr_drupal_query("custom", array('q' => 'tm_vid_1_names:*'.$serachkey.'*'), 'sort_label asc', 'search/path');
+      $query->setSolrsort('score', 'desc');
+      $query2->addFilter('bundle', ('article OR page'));
+      $query2->removeFilter('bundle');
+      $query2->addParam('fq', "bundle:(lessons)");
+      $query2->addParam('rows' , 10000);
+      $query2->addParam('mm', 1);
+      $resp2 = $query2->search();
+      $document2 = $resp2->response->docs;
+      foreach($document2 as $key2 => $value2) {
+        if (!in_array($value2->entity_id, $nidy)) {
+          $nidy[] = $value2->entity_id;
+        }
+      }
+      $query3 = apachesolr_drupal_query("custom", array('q' => 'tos_name:'.$serachkey.'* OR ss_name:'.$serachkey.'*'), 'sort_label asc', 'search/path');
+      $query->setSolrsort('score', 'desc');
+      $query3->removeFilter('bundle');
+      $query3->addParam('fq', "bundle:(lessons)");
+      $query3->addParam('rows' , 10000);
+      $query3->addParam('mm', 1);
+      $resp3 = $query3->search();
+      $document3 = $resp3->response->docs;
+      foreach($document3 as $key3 => $value3) {
+        if (!in_array($value3->entity_id, $nidy)) {
+          $nidy[] = $value3->entity_id;
+        }
+      }
+      //add fileters 
+      $multidata = node_load_multiple($nidy, array('type' => 'lessons')); 
+    } elseif (!empty($key)) {
+      $result = single_key_serach($key);
+      $nid = array();
+      foreach($result as $nids) {
+        $nid[] = $nids->nid;
+      }
+      $set1 = array_flip($nid);
+      array_unique($set1);
+      $set2 = array_flip($set1);
+      foreach($set2 as $key => $nidx) {
+        $nidy[] = $nidx;
+      }
+    } else {
+      $ar1 = db_query("SELECT DISTINCT n.nid, title, published_at FROM node n Left Join publication_date p on p.nid=n.nid WHERE n.type = 'lessons' AND n.status = 1")->fetchAll();
+      $result = $ar1;
+      $nid = array();
+      foreach($result as $nids) {
+        $nid[] = $nids->nid;
+      }
+      $set1 = array_flip($nid);
+      array_unique($set1);
+      $set2 = array_flip($set1);
+      foreach($set2 as $key => $nidx) {
+        $nidy[] = $nidx;
+      }
+    }
+    cache_set($cid, $nidy, 'cache', time() + 3600);
+        $file = 'hub_pages_search.txt';
+    $searchfor = $arg[1];
+    // get the file contents, assuming the file to be readable (and exist)
+    $contents = file_get_contents($file);
+    // escape special characters in the query
+    $pattern = preg_quote($searchfor, '/');
+    // finalise the regular expression, matching the whole line
+    $pattern = "/^.*$pattern.*\$/m";
+    // search, and store all matching occurences in $matches
+    if(!preg_match_all($pattern, $contents, $matches)){
+       $fp = fopen($file, "a");
+       $data = 'search/'.$searchfor;
+       fwrite($fp, $data."\n"); 
+       fclose($fp); 
+    }
+  }
+      $conditions = '';
+      $conditionsuid = isset($arg[2]) &&  $arg[2] != 'n' ? $arg[2] : '';
+    if (!empty($conditionsuid)) {
+      $conditions .= " AND n.uid = $conditionsuid";
+    }
+      $conditionslevel1 = isset($arg[3]) ? $arg[3] : 1;
+      $conditionslevel2 = isset($arg[4]) ? $arg[4] : 10;
+    if ($conditionslevel1 != 1 || $conditionslevel2 != 10) { 
+      $conditions .= " AND fd.field_difficulty_level_value BETWEEN $conditionslevel1 AND $conditionslevel2";
+    }
+      $conditionstid1 = isset($arg[5]) &&  $arg[5] != 'n' ? $arg[5] : '';
+    if (!empty($conditionstid1)) {
+      $conditions .= " AND ft.field_lesson_type_tid = $conditionstid1";
+    }
+      $conditionstid2 = isset($arg[6]) &&  $arg[6] != 'n' ? $arg[6] : '';
+    if (!empty($conditionstid2)) {
+      $conditions .= " AND fm.field_music_category_tid = $conditionstid2";
+    }
+      $conditionsorderby = '';
+      $conditionsorder = isset($arg[7]) ? $arg[7] : '0';
+    if ($conditionsorder == 'title') {
+      $conditionsorderby = "ORDER BY n.title";
+    } elseif ($conditionsorder == 'level') {
+      $conditionsorderby = "ORDER BY fd.field_difficulty_level_value";
+    } elseif ($conditionsorder == 'instructor') {
+      $conditionsorderby = "ORDER BY u.name";
+    } elseif ($conditionsorder == 'music') {
+      $conditionsorderby = "ORDER BY fm.field_music_category_tid";
+    } elseif ($conditionsorder == 'date') {
+      $conditionsorderby = "ORDER BY pd.published_at";
+    } else if($conditionsorder == 0) {
+      //$conditionsorderby = "ORDER BY pd.published_at";
+    }
+    $conditionsdescending = isset($arg[8]) ? $arg[8] : '';
+    if (!empty($conditionsorderby)) {
+      if ($conditionsdescending == 'f') {
+        $conditionsorderby .= " ASC";
+      } else {
+        $conditionsorderby .= " DESC";
+      }
+    }
+    $n2n = implode(',', $nidy);
+    if (!empty($conditions) || !empty($conditionsorderby)) {
+      $query = db_query("select DISTINCT n.nid from node n left join publication_date pd on n.nid=pd.nid left join users u on u.uid=n.nid left join field_data_field_difficulty_level fd on n.nid=fd.entity_id left join field_data_field_music_category fm on n.nid = fm.entity_id left join field_data_field_lesson_type ft on n.nid=ft.entity_id where n.nid IN ($n2n) $conditions $conditionsorderby")->fetchAll();
+      $nidy = array();
+      foreach ($query as $key => $value) {
+        $nidy[] = $value->nid;
+      }
+    } else if($conditionsdescending == 'f') {
+       $nidy = array_reverse($nidy);
+    }
+    $countx = count($nidy);
+    $documentfinal = array();
+    $z = 0;
+    $y = 9;
+    if($arg['start']) {
+      $z = $arg['start'];
+      $y = $arg['end']; 
+      if (empty($conditionsorderby) && $conditionsorder == 0) {
+        $nidy = array_reverse($nidy);
+      }
+    }
+    if (isset($_SESSION['loadmore_lesson'])) {
+      $z = 0;
+      $y = $_SESSION['loadmore_lesson']*9; 
+      //unset($_SESSION['loadmore_lesson']);
+    }
+    for ($x = $z; $x < $y; $x++) {
+      if ($nidy[$x]) {
+        $queryfinal = apachesolr_drupal_query("custom", array('q' => ' entity_id : '.$nidy[$x]), '', 'search/path');
+        $queryfinal->addParam('fq', "bundle:(lessons)");
+        $respfinal = $queryfinal->search();
+        $documentfinal[] = $respfinal->response->docs[0];
+      }
+    }
+    $documentfinal['count'] = $countx;
+  return $documentfinal;
+}
+
+
+
+function get_search_result_forum_key($key){
+	global $user;
+	$account = $user;
+	if (!empty($key)) {
+		$search_key = $key;
+		if ($key != '') {
+			if (preg_match_all('/ ("[^"]+"|[^" ]+)/i', ' ' . $key, $matches)) {
+				//$key = $search_key.' OR ';
+				$key =  implode(' OR ', $matches[1]);
+			}
+		}
+		$query = db_select('search_index', 'i', array('target' => 'slave'))
+			->extend('SearchQuery')
+			->extend('PagerDefault');
+		$query->join('node', 'n', 'n.nid = i.sid');
+		$query->condition('n.status', 1, '=');
+		$query->condition('n.type', 'forum', '=');
+		$query->addTag('node_access');
+		$query->searchExpression($key, 'node');
+		$query->setOption('type', 'n.type');
+		$query->setOption('language', 'n.language');
+		//Check forum view access for user
+		$query->join('field_data_taxonomy_forums', 'tf', 'n.nid = tf.entity_id');
+		$query->join('forum_access', 'fa', 'fa.tid = tf.taxonomy_forums_tid');
+		$query->condition("fa.grant_view", 1, '>=');
+		$query->condition('fa.rid', array_keys($account->roles), 'IN');
+		$query->condition('tf.taxonomy_forums_tid', 4758, '<>');
+		
+		if (!$query->executeFirstPass()) {
+			return array();
+		}
+		// Add the ranking expressions.
+		_node_rankings($query);
+		// Load results.
+		$find = $query->limit(4000)->execute();
+		$nids = array();
+		foreach ($find as $item) {
+			//$results[$item->calculated_score] = $item->sid;
+			$nids[] = $item->sid;
+		}
+		//print "<pre>";print_r($results); exit;
+	}
+	return $nids;
+}
+
+
+
+/**
+ * Form API for Advance search lesson/forum/Instructors.
+ * @return form
+ */
+function advanced_search(){
+	global $user, $base_url;
+  $arg1 = arg(1);
+  $arg1 =  preg_replace("/'/", '', $arg1); ;
+	$name = '';
+	if(isset($arg1) && $arg1 != 'n'){
+		$name = str_replace("+", " ", trim($arg1));
+
+		$name = str_replace("?", "", $name);
+	}
+	/*else if(isset($arg1) && $arg1 != '*'){
+		$name = str_replace("+", " ", trim($arg1));
+		$name = str_replace("?", "", $name);
+	}*/
+	$form['search_term'] = array(
+		'#type' => 'textfield', 
+		'#default_value' => $name,
+		'#size' => 20, 
+		'#maxlength' => 128, 
+        '#autocomplete_path' => 'autocomplete/gmc-search',
+	);
+	//Keywords Link to their page
+	$keywords = array();
+	$spelling = '';
+	if(isset($arg1) && $arg1 != 'n' && !empty($arg1)) {
+		$spelling = db_select('gmc_spelling', 'gs')
+		  ->fields('gs', array('right_spell'))
+		  ->condition('gs.wrong_spell', trim($arg1), '=')
+		  ->execute()->fetchField();
+		if (array_key_exists(strtolower($arg1), $keywords)) {
+			$keyword = $keywords[strtolower($arg1)];
+			$form['keywords_link'] = array(
+			  '#markup' => '<div class="searchKeywords"><div class="clickParent" style="cursor: pointer;"><a href="'.$keyword['link'].'" class="clickChild"><b style="font-size: 110%;">'.$keyword['title'].'</b><p style="font-size: 95%; margin-top: 2px; padding: 1px 5px 2px 5px;">'.$keyword['description'].'</p></a></div></div>',
+			);
+		}
+		else if($spelling != ''){
+			$form['keywords_link'] = array(
+			  '#markup' => '<div class="searchKeywords"><div class="searchSuggestion"><p>Did you mean: <a href="/gmc-search?title='.$spelling.'&field_tags_tid=&uid=" style="font-weight: bold;">'.$spelling.'</a></p></div></div>',
+			);
+		}
+		else if($arg1 != 'n') {
+			$arg_explode = explode(' ', $arg1);
+			$arg_explode = array_map('strtolower', $arg_explode);
+			if(count($arg_explode) > 1) {
+				$condition_key = implode("%' OR keywords LIKE '%", $arg_explode);
+				$condition_key = "'%".$condition_key."%'";
+				//print $condition_key;exit;
+			}
+			else {
+				$condition_key = trim(strtolower($arg1));
+				$condition_key = "'%".$condition_key."%'";
+			}
+			$gmc_keyword = db_query("SELECT * FROM gmc_keyword WHERE keywords LIKE $condition_key")->fetchAll();
+			 if(!empty($gmc_keyword)){
+				$keydata ='<div class="searchKeywords">';
+				$x = 0;
+				foreach($gmc_keyword as $keyword_data) {
+					if(trim(strtolower($keyword_data->keyword_title)) == trim(strtolower($arg1))) {
+						$keydata .='<div class="clickParent" style="cursor: pointer;"><a href="'.$keyword_data->keyword_link.'" class="clickChild"><b style="font-size: 110%;">'.$keyword_data->keyword_title.'</b><p style="font-size: 95%; margin-top: 2px; padding: 1px 5px 2px 5px;">'.$keyword_data->keyword_body.'</p></a></div>';
+						$x = 1;
+					}
+					else {
+						$exp_keyword = explode(', ', $keyword_data->keywords);
+						$exp_keyword = array_map('strtolower', $exp_keyword);
+						foreach($arg_explode as $search_key) {
+							if (in_array(trim(strtolower($search_key)), $exp_keyword)) {
+								$keydata .='<div class="clickParent" style="cursor: pointer;"><a href="'.$keyword_data->keyword_link.'" class="clickChild"><b style="font-size: 110%;">'.$keyword_data->keyword_title.'</b><p style="font-size: 95%; margin-top: 2px; padding: 1px 5px 2px 5px;">'.$keyword_data->keyword_body.'</p></a></div>';
+								$x = 1;
+								break;
+							}
+						}
+					}
+				}
+				if($x) {
+					$keydata .='</div>';
+						$form['keywords_link'] = array(
+						'#markup' => $keydata,
+					);
+				}
+			}
+		}
+	}
+	//Instructors
+	$form['instructor_fieldset'] = array(
+	  '#type' => 'fieldset', 
+	  '#title' => t('Instructors'), 
+	);
+	$options = array('any' => t('Any'));
+	$query = db_query("SELECT u.uid, u.name FROM users u INNER JOIN users_roles ur on ur.uid = u.uid INNER JOIN node n on n.uid = u.uid WHERE ur.rid = :rid AND u.status = :status AND n.type LIKE :type AND n.status = :status ORDER BY u.name ASC", array(':rid' => 4, ':status' => 1, ':type' => 'lessons', ':status' => 1));
+	foreach($query as $result){
+		$options[trim($result->uid)] = ucwords(trim($result->name));
+	}
+	$default_instructor = 'any';
+  $arg2 = arg(2);
+	if(isset($arg2) && $arg2 != 'n') {
+		$default_instructor = $arg2;
+	}
+	$form['instructor_fieldset']['instructor'] = array(
+		'#type' => 'select',
+		'#title' => t(''),
+		'#options' => $options,
+		'#default_value' => $default_instructor,
+	);
+  $arg3 = arg(3) && arg(3) != 'n' ? arg(3) : 1;
+  $arg4 = arg(4) && arg(4) != 'n' ? arg(4) : 10;
+	//Difficulty Level
+	$form['difficulty_fieldset'] = array(
+	  '#type' => 'fieldset', 
+	  '#title' => t('Difficulty Level:'), 
+	);
+	$options = array('1' => 1, '2' => 2, '3' => 3, '4' => 4, '5' => 5, '6' => 6, '7' => 7, '8' => 8, '9' => 9, '10' => 10);
+
+	$form['difficulty_fieldset']['difficulty_level_from'] = array(
+		'#type' => 'select',
+		'#title' => t(''),
+		'#options' => $options,
+		'#default_value' => $arg3,
+		'#field_suffix' => t('To'),
+	);
+	$form['difficulty_fieldset']['difficulty_level_to'] = array(
+		'#type' => 'select',
+		'#title' => t(''),
+		'#options' => $options,
+		'#default_value' => $arg4,
+	);
+	//Lesson type
+	$form['lesson_fieldset'] = array(
+	  '#type' => 'fieldset', 
+	  '#title' => t('Lesson type'), 
+	);
+	$terms = taxonomy_get_tree(7);
+	$options = array('any' => t('Any'));
+	foreach($terms as $term) {
+		$options[$term->tid] = $term->name;
+	}
+	$lesson_type = 'any';
+  $arg5 = arg(5);
+  if(isset($arg5)) {
+	  $lesson_type = ($arg5 != 'n') ? $arg5 : 'any';
+  }
+	$form['lesson_fieldset']['lesson_type'] = array(
+		'#type' => 'select',
+		'#title' => t(''),
+		'#options' => $options,
+		'#default_value' => $lesson_type,
+	);
+	//Music Category
+	$form['music_fieldset'] = array(
+	  '#type' => 'fieldset', 
+	  '#title' => t('Music Category'), 
+	);
+	$terms = taxonomy_get_tree(8);
+	$options = array('any' => t('Any'));
+	foreach($terms as $term) {
+		$options[$term->tid] = $term->name;
+	}
+	$lesson_category = 'any';
+  $arg6 = arg(6);
+	if(isset($arg6)) {
+		$lesson_category = ($arg6 != 'n') ? $arg6 : 'any';
+	}
+	$form['music_fieldset']['lesson_category'] = array(
+		'#type' => 'select',
+		'#title' => t(''),
+		'#options' => $options,
+		'#default_value' => $lesson_category,
+	);
+	//Spoken Video
+	$form['spoken_videon_fieldset'] = array(
+	  '#type' => 'fieldset', 
+	  '#title' => t(''), 
+	);
+	$check = array('' => '');
+  $arg9 = arg(9);
+	if(isset($arg9) && $arg9 != 'f'){
+		$check = array('checked' => 'checked');
+	}
+	$form['spoken_videon_fieldset']['is_spoken_videon'] = array(
+		'#type' => 'checkbox', 
+		'#title' => t('Spoken Video'),
+		'#attributes' => $check,
+	);
+	//Order by
+	$form['order_fieldset'] = array(
+	  '#type' => 'fieldset', 
+	  '#title' => t('Order by'), 
+	);
+	$options = array('0' => t('Relevance'), 'title' => t('Title'), 'level' => t('Level'), 'instructor' => t('Instructor'), 'music' => t('Music Category'), 'date' => t('Date'));
+	$order_by = 0;
+	if(isset($_GET['order_by'])) {
+		$order_by = $_GET['order_by'];
+	}
+	$form['order_fieldset']['order_by'] = array(
+		'#type' => 'select',
+		'#title' => t(''),
+		'#options' => $options,
+		'#default_value' => (arg(7) != 'n') ? arg(7) : 0,
+	);
+	$check = array('checked' => 'checked');
+  $arg8 = arg(8);
+	if(isset($arg8) && $arg8 != 't'){
+		$check = array('' => '');
+	}
+	$form['order_fieldset']['descending'] = array(
+		'#type' => 'checkbox', 
+		'#title' => t('Descending'),
+		'#attributes' => $check,
+	);
+	
+	$form['submit_advance_search'] = array(
+		'#type' => 'submit',
+		'#value' => t('Search'),
+	);
+	$form['clear_advance_search'] = array(
+		'#type' => 'button',
+		'#value' => t('Reset'),
+		'#attributes' => array('onclick' => 'this.form.reset(); return false;'),
+
+	);
+	return $form;
+}
+
+/**
+ * Submit API for Delete/Insert/Update User Folder.
+ * @return ''
+ */
+function advanced_search_submit(&$form, &$form_state) {
+	global $user;
+	//print "<pre>";print_r($form_state['input']);exit;
+	//$search_data = (!empty($form_state['input']['search_term']) ? trim($form_state['input']['search_term']) : '*');
+	$search_data = (!empty($form_state['input']['search_term']) ? trim($form_state['input']['search_term']) : 'n');
+	if($form_state['input']['instructor'] == 'any'){
+		$instructor = 'n';
+	}
+	else {
+		$instructor = $form_state['input']['instructor'];
+		//$search_data = $form_state['input']['instructor'];
+	}
+	//$field_tags_tid = taxonomy_get_term_by_name($search_data, 'tags');
+    $difficulty_level_from = $form_state['input']['difficulty_level_from'];
+    $difficulty_level_to = $form_state['input']['difficulty_level_to'];
+	if($form_state['input']['lesson_type'] == 'any'){
+		$lesson_type = 'n';
+	}
+	else {
+		$lesson_type = $form_state['input']['lesson_type'];
+	}
+	if($form_state['input']['lesson_category'] == 'any'){
+		$lesson_category = 'n';
+	}
+	else {
+		$lesson_category = $form_state['input']['lesson_category'];	
+	}
+	if(isset($form_state['input']['is_spoken_videon']) && $form_state['input']['is_spoken_videon'] == '1') {
+		$spoken_video = 't';
+	}
+	else {
+		$spoken_video = 'f';
+	}
+	$order_by = $form_state['input']['order_by']; 
+	//$descending = $form_state['input']['descending'];
+	$descending = (isset($form_state['input']['descending']) ? 't' : 'f');
+  $goto = 'search/'.$search_data.'/'.$instructor.'/'.$difficulty_level_from.'/'.$difficulty_level_to.'/'.$lesson_type.'/'.$lesson_category .'/'.$order_by.'/'.$descending.'/'.$spoken_video;
+  drupal_goto($goto);
+}
+
+/**
+ * Implement hook_page_alter().
+ */
+function search_support_page_alter(&$page) {
+	global $user, $base_url;
+	$path = $base_url.'/sites/all/themes/gmc_v2/images/';
+	$current_path = current_path();
+	if(isset($_SESSION['stumble']) && $_SESSION['stumble'] == 1){
+		$page['page_top']['stumble']= array(
+		  '#type' => 'markup',
+		  '#markup' => '<div id="stumble">
+				<a class="stumble-text" href="/actions/stumble/">Stumble upon a new lesson!</a>
+				<a href="/disable/stumble?path='.$current_path.'" class="disable-stumble"><img src="/lm2_get_clips?d1=stumble_delete.png&d2=2"></a>
+			</div>',
+		);
+	}
+}
+/**
+ * Form API for select random lesson.
+ * @return form
+ */
+function stumble_container(){
+	global $user, $base_url;
+	//Stumble Container
+	$form['stumble_container'] = array(
+	  '#type' => 'fieldset', 
+	  '#title' => t('Don\'t know what to search for?'), 
+	);
+	$form['stumble_container']['submit'] = array(
+		'#type' => 'submit',
+		'#value' => t('Stumble instead'),
+	);
+	return $form;
+}
+
+
+
+
+
+
+
+
+/**
+ * Submit API for select random lesson.
+ * @return ''
+ */
+function stumble_container_submit(&$form, &$form_state) {
+	global $user;
+	$_SESSION['stumble'] = 1;
+	random_lessons();
+}
+/**
+ * Callback function for redirect on
+ * random lessons
+ */
+function random_lessons(){
+	$random_lessons = db_query('SELECT nid, RAND() as _random FROM node WHERE status = :status AND type = :type ORDER BY _random ASC LIMIT 1', array(':status' => 1, ':type' => 'lessons'))->fetchAssoc();
+	drupal_goto('node/'.$random_lessons['nid']);
+}
+/**
+ * Callback function for disable stumble
+ */
+function disable_stumble(){
+	unset($_SESSION['stumble']);
+	$path = $_GET['path'];
+	drupal_goto($path);
+}
+/**
+ * Callback function to get instructor Count
+ * @return $count
+ */
+function get_instructor_count($user_name){
+	$count = db_query('SELECT COUNT(u.uid) FROM role r INNER JOIN users_roles ur ON ur.rid = r.rid INNER JOIN users u ON u.uid = ur.uid INNER JOIN node n on n.uid = u.uid WHERE CAST(u.name AS CHAR) LIKE :name AND u.status = :ustatus AND r.name = :role AND n.type LIKE :type AND n.status = :nstatus', array(':name' => '%'.$user_name.'%', ':role' => 'instructor', ':ustatus' => 1, ':type' => 'lessons', ':nstatus' => 1))->fetchField();
+	return $count;
+}
+/**
+ * Callback function to get GMC Member Count
+ * @return $count
+ */
+function get_gmc_member_count($user_name){
+	$count = db_query('SELECT COUNT(uid) FROM users WHERE CAST(name AS CHAR) LIKE :name AND status = :status', array(':name' => '%'.$user_name.'%', ':status' => 1))->fetchField();
+	return $count;
+}
+/**
+ * Callback function to get keywords description
+ * @return $description
+ */
+function keywords_description($keywords){
+	$description = db_query('SELECT description FROM keywords WHERE title = :title', array(':title' => $keywords))->fetchField();
+  if(empty($description)) {
+		$keywords = gmc_depluralize($keywords);
+		$description = db_query('SELECT description FROM keywords WHERE title = :title', array(':title' => $keywords))->fetchField();
+	}
+	return $description;
+}
+
+/**
+ * Callback function gmc_search_instructor_picture
+ * To print searched instructor/member image
+ * @return $image
+ */
+function gmc_search_instructor_picture($uid, $type){
+	global $base_url;
+	$flag = 0;
+	$output = '';
+	$user_detail = user_load($uid);
+	if($type == 'instructor' && isset($user_detail->field_pictures['und'])) {
+		$file_name = str_replace(" ", "-", strtolower($user_detail->name)).'-face-w140-h140.png';
+		foreach($user_detail->field_pictures['und'] as $pictures) {
+			if($pictures['filename'] == $file_name) {
+				$image_url = file_create_url($pictures['uri']);
+				$output = '<img class="instr-pic-140" src="'.$image_url.'">';
+				$flag = 1;
+			}
+		}
+	}
+	else if($type == 'member' && isset($user_detail->field_pictures['und'])) {
+		$file_name = str_replace(" ", "-", strtolower($user_detail->name)).'.png';
+		foreach($user_detail->field_pictures['und'] as $pictures) {
+			if($pictures['filename'] == $file_name) {
+				$image_url = file_create_url($pictures['uri']);				
+				$output = '<img src="'.$image_url.'" title="'.$user_detail->name.'">';
+				$flag = 1;
+			}
+		}
+	}
+	else if($type == 'video_lessons_instructors' && isset($user_detail->field_pictures['und'])){
+	  if(isset($user_detail->picture->uri)) {
+			$image_url = file_create_url($user_detail->picture->uri);
+			$output = "<img src='/lm2_get_clips?d1=".$user_detail->picture->filename."&d2=1' class='img instr-pic-75 gmc-user-profile-image'>";
+		} else {		
+		  $file_name = str_replace(" ", "-", strtolower($user_detail->name)).'-face-w75-h75.png';
+		  foreach($user_detail->field_pictures['und'] as $pictures) {
+			  if($pictures['filename'] == $file_name) {
+				  $image_url = file_create_url($pictures['uri']);				
+				  $output = '<img class="img instr-pic-75" src="'.$image_url.'">';
+				  $flag = 1;
+			  }
+		  }
+		}
+	}
+	if($flag == 0) {
+		if(isset($user_detail->picture->uri)) {
+			$image_url = file_create_url($user_detail->picture->uri);
+			$output = "<img src='/lm2_get_clips?d1=".$user_detail->picture->filename."&d2=1' class='gmc-user-profile-image'>";
+		}
+		else {
+			$output = '<img src="/lm2_get_clips?d1=default-user-image.png&d2=1" class="gmc-user-default-image">';
+		}
+	}
+	return $output;
+}
+
+/*
+class apachesolr_views_keyword_handler_filter extends apachesolr_views_handler_filter {
+  function query() {
+    if (!empty($this->value)) {
+      $arg1 = arg(1);
+      if ($arg1 != '' || $arg1 != 'n') {
+        $this->query->add_parameter('q', $arg1);
+      }
+    }
+  }
+}
+*/
+
+
+/**
+ * Build the documents before sending them to Solr.
+ *
+ * Supports all types of
+ * hook_apachesolr_index_document_build_' . $entity_type($documents[$id], $entity, $env_id);
+ *
+ * The function is the follow-up for apachesolr_update_index but then for
+ * specific entity types
+ *
+ * @param $document
+ * @param $entity
+ */
+function search_support_apachesolr_index_document_build_node(ApacheSolrDocument $document, $entity, $env_id) {
+    $member_views = $entity->field_member_views['und']['0']['value'];
+    $guest_views = $entity->field_guest_views['und']['0']['value'];
+    $total_count = (int)$member_views + (int)$guest_views;
+    $document->setMultiValue('is_view_total_count', $total_count);
+    $free = 0;
+    if (isset($entity->field_free_parts['und']['0']['value'])) {
+	    $free = $entity->field_free_parts['und']['0']['value'];
+    }
+    $document->setMultiValue('is_view_freelesson', $free);
+    $cover = 0;
+    if (isset($entity->field_is_cover_lesson['und']['0']['value'])) {
+	    $free = $entity->field_is_cover_lesson['und']['0']['value'];
+    }
+    $document->setMultiValue('is_cover_lesson', $free);
+    if (isset($entity->body)) {
+      $body = text_summary($entity->body['und'][0]['value'] , 'NULL', 99);
+    } else {
+      $body = 'NA';
+    }
+    $document->setMultiValue('ts_body_lesson', $body);
+	  $published_at = db_query("SELECT published_at FROM publication_date WHERE nid = :nid", array(':nid' => $entity->nid))->fetchField();
+	  if (empty($published_at)) {
+      $published_at = strtotime($entity->created);
+	  }
+	  $total_diff_sec = floor(time() - $published_at);
+	  $days = floor($total_diff_sec/86400);
+	  if($days == 0) {
+		  $days = 1;
+	  }
+    if (isset($entity->field_the_style_of['und']['0']['value'])) {
+      $the_style_of = $free = $entity->field_the_style_of['und']['0']['value'];
+    }
+    if (isset($entity->field_the_style_of['und']['0']['value'])) {
+      $diffeclty_at =  $entity->field_difficulty_level['und']['0']['value'];
+    } else {
+      $diffeclty_at =  0;
+    }
+    
+    
+	  $one_day_view = number_format($total_count/$days, 4);
+	  $document->setMultiValue('ss_one_day_view', $one_day_view);
+	  $document->setMultiValue('is_published_at', $published_at);
+	  $document->setMultiValue('is_diffeclty_at', $diffeclty_at);
+	  $document->setMultiValue('ts_the_style_of', $the_style_of);
+}
+
+function search_support_apachesolr_index_documents_alter(&$documents, $entity, $entity_type, $env_id) {
+  if ($entity_type == 'node') {
+    $data = $entity;
+    unset($entity);
+    $entity = new stdClass();
+    $entity->title = $data->title;
+    $entity->type = $data->type;
+    $entity->created = $data->published_at;
+    $entity->changed = $data->published_at;
+    $entity->member_views = $data->field_member_views['und'][0]['value'] + $data->field_guest_views['und'][0]['value'];
+    $entity->data = $data->data;
+    $entity->name = $data->name;
+  }
+}
+
+function search_support_apachesolr_exclude($entity_id, $entity_type, $row, $env_id) {
+  // Never index media entities to core_1.
+
+  if ($entity_type == 'lessons' && $env_id == 'core_1') {
+    return TRUE;
+  }
+  // Never index news entities to core_2.
+  if ($entity_type == 'forums' && $env_id == 'core_2') {
+    return TRUE;
+  }
+  // Default to allow.
+  return FALSE;
+}
+
+function search_support_apachesolr_update_index($document, $node, $namespace) {
+  // When indexing nodes, add field from my custom content type
+  if ($node->type == 'lessons') {
+    $member_views = $node->field_member_views['und']['0']['value'];
+    $guest_views = $node->field_guest_views['und']['0']['value'];
+    $total_count = (int)$member_views + (int)$guest_views;
+    $document->addField('is_my_total_count', $total_count);
+    // grab the image URL and the description
+   // $difficulty = 1;//$node->field_difficulty_level['und'][0]['value'];
+   // add the image and description to the document in the solr index
+   // $document->addField('ss_field_difficulty_level2', $difficulty);
+  }
+}
+
+/**
+ * Callback function gmc_loadmore_search_session()
+ * to set session for loadmore of view at search page
+ * #lesson=2;forum=2
+ **/
+function gmc_loadmore_search_session(){
+	if(!isset($_SESSION['loadmore_lesson']) || !isset($_SESSION['loadmore_forum'])) {
+		if(!isset($_SESSION['reload_search_page'])) {
+			$_SESSION['reload_search_page'] = 1;
+			$url = $_POST['url'];
+			$data1 = explode(';', $url);
+			$data2 = explode('#lesson=', $data1[0]);
+			$data3 = explode('forum=', $data1[1]);
+			$_SESSION['loadmore_lesson'] = $data2[1];
+			$_SESSION['loadmore_forum'] = $data3[1];
+		}
+		else {
+			unset($_SESSION['reload_search_page']);
+		}
+		if(isset($_SESSION['reload_search_page'])) {
+			print 'loadmore_lesson = '.$_SESSION['loadmore_lesson'].' AND loadmore_forum = '.$_SESSION['loadmore_forum'];
+		}
+		else {
+			print 'false';
+		}
+	}
+	else {
+		unset($_SESSION['loadmore_lesson']);
+		unset($_SESSION['loadmore_forum']);
+		unset($_SESSION['reload_search_page']);
+		$_SESSION['items_per_page_search'] = 2;
+		print 'false';
+	}
+}
+
+
+/**
+ * gmc/search-test
+ **/
+function gmc_search_result_test(){
+			$node_data->nid = 36945;
+			$query = db_select('url_alias', 'ua');
+			$query->fields('ua', array('alias'));
+			$query->condition('ua.source', 'node/'.$node_data->nid, 'LIKE');
+			$lessons_url = $query->execute()->fetchField();
+			print "$node_data->nid<br/>";
+			
+			$url = db_query("SELECT alias FROM url_alias WHERE source = :source", array(':source' => '/node/'.$node_data->nid))->fetchField();
+			print "$url<br/>";
+			print $lessons_url;exit;
+}
+
+
+
+function single_key_serach($key) {
+  $lowertest = strtolower($key);
+  $ar1 = db_query("SELECT DISTINCT n.nid, title, published_at FROM node n Left Join publication_date p on p.nid=n.nid WHERE n.type = 'lessons' AND n.status = 1 AND (CONVERT(title USING utf8) RLIKE '^\{$lowertest} ' )")->fetchAll();
+   $ar2 = db_query("SELECT DISTINCT n.nid, title, published_at FROM node n Left Join publication_date p on p.nid=n.nid WHERE n.type = 'lessons' AND n.status = 1 AND ((CONVERT(title USING utf8) LIKE '$key %' ) OR (CONVERT(title USING utf8) LIKE '% $key %' ) OR (CONVERT(title USING utf8) LIKE '% $key' )  )")->fetchAll();
+   $ar3 = db_query("SELECT DISTINCT n.nid, fd.entity_id, n.type, n.status, n.title, p.published_at  FROM taxonomy_term_data as tt LEFT JOIN field_data_field_tags as fd on tt.tid=fd.field_tags_tid Left join node as n on n.nid=fd.entity_id  Left Join publication_date p on p.nid=n.nid $diffjoin WHERE (CONVERT(tt.name USING utf8) LIKE '$key' ) OR (CONVERT(tt.name USING utf8) LIKE '$key %' ) OR (CONVERT(tt.name USING utf8) LIKE ' $key' ) OR (CONVERT(tt.name USING utf8) LIKE '% $key' ) OR (CONVERT(tt.name USING utf8) LIKE '% $key %') OR (CONVERT(tt.name USING utf8) LIKE ' $key ') AND fd.entity_id != '' AND n.status = 1")->fetchAll();
+  $result = array_merge_recursive($ar1, $ar2);
+  $result = array_merge_recursive($result, $ar3);
+  return $result;
+}
+
+function gmc_instructor_list_all($uid, $sort) {
+  $query = apachesolr_drupal_query("custom", array('q' => 'is_uid:'.$uid ), ' ', 'search/path');
+  $query->removeFilter('bundle');
+  $query->addParam('fq', "bundle:(lessons)");
+  $query->addParam('wt' , 'json');
+  
+  if ( $sort == 'is_diffeclty_at') {
+    $query->addParam('sort' , $sort.' asc');
+  } else {
+    $query->addParam('sort' , $sort.' desc');
+  }
+  
+  $query->addParam('rows' , 1000);
+  $resp = $query->search();
+  $document = $resp->response->docs;
+  foreach ($document as $key => $value) {
+    $valuelabel = str_replace('&#039;', "'", $value->label);
+    $table_rows[] = array(
+      array('data' => l(htmlspecialchars_decode($valuelabel), 'node/' . $value->entity_id) , 'class' => array('views-field-title')),
+      array('data' => l(htmlspecialchars_decode($value->sm_field_difficulty_level[0]).' of 10', 'node/' . $value->entity_id)),
+      array('data' => l(htmlspecialchars_decode($value->sm_vid_Lesson_Type[0]), 'node/' . $value->entity_id)),
+      array('data' => l(htmlspecialchars_decode($value->sm_vid_Technique[0]), 'node/' . $value->entity_id)),
+      array('data' => l(htmlspecialchars_decode($value->sm_vid_Music_Category[0]), 'node/' . $value->entity_id)),
+    );
+  }
+  $header = array(
+    array('data' => t('Name')), // sort
+    array('data' => t('Level')),
+    array('data' => t('Type')),
+    array('data' => t('Technique')),
+    array('data' => t('Category')),
+  );
+
+  return '<div class="view view-instructor-lessons view-id-instructor_lessons view-display-id-block"><div class="view-content">'.theme('table', array(
+          'header' => $header,
+          'rows' => $table_rows,
+          'attributes' => array('class' => array('views-table'))
+        )).'</div></div>';
+}
+
+function gmc_lessonload_session() {
+  $url = $_POST['url'];
+  if (!empty($url)) {
+    $data1 = explode(';', $url);
+    $data2 = explode('#lesson=', $data1[0]);
+    $data3 = explode('forum=', $data1[1]);
+    $_SESSION['loadmore_lesson'] = $data2[1];
+    $_SESSION['loadmore_forum'] = $data3[1];
+    print $_SESSION['loadmore_lesson'].'+'.$_SESSION['loadmore_forum'];
+  } else {
+    unset($_SESSION['loadmore_lesson']);
+    unset($_SESSION['loadmore_forum']);
+    print  'false';
+  }
+}
+
+
+function get_serach_user($string) {
+  $pieces = explode(" ", $string);
+  $uidsss = '';
+  $count = 1;
+  foreach ($pieces as $keys => $value ) {
+    if (strlen($value) > 2) {
+    $user_uids = db_query("SELECT * FROM users u left join users_roles ur on ur.uid = u.uid WHERE CAST(name AS CHAR) LIKE :datasd AND status = 1 AND ur.rid = 4", array(':datasd' => $value.'%'));
+    foreach($user_uids as $user_uid) {
+      $count++;
+      $file = file_load($user_uid->picture);
+      $uri = $file->uri; 
+      $path = file_create_url($uri);
+		   $uidsss .= '<li class="views-row views-row-2 views-row-even views-row-last">  
+                    <div class="views-field views-field-nothing">
+                    <span class="field-content"><a href="/user/'.$user_uid->uid.'" class="forum">'.$user_uid->name.'</a>
+                  <a class="cover" href="/user/'.$user_uid->uid.'">
+	                  <div class="overlay"></div>
+	                  <img src="'.$path.'" class="instr-pic-140">
+                  </a>
+                  </span>  </div></li>';
+                        
+	  }
+   }
+  }
+  if ($count > 1) {
+    $uids .= '<div class=""><div class=""><div class=""><ul class="instructor-search-list">'.$uidsss;
+    $uids .= '</ul></div></div></div>';
+  } else {
+    return '';
+  }
+
+  return $uids;
+}

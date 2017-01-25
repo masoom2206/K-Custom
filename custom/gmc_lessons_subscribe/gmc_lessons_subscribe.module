@@ -1,0 +1,905 @@
+<?php
+/**
+* Implementation of hook_menu
+*/
+function gmc_lessons_subscribe_menu() {
+  $items = array();
+  //Menu for Subscribe Lessons.
+  $items['subscribe/lessons'] = array(
+    'title' => 'Subscribe Lessons',
+    'description' => 'Subscribe Lessons',
+	'page callback' => 'gmc_subscribe_lessons',
+    'access callback' => TRUE,
+  );
+  //Menu for Unsubscribe Lessons.
+  $items['unsubscribe/lessons/%/%'] = array(
+    'title' => 'Unsubscribe Lessons',
+    'description' => 'Unsubscribe Lessons',
+	//'page callback' => 'gmc_unsubscribe_lessons',
+    //'page arguments'   => array(2, 3),
+	'page callback' => 'drupal_get_form',
+    'page arguments' => array('unsubscribe_instructor_confirm', 2, 3, 4),	
+    'access callback' => TRUE,
+  );
+  //Menu for Subscribe Lessons.
+  $items['lesson-notification'] = array(
+    'title' => 'Lesson Notification',
+    'description' => 'Lesson Notification',
+	'page callback' => 'lesson_notification_sent',
+    'access callback' => TRUE,
+  );
+  //Menu for Subscribe forum-topic.
+  $items['subscribe/forum-topic'] = array(
+    'title' => '',
+    'description' => 'Subscribe Forum or Topic',
+	'page callback' => 'gmc_subscribe_forum_topic',
+    'access callback' => TRUE,
+  );
+  //Menu for Report forum-topic.
+  $items['report/forum-topic'] = array(
+    'title' => '',
+    'description' => 'Report Forum Topic',
+	'page callback' => 'report_forum_topic',
+    'access callback' => TRUE,
+  );
+  //user quote message ids.
+  $items['quote/message-ids'] = array(
+    'title' => '',
+    'description' => 'User Quote Message Ids',
+	'page callback' => 'quote_message_ids',
+    'access callback' => TRUE,
+  );
+  //user subscribe topic list.
+  $items['subscribed-topic'] = array(
+    'title' => '',
+    'description' => 'user subscribe topic list',
+	'page callback' => 'gmc_subscribe_topic',
+    'access callback' => TRUE,
+  );
+  //user subscribe forum list.
+  $items['subscribed-forum'] = array(
+    'title' => '',
+    'description' => 'user subscribe forum list',
+	'page callback' => 'gmc_subscribe_forum',
+    'access callback' => TRUE,
+  );
+
+ return $items;
+}
+/**
+ * Implements hook_init()
+ */
+function gmc_lessons_subscribe_init(){
+	drupal_add_js(drupal_get_path('module', 'gmc_lessons_subscribe') . '/js/subscribe.js');
+}
+/**
+ * Implements hook_node_insert()
+ */
+function gmc_lessons_subscribe_node_insert($node){
+	//print "<pre>";print_r($node);exit;
+	if($node->type == 'Lessons'){
+		$subscribe_id = db_select('gmc_user_subscribe', 'gsi')
+		  ->fields('gsi', array('subscribe_id'))
+		  ->condition('entity_id', $node->uid)
+		  ->condition('type', 'uid')
+		  ->execute();
+		$count = $subscribe_id->rowCount();
+		if($count > 0){
+			db_insert('gmc_subscribe_node')
+				->fields(array('entity_id' => $node->uid, 'type' => 'uid', 'nid' => $node->nid))
+				->execute();
+		}
+	}
+	else if($node->type == 'forum'){
+		//print "<pre>";print_r($node);exit;
+		$tid = $node->taxonomy_forums['und'][0]['tid'];
+		$subscribe_id = db_select('gmc_user_subscribe', 'gsi')
+		  ->fields('gsi')
+		  ->condition('entity_id', $tid)
+		  ->condition('type', 'tid')
+		  ->execute();
+		$count = $subscribe_id->rowCount();
+		if($count > 0){
+			foreach($subscribe_id as $subscribe_detail) {
+				if($subscribe_detail->notification_method == 'daily') {
+					db_insert('gmc_subscribe_node')
+						->fields(array('entity_id' => $tid, 'type' => 'tid', 'nid' => $node->nid))
+						->execute();
+				}
+				else if($subscribe_detail->notification_method == 'immediate') {
+					$type = 'tid';
+					$entity_id = $tid;
+					$nid = $node->nid;
+					$notification_method = 'immediate';
+					subscribe_notification($type, $notification_method, $entity_id, $nid);
+				}
+			}
+		}
+	}
+}
+/**
+ * Implements hook_comment_insert()
+ */
+function gmc_lessons_subscribe_comment_insert($comment){
+	//print "<pre>";print_r($comment);exit;
+	$subscribe_id = db_select('gmc_user_subscribe', 'gsi')
+	  ->fields('gsi')
+	  ->condition('entity_id', $comment->nid)
+	  ->condition('type', 'nid')
+	  ->execute();
+	$count = $subscribe_id->rowCount();
+	if($count > 0){
+		foreach($subscribe_id as $subscribe_detail) {
+			if($subscribe_detail->notification_method == 'daily') {
+				db_insert('gmc_subscribe_node')
+					->fields(array('entity_id' => $comment->cid, 'type' => 'cid', 'nid' => $comment->nid))
+					->execute();
+			}
+			else if($subscribe_detail->notification_method == 'immediate') {
+				$type = 'cid';
+				$entity_id = $comment->cid;
+				$nid = $comment->nid;
+				$notification_method = 'immediate';
+				subscribe_notification($type, $notification_method, $entity_id, $nid);
+			}
+		}
+	}
+}
+/**
+ * Implements hook_node_delete()
+ */
+function gmc_lessons_subscribe_node_delete($node){
+	//print "<pre>";print_r($node);exit;
+	if($node->type == 'Lessons' || $node->type == 'forum'){
+		db_delete('gmc_subscribe_node')
+		  ->condition('nid', $node->nid)
+		  ->execute();
+	}
+}
+/**
+ * Implements hook_theme()
+ * @return $themes
+ */
+function gmc_lessons_subscribe_theme($existing, $type, $theme, $path) {
+	$themes = array (
+		'gmc_subscribe_forum_topic' => array(
+			'template' => 'template/gmc_subscribe_forum_topic',
+		),
+	);
+	return $themes;	
+}
+
+/**
+ * Implements hook_form_alter()
+ * @return $form
+ */
+function gmc_lessons_subscribe_form_alter(&$form, &$form_state, $form_id) {
+	//print $form_id;exit; //
+	//unset($_SESSION['quote_ids']);
+	if($form_id == 'comment_node_forum_form'){
+		//print "<pre>";print_r($form);exit;
+		$default_comment = '';
+		if(isset($_SESSION['quote_ids']) && !empty($_SESSION['quote_ids'])) {
+			foreach($_SESSION['quote_ids'] as $quote_ids) {
+				$ids = explode("-", $quote_ids);
+				if($ids[0] == 'nid'){
+					$data = node_load($ids[1]);
+					$user_data = user_load($data->uid);
+					$default_comment .= '[quote name='.$user_data->name.' date='.date("M d Y, h:m A", $data->created).' post='.$data->nid.']'.$data->body['und']['0']['value'].'[/quote]<br/><br/><br/>';
+				}
+				else if($ids[0] == 'cid') {
+					$data = comment_load($ids[1]);
+					$user_data = user_load($data->uid);
+					$body = $data->comment_body['und']['0']['value'];
+					$body = preg_replace("/<div(.*?)\<\/div>/", '', $body);
+					$body = preg_replace("/<br[^>]*>/i", '', $body);
+					$default_comment .= '[quote name='.$user_data->name.' date='.date("M d Y, h:m A", $data->created).' post='.$data->cid.']'.$body.'[/quote]<br/><br/><br/>';
+				}
+				//unset($_SESSION['quote_ids']);
+				//print "<pre>";print_r($data);exit;
+			}
+			$form['comment_body']['und']['0']['#default_value'] = $default_comment;
+			//print $default_comment;
+			//print "<pre>";print_r($_SESSION);exit;
+		}
+	}
+}
+/**
+ * Implements hook_comment_presave()
+ * @return $form
+ */
+function gmc_lessons_subscribe_comment_presave($comment) {
+	$val = $comment->comment_body['und']['0']['value'];
+	$val = str_replace("[quote", "<div class='quotetop'>QUOTE", $val);
+	$val = str_replace("name=", "(", $val);
+	$val = str_replace("date=", "", $val);
+	$val = preg_replace("/post=(\d+)]/", '<a href="#entry$1"><img src="/sites/all/themes/gmc_v2/images/post_snapback.gif"/></a></div><div class=\'quotemain\'>', $val);
+	$val = str_replace("[/quote]", '</div><br /><br />', $val);
+	if(substr_count($val, '[soundcloud]') > 0) {
+		$sound_cloud_url = explode('[soundcloud]',$val);
+		$sound_cloud_url = explode('[/soundcloud]',$sound_cloud_url[1]);
+		$url = $sound_cloud_url[0];
+		$sound_cloud = '<object height="81" width="100%"><param name="movie" value="http://player.soundcloud.com/player.swf?url='.$url.'"/><param name="allowscriptaccess" value="always"/><embed allowscriptaccess="always" height="81" src="http://player.soundcloud.com/player.swf?'.$url.'" type="application/x-shockwave-flash" width="100%"/></object><a href="'.$url.'" target="_blank">'.$url.'</a>';
+		$val = str_replace('[soundcloud]'.$url.'[/soundcloud]', $sound_cloud, $val);
+	}
+	$comment->comment_body['und']['0']['value'] = $val;
+	unset($_SESSION['quote_ids']);
+}
+
+/**
+* Callback function gmc_subscribe_lessons
+* for subscribe instructor lesson
+* @return $message
+*/
+function gmc_subscribe_lessons() {
+	global $user;
+	$ins_uid = $_POST['ins_uid'];
+	$uid = $_POST['log_uid'];
+	$email = $_POST['log_email'];
+	$ins_name = $_POST['ins_name'];
+	$subscribe_id = db_select('gmc_user_subscribe', 'gsi')
+	  ->fields('gsi', array('subscribe_id'))
+	  ->condition('entity_id', $ins_uid)
+	  ->condition('type', 'uid')
+	  ->condition('email', $email)
+	  ->execute();
+	$count = $subscribe_id->rowCount();
+	if($count == 0) {
+		$subscribe_id = db_insert('gmc_user_subscribe')
+			->fields(array('uid' => $uid, 'entity_id' => $ins_uid, 'type' => 'uid', 'notification_method' => '', 'email' => $email, 'subscribe_date' => time()))
+			->execute();
+		if($subscribe_id) {
+			print 'You will now receive an email notification as soon as '.$ins_name.' has published a new lesson!';
+		}
+		else {
+			print 'Unable to subscribe at this time. Please try again later.';
+		}
+	}
+	else {
+		print 'You have already subscribed '.$ins_name.' lessons!';
+	}
+}
+/**
+* Implements form API
+* Callback function unsubscribe_instructor_confirm
+* to confirm unsubscribe instructor lesson
+* @return $form
+*/
+function unsubscribe_instructor_confirm($form, &$form_state, $ins_id, $ins_type, $user_email) {
+	$id = base64_decode($ins_id);
+	$email = base64_decode($user_email);
+	$type = base64_decode($ins_type);
+	if($type == 'uid') {
+		$ins_detail = user_load($id);
+		$lessons = $ins_detail->name;
+		$link = "user/".$id;
+	}
+	else if($type == 'nid') {
+		$ins_detail = node_load($id);
+		$lessons = '"'.$ins_detail->title.'" topic';
+		$link = "subscribe-topic";
+	}
+	else if($type == 'tid') {
+		$ins_detail = taxonomy_term_load($id);
+		$lessons = '"'.$ins_detail->name.'" forum';
+		$link = "subscribe-forum";
+	}
+	$form['ins_id'] = array(
+		'#type' => 'value',
+		'#value' => $id,
+	);
+	$form['ins_type'] = array(
+		'#type' => 'value',
+		'#value' => $type,
+	);
+	$form['user_email'] = array(
+		'#type' => 'value',
+		'#value' => $email,
+	);
+ 	return confirm_form($form,
+    	t('Are your sure you wish to disable email notifications for '.$lessons),
+    	$link,
+    	t('This action cannot be undone.'),
+    	t('Unsubscribe'),
+    	t('Cancel'));
+}
+/**
+* Implements form API Submit
+* Callback function unsubscribe_instructor_confirm_submit
+* to delete subscription for instructor lesson
+* @return $form
+*/
+function unsubscribe_instructor_confirm_submit($form, &$form_state) {
+	$id = $form_state['values']['ins_id'];
+	$email = $form_state['values']['user_email'];
+	$type = $form_state['values']['ins_type'];
+	db_delete('gmc_user_subscribe')
+	  ->condition('entity_id', $id)
+	  ->condition('type', $type)
+	  ->condition('email', $email)
+	  ->execute();
+	if($type == 'nid') {
+		drupal_goto("subscribed-topic");
+	}
+	else if($type == 'tid') {
+		drupal_goto("subscribed-forum");
+	}
+}
+/**
+ * Implements hook_cron()
+ * To send subscribe mail
+ *
+function gmc_lessons_subscribe_cron() {
+}*/
+function lesson_notification_sent(){
+	$nids = db_select('gmc_subscribe_node', 'gsn')
+	  ->fields('gsn')
+	  ->execute();
+	foreach($nids as $nid) {
+		$notification_method = 'no-immediate';
+		subscribe_notification($nid->type, $notification_method, $nid->entity_id, $nid->nid);
+		/*db_delete('gmc_subscribe_node')
+		  ->condition('nid', $nid->nid)
+		  ->condition('entity_id', $nid->entity_id)
+		  ->execute();*/
+	}
+}
+/**
+ * Callback function subscribe_notification()
+ * to send notification mail to user
+ * which has subscribe Lessons/Forum/Topic
+ */
+function subscribe_notification($type, $notification_method, $entity_id, $nid) {
+	global $base_url;
+	//print "<pre>";print_r($nid);//exit;
+	//Lessons mail to subscriber
+	if($type == 'uid') {
+		$data = db_select('gmc_user_subscribe', 'gsi')
+		  ->fields('gsi')
+		  ->condition('entity_id', $entity_id)
+		  ->condition('type', 'uid')
+		  ->condition('notification_method', 'immediate', '<>')
+		  ->execute();
+		$count = $data->rowCount();
+		if($count > 0) {
+			foreach($data as $row) {
+				$base_email = base64_encode($row->email);
+				$base_ins_uid = base64_encode($row->entity_id);
+				$base_ins_type = base64_encode($row->type);
+				$instructor_detail = user_load($row->entity_id);
+				$node_detail = node_load($nid);
+				//Create mail
+				$to = $row->email;
+				$subject = 'New Lesson from '.$instructor_detail->name.' - '.$node_detail->title;
+				$message = '<br/>We just published a new lesson by '.$instructor_detail->name.' called '.$node_detail->title.'.<br/><br/>Click <a href="'.$base_url.'/node/'.$node_detail->nid.'">here</a> to check it out!<br/><br/><br/><br/><br/>If you no longer want to receive notifications about new lessons from '.$instructor_detail->name.' you can click <a href="'.$base_url.'/unsubscribe/lessons/'.$base_ins_uid.'/'.$base_ins_type.'/'.$base_email.'">here</a>.';
+				$headers = "MIME-Version: 1.0" . "\r\n";
+				$headers .= "Content-type:text/html;charset=iso-8859-1" . "\r\n";
+				$headers .= 'From: <GuitarMasterClass.net>' . "\r\n";
+				mail($to, $subject, $message, $headers);
+				if(mail) {
+					//print "<br/>Lessons == Sent to = ".$to;//exit;
+				}
+			}
+		}
+	}
+	//Forum mail to subscriber
+	else if($type == 'tid') {
+		if($notification_method == 'immediate') {
+			$data = db_select('gmc_user_subscribe', 'gsi')
+			  ->fields('gsi')
+			  ->condition('entity_id', $entity_id)
+			  ->condition('type', 'tid')
+			  ->condition('notification_method', 'immediate', '=')
+			  ->execute();
+		}
+		else {
+			$data = db_select('gmc_user_subscribe', 'gsi')
+			  ->fields('gsi')
+			  ->condition('entity_id', $entity_id)
+			  ->condition('type', 'tid')
+			  ->condition('notification_method', 'immediate', '<>')
+			  ->execute();
+			}
+		$count = $data->rowCount();
+		if($count > 0) {
+			foreach($data as $row) {
+				$base_email = base64_encode($row->email);
+				$base_ins_uid = base64_encode($row->entity_id);
+				$base_ins_type = base64_encode($row->type);
+				$term_detail = taxonomy_term_load($row->entity_id);
+				$node_detail = node_load($nid);
+				//Create mail
+				$to = $row->email;
+				$subject = 'New Forum of '.$term_detail->name.' - '.$node_detail->title;
+				$message = '<br/>We just published a new forum of '.$term_detail->name.' called '.$node_detail->title.'.<br/><br/>Click <a href="'.$base_url.'/guitar_forum/'.$node_detail->nid.'">here</a> to check it out!<br/><br/><br/><br/><br/>If you no longer want to receive notifications about new forum of '.$term_detail->name.' you can click <a href="'.$base_url.'/unsubscribe/lessons/'.$base_ins_uid.'/'.$base_ins_type.'/'.$base_email.'">here</a>.';
+				$headers = "MIME-Version: 1.0" . "\r\n";
+				$headers .= "Content-type:text/html;charset=iso-8859-1" . "\r\n";
+				$headers .= 'From: <GuitarMasterClass.net>' . "\r\n";
+				mail($to, $subject, $message, $headers);
+				if(mail) {
+					//print "<br/><br/>Forum == Sent to = ".$to;//exit;
+				}
+			}
+		}
+	}
+	//Topic mail to subscriber
+	else if($type == 'cid') {
+		if($notification_method == 'immediate') {
+			$data = db_select('gmc_user_subscribe', 'gsi')
+			  ->fields('gsi')
+			  ->condition('entity_id', $nid)
+			  ->condition('type', 'nid')
+			  ->condition('notification_method', 'immediate', '=')
+			  ->execute();
+		}
+		else {
+			$data = db_select('gmc_user_subscribe', 'gsi')
+			  ->fields('gsi')
+			  ->condition('entity_id', $nid)
+			  ->condition('type', 'nid')
+			  ->condition('notification_method', 'immediate', '<>')
+			  ->execute();
+			}
+		$count = $data->rowCount();
+		if($count > 0) {
+			foreach($data as $row) {
+				$base_email = base64_encode($row->email);
+				$base_ins_uid = base64_encode($row->entity_id);
+				$base_ins_type = base64_encode($row->type);
+				$comment_detail = comment_load($entity_id);
+				$node_detail = node_load($nid);
+				//Create mail
+				$to = $row->email;
+				$subject = 'New Topic of '.$node_detail->title.' - '.$comment_detail->subject;
+				$message = '<br/>We just published a new Topic of '.$node_detail->title.' called '.$comment_detail->subject.'.<br/><br/>Click <a href="'.$base_url.'/guitar_forum/'.$node_detail->nid.'">here</a> to check it out!<br/><br/><br/><br/><br/>If you no longer want to receive notifications about new forum of '.$node_detail->title.' you can click <a href="'.$base_url.'/unsubscribe/lessons/'.$base_ins_uid.'/'.$base_ins_type.'/'.$base_email.'">here</a>.';
+				$headers = "MIME-Version: 1.0" . "\r\n";
+				$headers .= "Content-type:text/html;charset=iso-8859-1" . "\r\n";
+				$headers .= 'From: <GuitarMasterClass.net>' . "\r\n";
+				mail($to, $subject, $message, $headers);
+				if(mail) {
+					//print "<br/><br/>Topic == Sent to = ".$to;//exit;
+				}
+			}
+		}
+	}
+	//print "<pre>";print_r($data);exit;
+}
+
+/**
+ * Callback function for subscribe link in forum page
+ */
+function gmc_subscribe_link($id, $type) {
+	global $user;
+	if($type == 'uid') {
+		$user_detail = user_load($id);
+		$sub_title = $user_detail->name;
+		$subscribe_id = $user_detail->uid;
+		$link = '#';
+		$class = 'instructor-subscribe-button';
+		$text = 'Subscribe to this forum';
+	}
+	else if($type == 'tid') {
+		$term_detail = taxonomy_term_load($id);
+		$sub_title = $term_detail->name;
+		$subscribe_id = $term_detail->tid;
+		$link = '/subscribe/forum-topic?tid='.$id.'&nid=';
+		$class = 'lessons-subscribe-button';
+		$text = 'Subscribe to this forum';
+	}
+	else if($type == 'nid') {
+		$node_detail = node_load($id);
+		$sub_title = $node_detail->title;
+		if(isset($node_detail->body['und']['0']['value']) && trim($node_detail->body['und']['0']['value']) != '') {
+			$sub_title .= ', '.trim(strip_tags($node_detail->body['und']['0']['value']));
+		}
+		$subscribe_id = $node_detail->nid;
+		$link = '/subscribe/forum-topic?tid=&nid='.$id;
+		$class = 'lessons-subscribe-button';
+		$text = 'Subscribe to this topic';
+	}
+	if($user->uid == 0) {
+		$output = '<div class="main-topic-title"><table cellspacing="0" cellpadding="0" class="borderwraps" id="personal-board-user-name">
+				<tbody>
+					<tr>
+						<td width="99%"><div class="topic-title-image"><img src="/sites/all/themes/gmc_v2/images/nav_m.gif" border="0" alt="&gt;" width="8" height="8">&nbsp;<b>'.$sub_title.'</b></div></td>
+						<td width="1%" nowrap="nowrap" align="right">&nbsp;
+						</td>
+					</tr>
+				</tbody>
+			</table></div>';
+	}
+	else {
+		$output = '<div class="main-topic-title"><table cellspacing="0" cellpadding="0" class="borderwraps" id="personal-board-user-name">
+				<tbody>
+					<tr>
+						<td width="99%"><div class="topic-title-image"><img src="/sites/all/themes/gmc_v2/images/nav_m.gif" border="0" alt="&gt;" width="8" height="8">&nbsp;<b>'.$sub_title.'</b></div></td>
+						<td width="1%" nowrap="nowrap" align="right">
+							<div class="popmenubutton" id="forummenu-options" style="cursor: pointer;"><a href="#">Forum Options</a> <img src="/sites/all/themes/gmc_v2/images/menu_action_down.gif" alt="V" title="Open Menu" border="0"></div>
+							<div class="forum-option-popupmenu" id="forummenu-options_menu">
+								<div class="popupmenu-item '.$class.'" instructor-uid="'.$subscribe_id.'" instructor-name="'.$sub_title.'" login-user-uid="'.$user->uid.'" login-user-email="'.$user->mail.'">
+									<img src="/sites/all/themes/gmc_v2/images/menu_item.gif" border="0" alt="V" style="vertical-align:middle"> <a href="'.$link.'">'.$text.'</a>
+								</div>
+							</div>
+						</td>
+					</tr>
+				</tbody>
+			</table></div>';
+	}
+	return $output;
+}
+
+/**
+ * Callback function gmc_subscribe_forum_topic
+ * to subscribe forum and forum topic
+ * @return theme
+ */
+function gmc_subscribe_forum_topic(){
+	if(isset($_GET['tid']) && ($_GET['tid'] != '' || $_GET['nid'] != '')) {
+		$forum_topic = array("Forum Topic");
+		return theme('gmc_subscribe_forum_topic', $forum_topic);
+	}
+	else {
+		drupal_goto('forum');
+	}
+}
+
+
+/**
+* Implements form API
+* Callback function gmc_subscribe_forum_topic_form
+* to subscribe forum or topic
+* @return $form
+*/
+function gmc_subscribe_forum_topic_form() {
+	global $user, $base_url;
+	$active = array(
+		'immediate' => t('<b>Immediate Email Notification</b><div class="desc">This option will send out a notification immediately after a new topic or reply has been made regardless of your activity.</div>'),
+		'daily' => t('<b>Daily Email Digest</b><div class="desc">This option will send out a daily digest showing all new replies or topics for that day</div>')
+	);
+	$form['subscribe_forum_topic'] = array(
+		'#type' => 'radios',
+		'#title' => t(''),
+		'#default_value' => 'daily',
+		'#options' => $active,
+	);
+	$form['tid'] = array(
+		'#type' => 'hidden',
+		'#value' => $_GET['tid'],
+	);
+	$form['nid'] = array(
+		'#type' => 'hidden',
+		'#value' => $_GET['nid'],
+	);
+	$form['submit'] = array(
+		'#type' => 'submit',
+		'#value' => t('Proceed'),
+		'#prefix' => '<div class="formbuttonrow">',
+		'#suffix' => '</div>',
+	);
+	return $form;
+}
+/**
+ * hook_submit for delete drafts.
+ * @return form
+ */
+function gmc_subscribe_forum_topic_form_submit(&$form, &$form_state) {
+	//print "<pre>";print_r($form_state);exit;
+	global $user;
+	if($form_state['input']['tid'] != ''){
+		$entity_id = $form_state['input']['tid'];
+		$type = 'tid';
+	}
+	else if ($form_state['input']['nid'] != '') {
+		$entity_id = $form_state['input']['nid'];
+		$type = 'nid';
+	}
+	$method = $form_state['input']['subscribe_forum_topic'];
+	$subscribe_id = db_select('gmc_user_subscribe', 'gs')
+	  ->fields('gs', array('subscribe_id'))
+	  ->condition('entity_id', $entity_id)
+	  ->condition('type', array('tid', 'nid'), 'IN')
+	  ->condition('email', $user->mail)
+	  ->execute();
+	$count = $subscribe_id->rowCount();
+	if($count == 0) {
+		$subscribe_id = db_insert('gmc_user_subscribe')
+			->fields(array('uid' => $user->uid, 'entity_id' => $entity_id, 'type' => $type, 'notification_method' => $method, 'email' => $user->mail, 'subscribe_date' => time()))
+			->execute();
+		drupal_set_message(t("You have subscribed successfully!"), 'status');
+		if($type == 'nid') {
+			drupal_goto('guitar_forum_topic/'.$entity_id);
+		}
+		else if($type == 'tid') {
+			drupal_goto('guitar_forum', array('query' => array('showforum' => $entity_id)));
+		}
+	}
+	else {
+		drupal_set_message(t("You have already subscribed!"), 'warning');
+		if($type == 'nid') {
+			drupal_goto('guitar_forum_topic/'.$entity_id);
+		}
+		else if($type == 'tid') {
+			drupal_goto('guitar_forum', array('query' => array('showforum' => $entity_id)));
+		}
+	}
+}
+/**
+ * Callback function forum_comment_count
+ * to get comment count of user in forum content type
+ * @return $count
+ */
+function forum_comment_count($uid) {
+	$query = db_select('comment', 'c');
+	$query->join('node', 'n', 'n.nid = c.nid');
+	$forum_comment = $query
+	  ->fields('c', array('cid'))
+	  ->condition('c.uid', $uid)
+	  ->condition('n.type', 'forum')
+	  ->execute();
+	$count = $forum_comment->rowCount();
+	return $count;
+}
+/**
+ * Callback function report_forum_topic
+ * to report on the forum topic
+ * @return $output
+ */
+function report_forum_topic() {
+	$output = '';
+	if(isset($_GET['nid'])) {
+		$output .= '<div class="borderwrap">';
+		$form = drupal_get_form('report_forum_topic_form');
+		$output .= drupal_render($form);
+		$output .= '</div>';
+	}
+	return $output;
+}
+
+/**
+ * Form API for report on the forum topic.
+ * @return $form
+ */
+function report_forum_topic_form(){
+	global $user, $base_url;
+	if(isset($_GET['nid'])) {
+		$node_data = node_load($_GET['nid']);
+		$title = $node_data->title;
+		$link = $base_url .'/guitar_forum_topic/'.$_GET['nid'].'#entry'. $_GET['cid'];
+	}
+	$form['table_start'] = array(
+		'#markup' => '<table class="ipbtable" cellspacing="1"><tbody><tr><td class="row1" width="30%" valign="top"><b>Topic Title</b></td>',
+	);
+	$form['tr_1'] = array(
+		'#markup' => '<td class="row1" width="80%" style="padding-left:9px;"><a href="'.$link.'">'.$title.'</a></td></tr>',
+	);
+	$form['tr_2'] = array(
+		'#markup' => '<tr><td class="row1" width="30%" valign="top"><b>Enter your report</b><br><br>Please note: The moderator will be made aware of the link to the post and the topic title.<br><br>This form is to be used ONLY for reporting objectional content, etc and is not to be used as a method of communicating with moderators for other reasons.</td><td class="row1" width="80%">',
+	);
+	$form['message'] = array(
+		'#title' => '',
+		'#type' => 'textarea',
+		'#cols' => 60,
+		'#rows' => 12,
+	);
+	
+	$form['tr_3'] = array(
+		'#markup' => '</td></tr><tr><td class="formbuttonrow" colspan="2">',
+	);
+
+	$form['submit'] = array(
+		'#type' => 'submit',
+		'#value' => t('Submit Report'),
+	);
+	$form['tr_4'] = array(
+		'#markup' => '</td></tr></tbody></table>',
+	);
+	return $form;
+}
+/**
+ * hook_submit for send report mail.
+ * @return form
+ */
+function report_forum_topic_form_submit(&$form, &$form_state) {
+	//print "<pre>";print_r($form_state);exit;
+	global $user,$base_url;
+	if($user->uid > 0){
+		$user_detail = user_load($user->uid);
+		$name = ucwords($user_detail->name);
+	}
+	else {
+		$name = 'Guest';
+	}
+	$node_data = node_load($_GET['nid']);
+	$link = $base_url .'/guitar_forum_topic/'.$_GET['nid'].'#entry'. $_GET['cid'];
+	$admin = user_load(1);
+	//Create mail
+	$to = $admin->mail;
+	$subject = 'New Report for '.$node_data->title.' from '.$name;
+	$message = '<br/><br/>Link of report forum topic: '.$link.'<br/>';
+	$message .= 'Messages: '.$form_state['input']['message'].'<br/>';
+	$message .= 'User: '.$name.'<br/><br/>';
+	$headers = "MIME-Version: 1.0" . "\r\n";
+	$headers .= "Content-type:text/html;charset=iso-8859-1" . "\r\n";
+	$headers .= 'From: <GuitarMasterClass.net>' . "\r\n";
+	mail($to, $subject, $message, $headers);
+	if(mail) {
+		drupal_goto($link);
+	}
+
+}
+/**
+ * Callback function quote_message_ids
+ * to set session variables of quote ids
+ * @set $_SESSION
+ */
+function quote_message_ids(){
+	session_start();
+	$_SESSION['quote_ids'] = $_POST['QuoteID'];
+	//drupal_goto('/comment/reply/'.$_POST['nid'].'?destination=guitar_forum_topic/'.$_POST['nid']);
+	//return '';
+	print 'Done';
+}
+/**
+ * Callback function gmc_subscribe_topic
+ * to display Subscribe topic list
+ * @return theme_table
+ */
+function gmc_subscribe_topic(){
+	$output = "";
+	global $user, $base_url;
+	$query = db_select("gmc_user_subscribe", "s");
+	$query->fields("s");
+	$query = $query->condition('s.type', 'nid', '=');
+	$query = $query->condition('s.uid', $user->uid, '=');
+	$query = $query->extend('TableSort')->extend('PagerDefault')->limit(25);
+	$query = $query->orderBy('s.subscribe_date', 'DESC');
+	$result = $query->execute();
+	//$data = $result->fetchObject();
+	//print "<pre>";print_r($data);exit;
+	$header = array(
+				array('data' => '&nbsp;', 'width' => '5%'),
+				array('data' => 'Topic', 'width' => '35%'),
+				array('data' => 'Replies', 'width' => '10%', 'align' => 'center'),
+				array('data' => 'Views', 'width' => '10%', 'align' => 'center'),
+				array('data' => 'Last Post', 'width' => '25%',),
+				array('data' => 'Un-Subscribe', 'width' => '15%'),
+			);
+	$rows = array();
+	while($data = $result->fetchObject()){
+		$topic = '';
+		$node_detail = node_load($data->entity_id);
+		if($data->notification_method == 'daily') {
+			$notification_method = 'Type: Daily Email Digest';
+		}
+		else {
+			$notification_method = 'Type: Immediate Email Notification';
+		}
+		$topic = '<b>'.l($node_detail->title,"guitar_forum_topic/".$node_detail->nid).'</b><br/>'.$notification_method;
+		$replies = db_query("SELECT COUNT(cid) FROM {comment} WHERE nid = :nid",array(':nid' => $data->entity_id))->fetchField();
+		$views = db_query("SELECT COUNT(uid) FROM node_view_count WHERE nid = :nid", array(':nid' => $data->entity_id))->fetchField();
+		$last_post = '';
+		$last_post_comment = db_query("SELECT * FROM {comment} WHERE nid = :nid ORDER BY created DESC LIMIT 0 , 1",array(':nid' => $data->entity_id))->fetchAll();
+		$last_post_time = date("M d Y, H:i A", $last_post_comment[0]->created);
+		$last_post_user = user_load($last_post_comment[0]->uid);
+		if(in_array('instructor', $last_post_user->roles)) {
+			$user_name = l(ucwords($last_post_user->name),'instructor/'.str_replace(" ", "-", $last_post_user->name));
+		}
+		else {
+			$user_name = l(ucwords($last_post_user->name),'user/'.str_replace(" ", "-", $last_post_user->name));
+		}
+		$last_post = $last_post_time.'<br>In: <a href="/guitar_forum_topic/'.$node_detail->nid.'#entry'.$last_post_comment[0]->cid.'">'.$node_detail->title.'</a><br/>By: '.$user_name;
+		$unsubscribe_link = '';
+		$base_email = base64_encode($data->email);
+		$base_ins_uid = base64_encode($data->entity_id);
+		$base_ins_type = base64_encode($data->type);
+		$unsubscribe_link = '<a href="'.$base_url.'/unsubscribe/lessons/'.$base_ins_uid.'/'.$base_ins_type.'/'.$base_email.'">Delete</a>';
+		$rows[] = array(
+			array('data' => '<img src="/sites/all/themes/gmc_v2/images/f_norm.gif" border="0" alt="New Posts">', 'class' => 'row1'),
+			array('data' => $topic, 'class' => 'row1'),
+			array('data' => $replies, 'class' => 'row1'),
+			array('data' => $views, 'class' => 'row1'),
+			array('data' => $last_post, 'class' => 'row1'),
+			array('data' => $unsubscribe_link, 'class' => 'row1'),
+		);
+		//print "<pre>";print_r($rows);exit;
+	}
+	$output = '<div id="ucpcontent"><div class="formsubtitle">Your Topic Subscriptions</div><div class="borderwrapm">';
+	$output .= theme_table(
+			array(
+			"header" => $header,
+			"rows" => $rows,
+			"attributes" => array('width' => '100%', 'class' => array('ipbtable'), 'cellspacing' => 1),
+			"caption" => "",
+			"colgroups" => array(),
+			"sticky" => "",
+			"empty" => "",
+			)
+		).theme("pager");
+	$output .= '</div></div>';
+	return $output;
+}
+/**
+ * Callback function gmc_subscribe_topic
+ * to display Subscribe forum list
+ * @return theme_table
+ */
+function gmc_subscribe_forum(){
+	$output = "";
+	global $user, $base_url;
+	$query = db_select("gmc_user_subscribe", "s");
+	$query->fields("s");
+	$query = $query->condition('s.type', 'tid', '=');
+	$query = $query->condition('s.uid', $user->uid, '=');
+	$query = $query->extend('TableSort')->extend('PagerDefault')->limit(25);
+	$query = $query->orderBy('s.subscribe_date', 'DESC');
+	$result = $query->execute();
+	//$data = $result->fetchObject();
+	//print "<pre>";print_r($data);exit;
+	$header = array(
+				array('data' => '&nbsp;', 'width' => '5%'),
+				array('data' => 'Forum', 'width' => '35%'),
+				array('data' => 'Topic', 'width' => '10%', 'align' => 'center'),
+				array('data' => 'Replies', 'width' => '10%', 'align' => 'center'),
+				array('data' => 'Last Post', 'width' => '25%',),
+				array('data' => 'Un-Subscribe', 'width' => '15%'),
+			);
+	$rows = array();
+	while($data = $result->fetchObject()){
+		$forum = '';
+		$tid_detail = taxonomy_term_load($data->entity_id);
+		if($data->notification_method == 'daily') {
+			$notification_method = 'Type: Daily Email Digest';
+		}
+		else {
+			$notification_method = 'Type: Immediate Email Notification';
+		}
+		$forum = '<b>'.l($tid_detail->name, 'guitar_forum', array('query' => array('showforum' => $tid_detail->tid))).'</b><br/>'.strip_tags($tid_detail->description).'<br/>'.$notification_method;
+		
+		$replies = db_query("SELECT COUNT(c.cid) FROM comment c INNER JOIN field_data_taxonomy_forums tf on c.nid = tf.entity_id WHERE tf.taxonomy_forums_tid = :tid",array(':tid' => $data->entity_id))->fetchField();
+		
+		$topic = db_query("SELECT COUNT(n.nid) FROM node n INNER JOIN field_data_taxonomy_forums tf on n.nid = tf.entity_id WHERE tf.taxonomy_forums_tid = :tid", array(':tid' => $data->entity_id))->fetchField();
+		
+		
+		$last_post = '';
+		$last_post_comment = db_query("SELECT * FROM comment c INNER JOIN field_data_taxonomy_forums tf on c.nid = tf.entity_id WHERE tf.taxonomy_forums_tid = :tid ORDER BY created DESC LIMIT 0 , 1",array(':tid' => $data->entity_id))->fetchAll();
+		$node_detail = node_load($last_post_comment[0]->nid);
+		$last_post_time = date("M d Y, H:i A", $last_post_comment[0]->created);
+		$last_post_user = user_load($last_post_comment[0]->uid);
+		if(in_array('instructor', $last_post_user->roles)) {
+			$user_name = l(ucwords($last_post_user->name),'instructor/'.str_replace(" ", "-", $last_post_user->name));
+		}
+		else {
+			$user_name = l(ucwords($last_post_user->name),'user/'.str_replace(" ", "-", $last_post_user->name));
+		}
+		$last_post = $last_post_time.'<br>In: <a href="/guitar_forum_topic/'.$node_detail->nid.'#entry'.$last_post_comment[0]->cid.'">'.$node_detail->title.'</a><br/>By: '.$user_name;
+		
+		$unsubscribe_link = '';
+		$base_email = base64_encode($data->email);
+		$base_ins_uid = base64_encode($data->entity_id);
+		$base_ins_type = base64_encode($data->type);
+		$unsubscribe_link = '<a href="'.$base_url.'/unsubscribe/lessons/'.$base_ins_uid.'/'.$base_ins_type.'/'.$base_email.'">Delete</a>';
+		$rows[] = array(
+			array('data' => '<img src="/sites/all/themes/gmc_v2/images/bf_new.gif" border="0" alt="New Posts">', 'class' => 'row1'),
+			array('data' => $forum, 'class' => 'row1'),
+			array('data' => $topic, 'class' => 'row1'),
+			array('data' => $replies, 'class' => 'row1'),
+			array('data' => $last_post, 'class' => 'row1'),
+			array('data' => $unsubscribe_link, 'class' => 'row1'),
+		);
+		//print "<pre>";print_r($rows);exit;
+	}
+	$output = '<div id="ucpcontent"><div class="formsubtitle">Your Forum Subscriptions</div><div class="borderwrapm">';
+	$output .= theme_table(
+			array(
+			"header" => $header,
+			"rows" => $rows,
+			"attributes" => array('width' => '100%', 'class' => array('ipbtable'), 'cellspacing' => 1),
+			"caption" => "",
+			"colgroups" => array(),
+			"sticky" => "",
+			"empty" => "",
+			)
+		).theme("pager");
+	$output .= '</div></div>';
+	return $output;
+}

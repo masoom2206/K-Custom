@@ -1,0 +1,456 @@
+<?php
+/*
+ * Dislay error on this process only.
+ */
+
+  error_reporting(E_ALL);
+  ini_set("display_errors", 1);
+  ini_set('memory_limit', '-1');
+  drupal_set_time_limit(300);
+
+/* 
+ * Implement hook_menu()
+ * for creating custom page for import process.
+ */
+function import_bookmark_menu(){
+  $items = array();
+  $items['admin/config/import/bookmark'] = array(
+    'title' => 'Bookmark/Private Message Import',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('import_bookmark_import'),
+    'type' => MENU_NORMAL_ITEM,
+    'access arguments' => array('access content'),
+  );
+  return $items;
+}
+
+/*
+ * Implemtent the menu callback.
+ */
+function import_bookmark_import() {
+
+ $form['description'] = array(
+    '#type' => 'markup',
+    '#markup' => t('Importing the BookMark data.'),
+  );
+  
+  $form['batch'] = array(
+    '#type' => 'select',
+    '#title' => 'Choose batch',
+    '#options' => array(
+      'batch_1' => t('batch 1 - Import the Bookmark data IPB to drupal'),
+      'batch_2' => t('batch 2 - Import the Bookmark Lesson data IPB to drupal'),
+      'batch_3' => t('batch 3 - Import the not imported userids'),
+      'batch_4' => t('batch 4 - Import the Private Message data'),
+      'batch_5' => t('batch 5 - Import the Private Message folder data'),
+      'batch_6' => t('batch 6 - Update the username from live site'),
+    ),
+  );
+  
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => 'Go',
+  );
+
+  return $form;
+}
+
+/*
+ * Implement function to incress the batch function operation
+ */
+function _import_bookmark_update_http_requests() {
+  $_SESSION['http_request_count']++;
+}
+
+
+/*
+ * Implement function to get http request on starting on batch function operation
+ */
+function _import_bookmark_get_http_requests() {
+  return !empty($_SESSION['http_request_count']) ? $_SESSION['http_request_count'] : 0;
+}
+
+/*
+ * Implement function to get batch opration request on starting on batch function operation
+ */
+function import_bookmark_import_submit($form, &$form_state){ 
+  $function = 'import_bookmark_d_' . $form_state['values']['batch'];
+  $_SESSION['http_request_count'] = 0; // reset counter for debug information.
+  $batch = $function();
+  batch_set($batch);
+}
+
+/*
+ * Implemtent the function for import all term into dupral.
+ */
+function import_bookmark_d_batch_1() {
+  $num_operations = db_select('live_data_23sep.Bookmark_New', 'ibf')->fields('ibf')->condition('ibf.iValue', 0, '=')->condition('ibf.id', 36834, '>')->execute()->rowCount();
+  $bookid = db_select('live_data_23sep.Bookmark_New', 'tc')->fields('tc')->condition('tc.iValue', 0, '=')->condition('tc.id', 36834 , '>')->orderBy('tc.id', 'ASC')->execute();
+  $operations = array();
+  $i = 0;
+  
+  while ($data = $bookid->fetchAssoc()) {
+      $emalnew = db_select('data_live_for_ref.gmc_user', 'gu')
+                  ->fields('gu', array('email'))
+                  ->condition('id', $data['user_id'], '=')
+                  ->execute()
+                  ->fetchAssoc();
+     $useridnew = db_select('users', 'u')
+              ->fields('u', array('uid'))
+              ->condition('mail', $emalnew['email'])
+              ->execute()
+              ->fetchAssoc();
+    if (!empty($useridnew['uid'])) {
+      $data['uuid'] = $useridnew['uid'];
+      $operations[] = array('import_bookmark_op_1', array($data, t('(Operation @operation)', array('@operation' => $i))));
+      $i++;
+    } 
+  }
+  //print_r(); exit;
+  drupal_set_message(t('Creating an array of @num operations', array('@num' => $i)));
+  $batch = array(
+    'operations' => $operations,
+    'finished' => 'import_data_finished',
+  );
+  return $batch;
+}
+
+/*
+ * Implemtent the function import_bookmark_op_1 for data saving.
+ */
+function import_bookmark_op_1($data, $operation_details, &$context) {
+  //print_r($data);exit;
+  db_merge('bookmarkorganizer_folder')
+    ->key(array('id' => $data['id']))
+    ->fields(array(
+        'id' => $data['id'],
+        'name'  => $data['sValue'],
+        'uid'  => $data['uuid'],
+        'collapsed' => 0,
+        'public'  => 0
+      ))  
+    ->execute();
+   _import_bookmark_update_http_requests();
+}
+
+/*
+ * Implemtent the function for import all bookmark lesson into dupral.
+ */
+function import_bookmark_d_batch_2() {
+  $lastinsertedid = db_select('bookmarkorganizer_item', 'bmi')->fields('bmi')->orderBy('bmi.id', 'DESC')->extend('PagerDefault')->limit(1)->execute()->fetchAssoc();
+  //print_r($lastinsertedid);exit;
+  $num_operations = db_select('live_data_23sep.Bookmark_New', 'ibf')->fields('ibf')->condition('ibf.id', $lastinsertedid['id'], '>')->extend('PagerDefault')->limit(3000)->execute()->rowCount();
+  $bookid = db_select('live_data_23sep.Bookmark_New', 'tc')->fields('tc')->orderBy('tc.id', 'ASC')->condition('tc.id', $lastinsertedid['id'], '>')->extend('PagerDefault')->limit(3000)->execute();
+  $operations = array();
+  $i = 0;
+  
+  while ($data = $bookid->fetchAssoc()) {
+    $emalnew = db_select('data_live_for_ref.gmc_user', 'gu')
+                ->fields('gu', array('email'))
+                ->condition('id', $data['user_id'], '=')
+                ->execute()
+                ->fetchAssoc();
+     $useridnew = db_select('users', 'u')
+              ->fields('u', array('uid'))
+              ->condition('mail', $emalnew['email'])
+              ->execute()
+              ->fetchAssoc();
+    if ($data['iValue'] != 0 ) {
+     $nidold = db_select('live_data_23sep.LessonAll', 'la')
+          ->fields('la', array('Title'))
+          ->condition('id', $data['iValue'])
+          ->execute()
+          ->fetchAssoc();
+    //print_r($nidold); exit;
+     $nidnew = db_select('node', 'la')
+          ->fields('la', array('nid'))
+          ->condition('title', $nidold['Title'])
+          ->condition('type', 'Lessons')
+          ->execute()
+          ->fetchAssoc();
+      $data['nid'] =  $nidnew['nid'];
+      $data['titlenid'] = $nidold['Title'];
+      $data['nidtype'] = 'node';
+      $data['created'] = strtotime($data['Created']);
+       if ($data['created'] < 0 ) {
+          $data['created'] = time();
+       }
+    } else {
+      $data['nid'] =  $data['id'];
+      $data['titlenid'] = $data['sValue'];
+      $data['nidtype'] = 'folder';
+      $data['created'] = time();
+    }
+    if (!empty($useridnew['uid'])) {
+      $data['uuid'] = $useridnew['uid'];
+      $operations[] = array('import_bookmark_op_2', array($data, t('(Operation @operation)', array('@operation' => $i))));
+      $i++;
+    } 
+  }
+  //print_r(); exit;
+  drupal_set_message(t('Creating an array of @num operations', array('@num' => $i)));
+  $batch = array(
+    'operations' => $operations,
+    'finished' => 'import_data_finished',
+  );
+  return $batch;
+}
+
+/*
+ * Implemtent the function import_bookmark_op_2 for data saving.
+ */
+
+function import_bookmark_op_2($data, $operation_details, &$context) {
+  //print_r($data);exit;
+  if (!empty($data['nid'])) {
+    db_merge('bookmarkorganizer_item')
+      ->key(array('id' => $data['id']))
+      ->fields(array(
+          'id' => $data['id'],
+          'content_id'  => $data['nid'],
+          'uid'  => $data['uuid'],
+          'parent' => $data['iParentId'],
+          'label'  => $data['titlenid'],
+          'type' => $data['nidtype'],
+          'weight' => $data['Weight'],
+          'created' => $data['created'],
+          'updated' => $data['created']
+        ))  
+      ->execute();
+   }
+   _import_bookmark_update_http_requests();
+}
+
+/*
+ * Implemtent the function for List not imported users.
+ */
+function import_bookmark_d_batch_3() {
+  $query = db_select('data_live_for_ref.ibf_members', 'tc')->fields('tc')->orderBy('tc.id', 'ASC')->execute();
+  $i = 0;
+  $operations = array();
+  while ($data = $query->fetchAssoc()) {
+     $cmail = $data['email'];
+     $mail = db_select('users', 'u')->fields('u')->condition('mail', $cmail, 'LIKE')->execute()->fetchAssoc();  
+     if (empty($mail['mail'])) {
+        $operations[] = array('import_bookmark_op_3', array($data, t('(Operation @operation)', array('@operation' => $i))));
+        $i++;
+        
+     }
+  }
+  $batch = array(
+    'operations' => $operations,
+    'finished' => 'import_data_finished',
+  );
+  return $batch;
+}
+
+/*
+ * Implemtent the function import_bookmark_op_3 for data saving.
+ */
+
+function import_bookmark_op_3($datanewuser, $operation_details, &$context) {
+ //  print $data['email'];
+  $new_user->name = $datanewuser['name'];
+  $new_user->pass = NULL; // plain text, hashed later
+  $new_user->mail = $datanewuser['email'];
+  $new_user->init = $datanewuser['email'];
+  $new_user->created = $datanewuser['joined'];
+  // $new_user->field_first_name['und'][0]['value'] = $fname;
+  // $new_user->field_last_name['und'][0]['value'] = $lname;
+  $new_user->status = 1; 
+  $new_user->roles = array(2 => true, 5 => true);
+  if ($datanewuser['last_login'] > 0) {
+      $llog = $datan['last_login'];
+      $are = strtotime($llog);
+      $new_user->access = $are;
+  }
+//print $uid.'---'.$datanewuser['id'].'---'.$new_user->mail.'----'.$new_user->created;
+  if (valid_email_address($new_user->mail) ){
+    user_save($new_user);
+    $uid =  $new_user->uid;
+  //  print $uid.'---'.$datanewuser['id'].'---'.$new_user->mail.'----'.$new_user->created;
+      db_merge('gmc_users')
+        ->key(array('juid' => $datanewuser['id']))
+        ->fields(array(
+            'uid' => $uid,
+            'juid'  => $datanewuser['id'],
+            'password'  => $datanewuser['legacy_password'],
+            'converted' => 0,
+            'email'  => $new_user->mail,
+            'created'  => $new_user->created,
+          ))  
+        ->execute();
+  }
+  _import_bookmark_update_http_requests(); 
+}
+
+
+/*
+ * Implemtent the function for PM data.
+ */
+function import_bookmark_d_batch_4() {
+  $query = db_select('data_live_for_ref.ibf_message_topics', 'pm')->fields('pm');
+  $query->join('data_live_for_ref.ibf_message_text', 'imt', 'imt.msg_id = pm.mt_msg_id');
+  $query->fields('imt');
+  $qlike = $query->orderBy('pm.mt_id', 'ASC')
+            ->extend('PagerDefault')
+            ->limit(5000)
+            ->execute();
+  $i = 0;
+  $operations = array();
+  while ($data = $qlike->fetchAssoc()) {
+    $emalnew = db_select('data_live_for_ref.gmc_user', 'gu')
+              ->fields('gu', array('email'))
+              ->condition('id', $data['mt_to_id'], '=')
+              ->execute()
+              ->fetchAssoc();
+    $useridnew = db_select('users', 'u')
+            ->fields('u', array('uid'))
+            ->condition('mail', $emalnew['email'])
+            ->execute()
+            ->fetchAssoc();
+    $data['original_to_uid'] = $useridnew['uid'];
+    $emalnew = db_select('data_live_for_ref.gmc_user', 'gu')
+              ->fields('gu', array('email'))
+              ->condition('id', $data['mt_from_id'], '=')
+              ->execute()
+              ->fetchAssoc();
+    $useridnew = db_select('users', 'u')
+            ->fields('u', array('uid'))
+            ->condition('mail', $emalnew['email'])
+            ->execute()
+            ->fetchAssoc();
+     $data['original_from_uid'] = $useridnew['uid'];
+     if (empty($mail['mail'])) {
+        $operations[] = array('import_bookmark_op_4', array($data, t('(Operation @operation)', array('@operation' => $i))));
+        $i++;
+        
+     }
+  }
+  $batch = array(
+    'operations' => $operations,
+    'finished' => 'import_data_finished',
+  );
+  return $batch;
+}
+
+/*
+ * Implemtent the function import_bookmark_op_4 for data saving.
+ */
+function import_bookmark_op_4($privadata, $operation_details, &$context) { 
+ //  "Array ( [mt_id] => 2 [mt_msg_id] => 2 [mt_date] => 1125236632 [mt_title] => somthin to think about [mt_from_id] => 13 [mt_to_id] => 2 [mt_vid_folder] => sent [mt_read] => 1 [mt_hasattach] => 0 [mt_hide_cc] => 1 [mt_tracking] => 0 [mt_addtosent] => 0 [mt_owner_id] => 13 [mt_user_read] => 1 [msg_id] => 2 [msg_date] => 1125236632 [msg_post] => Dahl man you should grow your hair long all great guitarist have long hair think about it [msg_cc_users] => [msg_sent_to_count] => 1 [msg_deleted_count] => 0 [msg_post_key] => 0 [msg_author_id] => 13 [msg_ip_address] => 0 [original_to_uid] => 27671 [original_from_uid] => 27710 )";
+  db_merge('pm_message')
+    ->key(array('mid' => $privadata['mt_id']))
+    ->fields(array(
+        'mid' => $privadata['mt_id'],
+        'author'  => $privadata['original_to_uid'],
+        'subject'  => $privadata['mt_title'],
+        'body' => $privadata['mid'],
+        'format'  => 'full_html',
+        'timestamp'  => $privadata['1125236632'], 
+        'has_tokens'  => $privadata['mid'],
+      ))  
+    ->execute();
+  print_r($privadata); exit;
+}
+
+/*
+ * Implemtent the function for PM data.
+ */
+function import_bookmark_d_batch_5() {
+  $lastinsertedid = db_select('pm_folder_name', 'ts')->fields('ts')->orderBy('ts.originaluid', 'DESC')->extend('PagerDefault')->limit(1)->execute()->fetchAssoc();  
+  $query = db_select('data_live_for_ref.ibf_member_extra', 'pm')->fields('pm');
+  $query->fields('pm');
+  $qlike = $query->orderBy('pm.id', 'ASC')
+            ->condition('id', $lastinsertedid['originaluid'], '>')
+            ->extend('PagerDefault')
+            ->limit(5000)
+            ->execute();
+  $i = 0;
+  $operations = array();
+  while ($data = $qlike->fetchAssoc()) {
+    $emalnew = db_select('data_live_for_ref.gmc_user', 'gu')
+                ->fields('gu', array('email'))
+                ->condition('id', $data['id'], '=')
+                ->execute()
+                ->fetchAssoc();
+    $useridnew = db_select('users', 'u')
+                  ->fields('u', array('uid'))
+                  ->condition('mail', $emalnew['email'])
+                  ->execute()
+                  ->fetchAssoc();
+    $data['original_to_uid'] = $useridnew['uid'];
+     if (empty($mail['mail'])) {
+       $operations[] = array('import_bookmark_op_5', array($data, t('(Operation @operation)', array('@operation' => $i))));
+       $i++;
+     }
+  }
+  $batch = array(
+    'operations' => $operations,
+    'finished' => 'import_data_finished',
+  );
+  return $batch;
+}
+
+/*
+ * Implemtent the function import_bookmark_op_5 for data saving.
+ */
+function import_bookmark_op_5($privadata, $operation_details, &$context) { 
+  $data = $privadata['vdirs'];
+  $vdirs_datas = explode('|', $data);
+  foreach ($vdirs_datas as $vdirs_data) {
+     $data1 = explode(';', $vdirs_data);
+     $data2 = explode(':', $data1[0]);
+    // print_r($privadata['original_to_uid']);
+     if ($data2[1] != 'Inbox' && $data2[1] != 'Sent Items' ) {
+      db_merge('pm_folder_name')
+        ->key(array('folder_id' => $privadata['folder_id']))
+        ->fields(array(
+            'folder_id' => $privadata['folder_id'],
+            'folder_name'  => $data2[1],
+            'uid'  => $privadata['original_to_uid'],
+            'originaluid' => $privadata['id']
+          ))  
+        ->execute();  
+     }
+   }
+}
+/*
+ * Implemtent the function for PM data.
+ */
+function import_bookmark_d_batch_6() {
+  $lastinsertedid = db_select('data_live_for_ref.ibf_members', 'ibm')
+                      ->fields('ibm', array('email', 'name', 'members_display_name', 'members_l_username'))
+                      ->condition('id', $data['email'])
+                      ->orderBy('ibm.id', 'ASC')
+                      ->execute();  
+  $i = 0;
+  $operations = array();
+  while ($data = $lastinsertedid->fetchAssoc()) {
+    $useridnew = db_select('users', 'u')
+            ->fields('u', array('uid'))
+            ->condition('mail', $data['email'])
+            ->execute()
+            ->fetchAssoc();
+    $data['original_to_uid'] = $useridnew['uid'];
+    $operations[] = array('import_bookmark_op_6', array($data, t('(Operation @operation)', array('@operation' => $i))));
+    $i++;
+  }
+  $batch = array(
+    'operations' => $operations,
+    'finished' => 'import_data_finished',
+  );
+  return $batch;
+}
+
+/*
+ * Implemtent the function for update username data.
+ */
+function import_bookmark_op_6($data, $operation_details, &$context) {
+//  print_r($data);exit;
+ $num_updated = db_update('users')
+      ->fields(array('name' => $data['members_display_name'], 'init' => $data['email']))
+      ->condition('uid', $data['original_to_uid'], '=')
+      ->condition('mail', $data['email'], 'like')
+      ->execute(); 
+} 

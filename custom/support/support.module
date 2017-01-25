@@ -1,0 +1,2643 @@
+<?php
+  global $base_url;
+/**
+* Implementation of hook_menu
+*/
+function support_menu() {
+  $items = array();
+
+  //Menu to generate image thumbnail of lessons videos.
+  $items['generate/thumbnail'] = array(
+    'title' => 'Generate Thumbnail',
+    'description' => 'Generate Thumbnail',
+	'page callback' => 'generate_thumbnail',
+    'access callback' => TRUE,
+  );
+  
+  
+  //main video-page
+  $items['video-lessons'] = array(
+    'title' => 'Guitar lessons at Guitar Masterclass',
+    'access callback' => TRUE,
+    //'page callback' => 'lession_display_set',
+	'page callback' => 'lession_display_levels',
+    'weight' => 1,
+    'type' => MENU_NORMAL_ITEM,
+  );
+
+  /***--Start Acoustic Tab here--***/
+  $items['video-lessons/acoustic-lessons'] = array(
+    'title' => 'Acoustic',
+    'page callback' => 'lession_display_set',
+    'access callback' => TRUE,
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 1,
+  );
+  $items['video-lessons/acoustic-lessons/all'] = array(
+    'title' => 'All',
+    'page callback' => 'lession_display_set',
+    'access callback' => TRUE,
+    'weight' => 2,
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+  );
+  $items['video-lessons/acoustic-lessons/classical'] = array(
+    'title' => 'Classical',
+    'page callback' => 'lession_display_set',
+    'access callback' => TRUE,
+    'weight' => 3,
+    'type' => MENU_LOCAL_TASK,
+  );
+  $items['video-lessons/acoustic-lessons/flamenco'] = array(
+    'title' => 'Flamenco',
+    'page callback' => 'lession_display_set',
+    'access callback' => TRUE,
+    'weight' => 4,
+    'type' => MENU_LOCAL_TASK,
+  );
+  $items['video-lessons/acoustic-lessons/acoustic-other'] = array(
+    'title' => 'Other',
+    'page callback' => 'lession_display_set',
+    'access callback' => TRUE,
+    'weight' => 5,
+    'type' => MENU_LOCAL_TASK,
+  );
+  /***--End Acoustic Tab here--***/
+
+  /***--Start band Tab here--***/
+  $items['video-lessons/band-class'] = array(
+    'title' => 'Band',
+    'access callback' => TRUE,
+    'page callback' => 'lession_display_band',
+    'weight' => 2,
+    'type' =>  MENU_LOCAL_TASK,
+  );
+   //child fortab for band
+  $items['video-lessons/band-class/all'] = array(
+    'title' => 'All',
+    'access callback' => TRUE,
+    'page callback' => 'lession_display_band',
+    'weight' => 2,
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+  );
+  $items['video-lessons/band-class/bass-lessons'] = array(
+    'title' => 'Bass',
+    'access callback' => TRUE,
+    'page callback' => 'lession_display_band',
+    'weight' => 3,
+    'type' => MENU_LOCAL_TASK,
+  );
+  $items['video-lessons/band-class/singing-for-guitarists'] = array(
+    'title' => 'Singing',
+    'access callback' => TRUE,
+    'page callback' => 'lession_display_band',
+    'weight' => 4,
+    'type' => MENU_LOCAL_TASK,
+  );
+  $items['video-lessons/band-class/piano-lessons'] = array(
+    'title' => 'Piano',
+    'access callback' => TRUE,
+    'page callback' => 'lession_display_band',
+    'weight' => 5,
+    'type' => MENU_LOCAL_TASK,
+  );
+  $items['video-lessons/band-class/drums'] = array(
+    'title' => 'Drums',
+    'access callback' => TRUE,
+    'page callback' => 'lession_display_band',
+    'weight' => 6,
+    'type' => MENU_LOCAL_TASK,
+  );
+  $items['video-lessons/band-class/miscellaneous-lessons'] = array(
+    'title' => 'Recording-, gear- & community',
+    'access callback' => TRUE,
+    'page callback' => 'lession_display_band',
+    'weight' => 7,
+    'type' => MENU_LOCAL_TASK,
+  );
+  /***--End Band Tab here--***/
+
+  /***--Start instructors Tab here--***/
+  $items['video-lessons/instructors'] = array(
+    'title' => 'By Instructor',
+    'access callback' => TRUE,
+    'page callback' => 'lession_display_instractors',
+    'weight' => 3,
+    'type' => MENU_LOCAL_TASK,
+    
+  );
+  $items['video-lessons/instructors/%'] = array(
+    'title' => 'All',
+    'access callback' => TRUE,
+    'page callback' => 'lession_display_instractors',
+    'weight' => 1,
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    
+  );
+  $items['video-lessons/instructors/all'] = array(
+    'title' => '',
+    'access callback' => TRUE,
+    'page callback' => 'lession_display_instractors',
+    'weight' => 2,
+    'type' => MENU_LOCAL_TASK,
+  );  
+  //child tab levels
+  /***--End instructors Tab here--***/
+
+  /***--Start level Tab here--***/
+  $items['video-lessons/level'] = array(
+    'title' => 'By level',
+    'access callback' => TRUE,
+    'page callback' => 'lession_display_levels',
+    'weight' => 4,
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    
+  );
+ //child tab levels
+  $items['video-lessons/level/all'] = array(
+    'title' => 'All',
+    'access callback' => TRUE,
+    'page callback' => 'lession_display_levels',
+    'weight' => 2,
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+  );
+  $items['video-lessons/level/absolute-beginner'] = array(
+    'title' => 'Absolute Beginner',
+    'access callback' => TRUE,
+    'page callback' => 'lession_display_levels',
+    'weight' => 3,
+    'type' => MENU_LOCAL_TASK,
+  );
+  $items['video-lessons/level/beginner'] = array(
+    'title' => 'Beginner',
+    'access callback' => TRUE,
+    'page callback' => 'lession_display_levels',
+    'weight' => 4,
+    'type' => MENU_LOCAL_TASK,
+  );
+  $items['video-lessons/level/intermediate'] = array(
+    'title' => 'Intermediate',
+    'access callback' => TRUE,
+    'page callback' => 'lession_display_levels',
+    'weight' => 5,
+    'type' => MENU_LOCAL_TASK,
+  );
+  $items['video-lessons/level/advanced'] = array(
+    'title' => 'Advanced',
+    'access callback' => TRUE,
+    'page callback' => 'lession_display_levels',
+    'weight' => 6,
+    'type' => MENU_LOCAL_TASK,
+  );
+  $items['video-lessons/level/extremely-advanced'] = array(
+    'title' => 'Extremely Advanced',
+    'access callback' => TRUE,
+    'page callback' => 'lession_display_levels',
+    'weight' => 7,
+    'type' => MENU_LOCAL_TASK,
+  );
+  $items['video-lessons/level/insane'] = array(
+    'title' => 'Insane',
+    'access callback' => TRUE,
+    'page callback' => 'lession_display_levels',
+    'weight' => 8,
+    'type' => MENU_LOCAL_TASK,
+  );
+
+  /***--End level Tab here--***/
+
+  /***--Start in-the-style-of Tab here--***/
+
+  //child tab In the Style of
+  $items['video-lessons/in-the-style-of'] = array(
+    'title' => 'In the Style of',
+    'access callback' => TRUE,
+    'page callback' => 'lession_display_style',
+    'weight' => 5,
+    'type' => MENU_LOCAL_TASK,
+    
+  );
+  $items['video-lessons/in-the-style-of/all'] = array(
+    'title' => 'All',
+    'access callback' => TRUE,
+    'page callback' => 'lession_display_style',
+    'weight' => 2,
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    
+  );
+  $items['video-lessons/in-the-style-of/metal'] = array(
+    'title' => 'Metal',
+    'access callback' => TRUE,
+    'page callback' => 'lession_display_style',
+    'weight' => 3,
+    'type' => MENU_LOCAL_TASK,
+    
+  );
+  $items['video-lessons/in-the-style-of/rock'] = array(
+    'title' => 'Rock',
+    'access callback' => TRUE,
+    'page callback' => 'lession_display_style',
+    'weight' => 4,
+    'type' => MENU_LOCAL_TASK,
+    
+  );
+  $items['video-lessons/in-the-style-of/acoustic'] = array(
+    'title' => 'Acoustic',
+    'access callback' => TRUE,
+    'page callback' => 'lession_display_style',
+    'weight' => 5,
+    'type' => MENU_LOCAL_TASK,
+    
+  );
+  $items['video-lessons/in-the-style-of/shred'] = array(
+    'title' => 'Shred',
+    'access callback' => TRUE,
+    'page callback' => 'lession_display_style',
+    'weight' => 6,
+    'type' => MENU_LOCAL_TASK,
+    
+  );
+  $items['video-lessons/in-the-style-of/more-styles'] = array(
+    'title' => 'More Styles',
+    'access callback' => TRUE,
+    'page callback' => 'lession_display_style',
+    'weight' => 7,
+    'type' => MENU_LOCAL_TASK,
+    
+  );
+  /***--End in-the-style-of Tab here--***/
+
+  /***--Start metals Tab here--***/
+
+  
+  $items['video-lessons/metal'] = array(
+    'title' => 'Metal',
+    'access callback' => TRUE,
+    'page callback' => 'lession_display_metal',
+    'weight' => 6,
+    'type' => MENU_LOCAL_TASK,
+    
+  );
+  //child tab metal
+  $items['video-lessons/metal/all'] = array(
+    'title' => 'All',
+    'access callback' => TRUE,
+    'page callback' => 'lession_display_metal',
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 2,
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    
+  );
+  $items['video-lessons/metal/classic'] = array(
+    'title' => 'Classic',
+    'access callback' => TRUE,
+    'page callback' => 'lession_display_metal',
+    'weight' => 3,
+    'type' => MENU_LOCAL_TASK,
+    
+  );
+  $items['video-lessons/metal/modern'] = array(
+    'title' => 'Modern',
+    'access callback' => TRUE,
+    'page callback' => 'lession_display_metal',
+    'weight' => 4,
+    'type' => MENU_LOCAL_TASK,
+    
+  );
+  $items['video-lessons/metal/epic'] = array(
+    'title' => 'Epic',
+    'access callback' => TRUE,
+    'page callback' => 'lession_display_metal',
+    'weight' => 5,
+    'type' => MENU_LOCAL_TASK,
+    
+  );
+  $items['video-lessons/metal/progressive'] = array(
+    'title' => 'Progressive',
+    'access callback' => TRUE,
+    'page callback' => 'lession_display_metal',
+    'weight' => 6,
+    'type' => MENU_LOCAL_TASK,
+    
+  );
+  $items['video-lessons/metal/extreme'] = array(
+    'title' => 'Extreme',
+    'access callback' => TRUE,
+    'page callback' => 'lession_display_metal',
+    'weight' => 7,
+    'type' => MENU_LOCAL_TASK,
+    
+  );
+  $items['video-lessons/metal/other'] = array(
+    'title' => 'Other',
+    'access callback' => TRUE,
+    'page callback' => 'lession_display_metal',
+    'weight' => 8,
+    'type' => MENU_LOCAL_TASK,
+    
+  );
+  /***--End metals Tab here--***/
+
+  /***--Start jazz-fusion-funk Tab here--***/
+  $items['video-lessons/jazz-fusion-funk'] = array(
+    'title' => 'More Styles',
+    'access callback' => TRUE,
+    'page callback' => 'lession_display_fusion',
+    'weight' => 7,
+    'type' => MENU_LOCAL_TASK,
+   );
+  //child tab /jazz-fusion-funk
+  $items['video-lessons/jazz-fusion-funk/all'] = array(
+    'title' => 'All',
+    'access callback' => TRUE,
+    'page callback' => 'lession_display_fusion',
+    'weight' => 2,
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    
+  ); 
+  $items['video-lessons/jazz-fusion-funk/jazz'] = array(
+    'title' => 'Jazz',
+    'access callback' => TRUE,
+    'page callback' => 'lession_display_fusion',
+    'weight' => 3,
+    'type' => MENU_LOCAL_TASK,
+    
+  );
+  $items['video-lessons/jazz-fusion-funk/blues'] = array(
+    'title' => 'Blues',
+    'access callback' => TRUE,
+    'page callback' => 'lession_display_fusion',
+    'weight' => 4,
+    'type' => MENU_LOCAL_TASK,
+    
+  );
+  $items['video-lessons/jazz-fusion-funk/country'] = array(
+    'title' => 'Country',
+    'access callback' => TRUE,
+    'page callback' => 'lession_display_fusion',
+    'weight' => 5,
+    'type' => MENU_LOCAL_TASK,
+    
+  );
+  $items['video-lessons/jazz-fusion-funk/funk'] = array(
+    'title' => 'Funk',
+    'access callback' => TRUE,
+    'page callback' => 'lession_display_fusion',
+    'weight' => 6,
+    'type' => MENU_LOCAL_TASK,
+    
+  );
+  $items['video-lessons/jazz-fusion-funk/jazz-fusion'] = array(
+    'title' => 'Jazz Fusion',
+    'access callback' => TRUE,
+    'page callback' => 'lession_display_fusion',
+    'weight' => 7,
+    'type' => MENU_LOCAL_TASK,
+    
+  );
+  $items['video-lessons/jazz-fusion-funk/traditional'] = array(
+    'title' => 'Traditional',
+    'access callback' => TRUE,
+    'page callback' => 'lession_display_fusion',
+    'weight' => 8,
+    'type' => MENU_LOCAL_TASK,
+    
+  );
+  /***--End metals Tab here--***/
+
+  /***--Start pop-rock Tab here--***/
+  $items['video-lessons/pop-rock'] = array(
+    'title' => 'Rock',
+    'access callback' => TRUE,
+    'page callback' => 'lession_display_rock',
+    'weight' => 8,
+    'type' => MENU_LOCAL_TASK,
+    
+  );
+    //child tab pop-rock
+  $items['video-lessons/pop-rock/all'] = array(
+    'title' => 'All',
+    'access callback' => TRUE,
+    'page callback' => 'lession_display_rock',
+    'weight' => 2,
+    'type' => MENU_DEFAULT_LOCAL_TASK,    
+  );
+  $items['video-lessons/pop-rock/hard-rock'] = array(
+    'title' => 'Hard Rock',
+    'access callback' => TRUE,
+    'page callback' => 'lession_display_rock',
+    'weight' => 3,
+    'type' => MENU_LOCAL_TASK,
+    
+  );
+  $items['video-lessons/pop-rock/punk-rock'] = array(
+    'title' => 'Punk',
+    'access callback' => TRUE,
+    'page callback' => 'lession_display_rock',
+    'weight' => 4,
+    'type' => MENU_LOCAL_TASK,
+    
+  );
+  $items['video-lessons/pop-rock/rock-ballad'] = array(
+    'title' => 'Ballad',
+    'access callback' => TRUE,
+    'page callback' => 'lession_display_rock',
+    'weight' => 5,
+    'type' => MENU_LOCAL_TASK,
+    
+  );
+  $items['video-lessons/pop-rock/rock-vintage'] = array(
+    'title' => 'Vintage',
+    'access callback' => TRUE,
+    'page callback' => 'lession_display_rock',
+    'weight' => 6,
+    'type' => MENU_LOCAL_TASK,
+    
+  );
+  $items['video-lessons/pop-rock/pop-rock-subcat'] = array(
+    'title' => 'Pop Rock',
+    'access callback' => TRUE,
+    'page callback' => 'lession_display_rock',
+    'weight' => 7,
+    'type' => MENU_LOCAL_TASK,
+    
+  );
+  $items['video-lessons/pop-rock/fusion'] = array(
+    'title' => 'Rock Fusion',
+    'access callback' => TRUE,
+    'page callback' => 'lession_display_rock',
+    'weight' => 8,
+    'type' => MENU_LOCAL_TASK,
+    
+  );
+  $items['video-lessons/pop-rock/rock-other'] = array(
+    'title' => 'Other',
+    'access callback' => TRUE,
+    'page callback' => 'lession_display_rock',
+    'weight' => 9,
+    'type' => MENU_LOCAL_TASK,
+    
+  );
+  /***--End metals pop-rock here--***/
+
+  /***--Start jazz-fusion-funk Tab here--***/
+  //tab lesson-series
+  $items['video-lessons/lesson-series'] = array(
+    'title' => 'Series',
+    'access callback' => TRUE,
+    'page callback' => 'lession_display_series',
+    'weight' => 9,
+    'type' => MENU_LOCAL_TASK,
+    
+  );  
+  //tab shred
+  $items['video-lessons/shred'] = array(
+    'title' => 'Shred',
+    'access callback' => TRUE,
+    'page callback' => 'lession_display_shred',
+    'weight' => 10,
+    'type' => MENU_LOCAL_TASK,
+    
+  );
+  $items['video-lessons/shred/all'] = array(
+    'title' => 'All',
+    'access callback' => TRUE,
+    'page callback' => 'lession_display_shred',
+    'weight' => 1,
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    
+  );
+  $items['video-lessons/shred/shred-picking'] = array(
+    'title' => 'Picking',
+    'access callback' => TRUE,
+    'page callback' => 'lession_display_shred',
+    'weight' => 2,
+    'type' => MENU_LOCAL_TASK,
+    
+  );
+  $items['video-lessons/shred/shred-sweep-picking'] = array(
+    'title' => 'Sweep Picking',
+    'access callback' => TRUE,
+    'page callback' => 'lession_display_shred',
+    'weight' => 3,
+    'type' => MENU_LOCAL_TASK,
+    
+  );
+  $items['video-lessons/shred/shred-legato'] = array(
+    'title' => 'Legato',
+    'access callback' => TRUE,
+    'page callback' => 'lession_display_shred',
+    'weight' => 4,
+    'type' => MENU_LOCAL_TASK,
+    
+  );
+    //tab songs
+  $items['video-lessons/songs'] = array(
+    'title' => 'Songs',
+    'access callback' => TRUE,
+    'page callback' => 'lession_display_song',
+    'weight' => 11,
+    'type' => MENU_LOCAL_TASK,
+  );  
+  $items['video-lessons/songs/all'] = array(
+    'title' => 'All',
+    'access callback' => TRUE,
+    'page callback' => 'lession_display_song',
+    'weight' => 1,
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+  );  
+  $items['video-lessons/songs/all-all'] = array(
+    'title' => '',
+    'access callback' => TRUE,
+    'page callback' => 'lession_display_song',
+    'weight' => 2,
+    'type' => MENU_LOCAL_TASK,
+    
+  );
+  //User menu for bookmark
+  $items['gmc/bookmark/folder'] = array(
+    'page callback' => 'gmc_bookmarks_folder',
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK
+  );
+  $items['gmc/bookmark/parent/folder'] = array(
+    'page callback' => 'gmc_bookmark_parent_folder',
+    'description' => 'Set folder parent id in session to save in database',
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK
+  );
+  $items['gmc/bookmark/list'] = array(
+    'page callback' => 'gmc_bookmark_list',
+    'description' => 'Get bookmark list',
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK
+  );
+  $items['gmc/bookmark/list/delete'] = array(
+    'page callback' => 'gmc_bookmark_list_delete',
+    'description' => 'Get bookmark list',
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK
+  );
+  $items['actions/getlessonpartslist/%'] = array(
+    'page callback' => 'gmc_actions_getlessonpartslist',
+    'description' => 'getlessonpartslist',
+    'page arguments' => array(2),
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK
+  );
+  $items['gmc-test-html5'] = array(
+    'page callback' => 'gmc_test_html5',
+    'description' => 'gmc_test_html5',
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK
+  );
+  $items['gmc-loadmore-session'] = array(
+    'title' => '',
+    'description' => 'Set session for load more of view',
+	  'page callback' => 'gmc_loadmore_session',
+    'access callback' => TRUE,
+  );
+  return $items;
+}
+
+/**
+ * Implements hook_init()
+ */
+function support_init(){
+	if(arg(0) == 'video-lessons') {
+		//print "<pre>";print_r($_SESSION);exit;
+		//print "<pre>";print_r($_COOKIE);exit;
+		drupal_add_js(drupal_get_path('module', 'support') . '/js/guitar_support.js');
+		drupal_add_js(drupal_get_path('module', 'support') . '/js/jquery.jcoverflip.js');
+		drupal_add_js(drupal_get_path('module', 'support') . '/js/jquery.reflection.js');
+		drupal_add_js(drupal_get_path('module', 'support') . '/js/jquery-selectify.js');
+		$_SESSION['items_per_page'] = 1;
+	}
+	drupal_add_js(drupal_get_path('module', 'support') . '/js/bookmark_support.js');
+	//adding admin_pages.css file for admin pages, it will apply for any theme has select for admin
+	if(arg(1) == 'chat' && arg(2) == 'adminpanel'){
+		drupal_add_css(drupal_get_path('module', 'support') . '/css/admin_pages.css');		
+	}
+}
+/**
+* Implementation of hook_js_alter
+*/
+function support_js_alter(&$js) {
+	if(arg(0) == 'elfinder' || arg(0) == 'imce') {
+		//print "<pre>";print_r($js);exit;
+		unset(
+			$js['sites/all/themes/gmc_v2/js/jquery.bpopup.min.js'],
+			$js['sites/all/themes/gmc_v2/js/jquery.countdown.js'],
+			$js['sites/all/themes/gmc_v2/js/jquery.hoverIntent.js'],
+			$js['sites/all/themes/gmc_v2/js/mootools.js'],
+			$js['sites/all/themes/gmc_v2/js/jquery.js'],
+			$js['sites/all/modules/ckeditor_tabber/semantic-tabs.js']
+		);
+	}
+	//print "<pre>";print_r($js);exit;
+}
+
+/**
+* Implementation of hook_form_alter
+*/
+function support_form_alter(&$form, &$form_state, $form_id) {
+	if($form['#id'] == 'views-exposed-form-series-lessones-block-2') {
+		$form['field_category_tid']['#options']['All'] = 'all';
+	}
+	if($form_id == 'comment_node_gmc_basic_page_form') {
+		$form['actions']['submit']['#value'] = t('Add Comment');
+	}
+}
+/**
+ * Implements hook_node_view()
+ * @return $node
+ */
+function support_node_view($node, $view_mode, $langcode) {
+	if(arg(0) == 'node' && $node->type == 'forum' && $node->nid != '') {
+		drupal_goto('guitar_forum_topic/'.$node->nid);
+	}
+}
+/**
+ * Implements hook_node_insert()
+ * @return $node
+ */
+function support_node_insert($node) {
+	if($node->type == 'forum' && $node->taxonomy_forums['und']['0']['tid'] != 4758) {
+		$nid = $node->nid;
+		$message = $node->body['und']['0']['value'];
+		$comment = (object) array(
+			'nid' => $nid,
+			'cid' => 0,
+			'pid' => 0,
+			'uid' => $node->uid,
+			'mail' => '',
+			'is_anonymous' => 0,
+			'homepage' => '',
+			'status' => COMMENT_PUBLISHED,
+			'subject' => text_summary($node->title, $format = NULL, 64),
+			'language' => LANGUAGE_NONE,
+			'comment_body' => array(
+			  LANGUAGE_NONE => array(
+				0 => array (
+				  'value' => $message,
+				  'format' => 'full_html'
+				)
+			  )
+			),
+		  );
+		comment_submit($comment);
+		comment_save($comment);
+	}
+}
+/**
+ * Implementation of hook_views_pre_build
+ * @param type $view
+ * @param type $query 
+ */
+function support_views_pre_build(&$view) {
+	if(arg(0) == 'video-lessons') {
+		/*if(isset($_COOKIE['video_lessons_count'])) {
+			print "<pre>";print_r($_COOKIE);exit;
+		}*/
+		if (isset($_SESSION['items_per_page']) && $_SESSION['items_per_page'] == 2 && !isset($_SESSION['loadmore_latest']) && !isset($_SESSION['loadmore_rated'])) {
+			//print "<pre>";print_r($view);exit;
+			if($view->items_per_page > 10) {
+				$view->items_per_page = 10;
+			}
+			$_SESSION['items_per_page'] = 2;
+		}
+		//else if(isset($_GET['latest']) && isset($_GET['rated']) && isset($_SESSION['items_per_page']) && $_SESSION['items_per_page'] == 1) {
+		else if(isset($_SESSION['items_per_page']) && $_SESSION['items_per_page'] == 1 && (isset($_SESSION['loadmore_latest']) && $_SESSION['loadmore_latest'] != '') && (isset($_SESSION['loadmore_rated']) && $_SESSION['loadmore_rated'] != '')) {
+			//if($view->name == 'guitar_levels') {
+				if ($view->current_display == 'block_1') {
+					$view->items_per_page = (int)$_SESSION['loadmore_latest'] * 10;
+				}
+				if ($view->current_display == 'block_2') {
+					$view->items_per_page = (int)$_SESSION['loadmore_rated'] * 10;
+					$_SESSION['items_per_page'] = 2;
+					unset($_SESSION['loadmore_latest']);
+					unset($_SESSION['loadmore_rated']);
+				}
+			//}
+		}
+	}
+}
+
+/**
+ * Implementation of hook_views_query_alter
+ * @param type $view
+ * @param type $query 
+ */
+function support_views_query_alter(&$view, &$query) {
+	if ($view->name == 'featured_instructors') { // && $view->current_display == 'block_5'
+		$music_category = array('blues', 'country', 'classical', 'flamenco', 'funk', 'traditional');
+		$lessons_type = array('acoustic-instructors', 'bass-lessons', 'drums', 'piano-lessons', 'singing-for-guitarists');
+		if (arg(2) == 'featured-instructors' || arg(2) == '') {
+			foreach($query->where[1]['conditions'] as $key => $conditions) {
+				if($conditions['field'] == 'node_users__publication_date.published_at <= ***CURRENT_TIME***+0') {
+					unset($query->where[1]['conditions'][$key]);
+				}
+			}
+			foreach($query->where[0]['conditions'] as $key => $conditions) {
+				if($conditions['field'] == 'taxonomy_term_data_field_data_field_instructor_music_category.name') {
+					unset($query->where[0]['conditions'][$key]);
+				}
+				if($conditions['field'] == 'taxonomy_term_data_field_data_field_instructor_lessons_type.name') {
+					unset($query->where[0]['conditions'][$key]);
+				}
+			}
+			$query->where[0]['type'] = 'OR';
+		}
+		else if(arg(2) == 'all-instructors') {
+			foreach($query->where[1]['conditions'] as $key => $conditions) {
+				if($conditions['field'] == 'node_users__publication_date.published_at BETWEEN ***CURRENT_TIME***-15552000 AND ***CURRENT_TIME***+0') {
+					unset($query->where[1]['conditions'][$key]);
+				}
+			}
+			foreach($query->where[0]['conditions'] as $key => $conditions) {
+				if($conditions['field'] == 'taxonomy_term_data_field_data_field_instructor_music_category.name') {
+					unset($query->where[0]['conditions'][$key]);
+				}
+				if($conditions['field'] == 'taxonomy_term_data_field_data_field_instructor_lessons_type.name') {
+					unset($query->where[0]['conditions'][$key]);
+				}
+			}
+			$query->where[0]['type'] = 'OR';
+		}
+		elseif (in_array(arg(2), $lessons_type)) {
+			foreach($query->where[1]['conditions'] as $key => $conditions) {
+				if($conditions['field'] == 'node_users__publication_date.published_at BETWEEN ***CURRENT_TIME***-15552000 AND ***CURRENT_TIME***+0') {
+					unset($query->where[1]['conditions'][$key]);
+				}
+			}
+			$ex = explode("-",arg(2));
+			foreach($query->where[0]['conditions'] as $key => $conditions) {
+				if($conditions['field'] == 'taxonomy_term_data_field_data_field_instructor_music_category.name') {
+					unset($query->where[0]['conditions'][$key]);
+				}
+				if($conditions['field'] == 'taxonomy_term_data_field_data_field_instructor_lessons_type.name') {
+					$query->where[0]['conditions'][$key]['field'] = 'taxonomy_term_data_field_data_field_instructor_lessons_type.name';
+					$query->where[0]['conditions'][$key]['value'] = $ex[0];
+					$query->where[0]['conditions'][$key]['operator'] = '=';
+				}
+			}
+			$query->where[0]['type'] = 'OR';
+			unset($query->where[1]['conditions'][2]);
+		}
+		elseif (in_array(arg(2), $music_category)) {
+			foreach($query->where[1]['conditions'] as $key => $conditions) {
+				if($conditions['field'] == 'node_users__publication_date.published_at BETWEEN ***CURRENT_TIME***-15552000 AND ***CURRENT_TIME***+0') {
+					unset($query->where[1]['conditions'][$key]);
+				}
+			}
+			$ex = explode("-",arg(2));
+			foreach($query->where[0]['conditions'] as $key => $conditions) {
+				if($conditions['field'] == 'taxonomy_term_data_field_data_field_instructor_music_category.name') {
+					$query->where[0]['conditions'][$key]['field'] = 'taxonomy_term_data_field_data_field_instructor_music_category.name';
+					$query->where[0]['conditions'][$key]['value'] = $ex[0];
+					$query->where[0]['conditions'][$key]['operator'] = '=';
+				}
+				if($conditions['field'] == 'taxonomy_term_data_field_data_field_instructor_lessons_type.name') {
+					unset($query->where[0]['conditions'][$key]);
+				}
+			}
+			$query->where[0]['type'] = 'OR';
+			unset($query->where[1]['conditions'][2]);
+		}
+		elseif (arg(2) == 'jazz-instructors') {
+			foreach($query->where[1]['conditions'] as $key => $conditions) {
+				if($conditions['field'] == 'node_users__publication_date.published_at BETWEEN ***CURRENT_TIME***-15552000 AND ***CURRENT_TIME***+0') {
+					unset($query->where[1]['conditions'][$key]);
+				}
+			}
+			foreach($query->where[0]['conditions'] as $key => $conditions) {
+				if($conditions['field'] == 'taxonomy_term_data_field_data_field_instructor_music_category.name') {
+					$query->where[0]['conditions'][$key]['field'] = 'taxonomy_term_data_field_data_field_instructor_music_category.name';
+					$query->where[0]['conditions'][$key]['value'] = array('Jazz', 'Jazz Fusion');
+					$query->where[0]['conditions'][$key]['operator'] = 'in';
+				}
+				if($conditions['field'] == 'taxonomy_term_data_field_data_field_instructor_lessons_type.name') {
+					unset($query->where[0]['conditions'][$key]);
+				}
+			}
+			$query->where[0]['type'] = 'OR';
+			unset($query->where[1]['conditions'][2]);
+		}
+		elseif (arg(2) == 'metal-instructors') {
+			foreach($query->where[1]['conditions'] as $key => $conditions) {
+				if($conditions['field'] == 'node_users__publication_date.published_at BETWEEN ***CURRENT_TIME***-15552000 AND ***CURRENT_TIME***+0') {
+					unset($query->where[1]['conditions'][$key]);
+				}
+			}
+			foreach($query->where[0]['conditions'] as $key => $conditions) {
+				if($conditions['field'] == 'taxonomy_term_data_field_data_field_instructor_music_category.name') {
+					$query->where[0]['conditions'][$key]['field'] = 'taxonomy_term_data_field_data_field_instructor_music_category.name';
+					$query->where[0]['conditions'][$key]['value'] = array('Metal - Classic', 'Metal - Epic', 'Metal - Extreme', 'Metal - Modern', 'Metal - Other', 'Metal - Progressive', 'Metal rhythm');
+					$query->where[0]['conditions'][$key]['operator'] = 'in';
+				}
+				if($conditions['field'] == 'taxonomy_term_data_field_data_field_instructor_lessons_type.name') {
+					unset($query->where[0]['conditions'][$key]);
+				}
+			}
+			$query->where[0]['type'] = 'OR';
+			unset($query->where[1]['conditions'][2]);
+		}
+		elseif (arg(2) == 'rock-instructors') {
+			foreach($query->where[1]['conditions'] as $key => $conditions) {
+				if($conditions['field'] == 'node_users__publication_date.published_at BETWEEN ***CURRENT_TIME***-15552000 AND ***CURRENT_TIME***+0') {
+					unset($query->where[1]['conditions'][$key]);
+				}
+			}
+			foreach($query->where[0]['conditions'] as $key => $conditions) {
+				if($conditions['field'] == 'taxonomy_term_data_field_data_field_instructor_music_category.name') {
+					$query->where[0]['conditions'][$key]['field'] = 'taxonomy_term_data_field_data_field_instructor_music_category.name';
+					$query->where[0]['conditions'][$key]['value'] = array('Hard Rock', 'Pop Rock', 'Punk Rock', 'Rock - Other', 'Rock - Vintage', 'Rock Ballad', 'Rock Fusion', 'Rock Rhythm');
+					$query->where[0]['conditions'][$key]['operator'] = 'in';
+				}
+				if($conditions['field'] == 'taxonomy_term_data_field_data_field_instructor_lessons_type.name') {
+					unset($query->where[0]['conditions'][$key]);
+				}
+			}
+			$query->where[0]['type'] = 'OR';
+			unset($query->where[1]['conditions'][2]);
+		}
+		elseif (arg(2) == 'shred') {
+			foreach($query->where[1]['conditions'] as $key => $conditions) {
+				if($conditions['field'] == 'node_users__publication_date.published_at BETWEEN ***CURRENT_TIME***-15552000 AND ***CURRENT_TIME***+0') {
+					unset($query->where[1]['conditions'][$key]);
+				}
+			}
+			foreach($query->where[0]['conditions'] as $key => $conditions) {
+				if($conditions['field'] == 'taxonomy_term_data_field_data_field_instructor_music_category.name') {
+					$query->where[0]['conditions'][$key]['field'] = 'taxonomy_term_data_field_data_field_instructor_music_category.name';
+					$query->where[0]['conditions'][$key]['value'] = array('Shred - Legato', 'Shred - Picking', 'Shred - Sweep Picking');
+					$query->where[0]['conditions'][$key]['operator'] = 'in';
+				}
+				if($conditions['field'] == 'taxonomy_term_data_field_data_field_instructor_lessons_type.name') {
+					unset($query->where[0]['conditions'][$key]);
+				}
+			}
+			$query->where[0]['type'] = 'OR';
+			unset($query->where[1]['conditions'][2]);
+		}
+	}
+	
+	if ($view->name == 'guitar_levels') {
+		if(arg(2) == 'intermediate') {
+			foreach($query->where[0]['conditions'] as $key => $conditions) {
+				if($conditions['field'] == 'field_data_field_difficulty_level.field_difficulty_level_value') {
+					$query->where[0]['conditions'][$key]['field'] = 'field_data_field_difficulty_level.field_difficulty_level_value';
+					$query->where[0]['conditions'][$key]['value'] = array(3,4);
+					$query->where[0]['conditions'][$key]['operator'] = 'in';
+				}
+			}
+		}
+		if(arg(2) == 'advanced') {
+			foreach($query->where[0]['conditions'] as $key => $conditions) {
+				if($conditions['field'] == 'field_data_field_difficulty_level.field_difficulty_level_value') {
+					$query->where[0]['conditions'][$key]['field'] = 'field_data_field_difficulty_level.field_difficulty_level_value';
+					$query->where[0]['conditions'][$key]['value'] = array(5,6);
+					$query->where[0]['conditions'][$key]['operator'] = 'in';
+				}
+			}
+		}
+		if(arg(2) == 'extremely-advanced') {
+			foreach($query->where[0]['conditions'] as $key => $conditions) {
+				if($conditions['field'] == 'field_data_field_difficulty_level.field_difficulty_level_value') {
+					$query->where[0]['conditions'][$key]['field'] = 'field_data_field_difficulty_level.field_difficulty_level_value';
+					$query->where[0]['conditions'][$key]['value'] = array(7,8);
+					$query->where[0]['conditions'][$key]['operator'] = 'in';
+				}
+			}
+		}
+		if(arg(2) == 'insane') {
+			foreach($query->where[0]['conditions'] as $key => $conditions) {
+				if($conditions['field'] == 'field_data_field_difficulty_level.field_difficulty_level_value') {
+					$query->where[0]['conditions'][$key]['field'] = 'field_data_field_difficulty_level.field_difficulty_level_value';
+					$query->where[0]['conditions'][$key]['value'] = array(9,10);
+					$query->where[0]['conditions'][$key]['operator'] = 'in';
+				}
+			}
+		}
+	}
+	
+	if ($view->name == 'guitar_style') {
+		if(arg(1) == 'in-the-style-of' && arg(2) == '') {
+			foreach($query->where[1]['conditions'] as $key => $conditions) {
+				if($conditions['field'] == 'field_data_field_lesson_type.field_lesson_type_tid') {
+					$query->where[1]['conditions'][$key]['field'] = 'field_data_field_lesson_type.field_lesson_type_tid';
+					$query->where[1]['conditions'][$key]['value'] = array(4867,4866,4869,4871,4872);
+					$query->where[1]['conditions'][$key]['operator'] = 'NOT IN';
+				}
+			}
+			foreach($query->where[2]['conditions'] as $key => $conditions) {
+				if($conditions['field'] == 'field_data_field_music_category.field_music_category_tid') {
+					unset($query->where[2]['conditions'][$key]);
+				}
+				if($conditions['field'] == 'field_data_field_lesson_type2.field_lesson_type_tid') {
+					unset($query->where[2]['conditions'][$key]);
+				}
+			}
+			//print "<pre>";print_r($query);exit;
+		}
+		else if(arg(2) == 'metal') {
+			foreach($query->where[1]['conditions'] as $key => $conditions) {
+				if($conditions['field'] == 'field_data_field_lesson_type.field_lesson_type_tid') {
+					$query->where[1]['conditions'][$key]['field'] = 'field_data_field_lesson_type.field_lesson_type_tid';
+					$query->where[1]['conditions'][$key]['value'] = array(4867,4866,4869,4871,4872);
+					$query->where[1]['conditions'][$key]['operator'] = 'NOT IN';
+				}
+			}
+			foreach($query->where[2]['conditions'] as $key => $conditions) {
+				if($conditions['field'] == 'field_data_field_music_category.field_music_category_tid') {
+					$query->where[2]['conditions'][$key]['field'] = 'field_data_field_music_category.field_music_category_tid';
+					$query->where[2]['conditions'][$key]['value'] = array(4898,4907,4908,4909,4910,4911);
+					$query->where[2]['conditions'][$key]['operator'] = 'IN';
+				}
+				if($conditions['field'] == 'field_data_field_lesson_type2.field_lesson_type_tid') {
+					unset($query->where[2]['conditions'][$key]);
+				}
+			}
+		//print "<pre>";print_r($query);exit;
+		}
+		else if(arg(2) == 'rock') {
+			foreach($query->where[1]['conditions'] as $key => $conditions) {
+				if($conditions['field'] == 'field_data_field_lesson_type.field_lesson_type_tid') {
+					$query->where[1]['conditions'][$key]['field'] = 'field_data_field_lesson_type.field_lesson_type_tid';
+					$query->where[1]['conditions'][$key]['value'] = array(4867,4866,4869,4871,4872);
+					$query->where[1]['conditions'][$key]['operator'] = 'NOT IN';
+				}
+			}
+			foreach($query->where[2]['conditions'] as $key => $conditions) {
+				if($conditions['field'] == 'field_data_field_music_category.field_music_category_tid') {
+					$query->where[2]['conditions'][$key]['field'] = 'field_data_field_music_category.field_music_category_tid';
+					$query->where[2]['conditions'][$key]['value'] = array(4897,4900,4912,4913,4914,4915);
+					$query->where[2]['conditions'][$key]['operator'] = 'IN';
+				}
+				if($conditions['field'] == 'field_data_field_lesson_type2.field_lesson_type_tid') {
+					unset($query->where[2]['conditions'][$key]);
+				}
+			}
+		}
+		else if(arg(2) == 'acoustic') {
+			foreach($query->where[1]['conditions'] as $key => $conditions) {
+				if($conditions['field'] == 'field_data_field_lesson_type.field_lesson_type_tid') {
+					$query->where[1]['conditions'][$key]['field'] = 'field_data_field_lesson_type.field_lesson_type_tid';
+					$query->where[1]['conditions'][$key]['value'] = array(4867,4866,4869,4871,4872);
+					$query->where[1]['conditions'][$key]['operator'] = 'NOT IN';
+				}
+			}
+			foreach($query->where[2]['conditions'] as $key => $conditions) {
+				if($conditions['field'] == 'field_data_field_music_category.field_music_category_tid') {
+					$query->where[2]['conditions'][$key]['field'] = 'field_data_field_music_category.field_music_category_tid';
+					$query->where[2]['conditions'][$key]['value'] = array(4901,4904);//,4903
+					$query->where[2]['conditions'][$key]['operator'] = 'IN';
+				}
+			}
+		//print "<pre>";print_r($query->where);exit;
+		}
+		else if(arg(2) == 'shred') {
+			foreach($query->where[1]['conditions'] as $key => $conditions) {
+				if($conditions['field'] == 'field_data_field_lesson_type.field_lesson_type_tid') {
+					$query->where[1]['conditions'][$key]['field'] = 'field_data_field_lesson_type.field_lesson_type_tid';
+					$query->where[1]['conditions'][$key]['value'] = array(4867,4866,4869,4871,4872);
+					$query->where[1]['conditions'][$key]['operator'] = 'NOT IN';
+				}
+			}
+			foreach($query->where[2]['conditions'] as $key => $conditions) {
+				if($conditions['field'] == 'field_data_field_music_category.field_music_category_tid') {
+					$query->where[2]['conditions'][$key]['field'] = 'field_data_field_music_category.field_music_category_tid';
+					$query->where[2]['conditions'][$key]['value'] = array(4894,4917,4918);
+					$query->where[2]['conditions'][$key]['operator'] = 'IN';
+				}
+				if($conditions['field'] == 'field_data_field_lesson_type2.field_lesson_type_tid') {
+					unset($query->where[2]['conditions'][$key]);
+				}
+			}
+		}
+		else if(arg(2) == 'more-styles') {
+			foreach($query->where[1]['conditions'] as $key => $conditions) {
+				if($conditions['field'] == 'field_data_field_lesson_type.field_lesson_type_tid') {
+					$query->where[1]['conditions'][$key]['field'] = 'field_data_field_lesson_type.field_lesson_type_tid';
+					$query->where[1]['conditions'][$key]['value'] = array(4867,4866,4869,4871,4872);
+					$query->where[1]['conditions'][$key]['operator'] = 'NOT IN';
+				}
+			}
+			foreach($query->where[2]['conditions'] as $key => $conditions) {
+				if($conditions['field'] == 'field_data_field_music_category.field_music_category_tid') {
+					$query->where[2]['conditions'][$key]['field'] = 'field_data_field_music_category.field_music_category_tid';
+					$query->where[2]['conditions'][$key]['value'] = array(4895,4896,4899,4903,4916);
+					$query->where[2]['conditions'][$key]['operator'] = 'IN';
+				}
+				if($conditions['field'] == 'field_data_field_lesson_type2.field_lesson_type_tid') {
+					unset($query->where[2]['conditions'][$key]);
+				}
+			}
+		}
+	}
+	
+	if ($view->name == 'guitar_fusion') {
+		if(arg(1) == 'jazz-fusion-funk' && arg(2) == '') {
+			foreach($query->where[1]['conditions'] as $key => $conditions) {
+				if($conditions['field'] == 'field_data_field_lesson_type.field_lesson_type_tid') {
+					$query->where[1]['conditions'][$key]['field'] = 'field_data_field_lesson_type.field_lesson_type_tid';
+					$query->where[1]['conditions'][$key]['value'] = array(4867,4866,4869,4871,4872);
+					$query->where[1]['conditions'][$key]['operator'] = 'NOT IN';
+				}
+				else if($conditions['field'] == 'field_data_field_music_category.field_music_category_tid') {
+					$query->where[1]['conditions'][$key]['field'] = 'field_data_field_music_category.field_music_category_tid';
+					$query->where[1]['conditions'][$key]['value'] = array(4895,4896,4899,4903,4916);
+					$query->where[1]['conditions'][$key]['operator'] = 'IN';
+				}
+			}
+		}
+		else if(arg(1) == 'jazz-fusion-funk' && arg(2) == 'jazz') {
+			foreach($query->where[1]['conditions'] as $key => $conditions) {
+				if($conditions['field'] == 'field_data_field_lesson_type.field_lesson_type_tid') {
+					$query->where[1]['conditions'][$key]['field'] = 'field_data_field_lesson_type.field_lesson_type_tid';
+					$query->where[1]['conditions'][$key]['value'] = array(4867,4866,4869,4871,4872);
+					$query->where[1]['conditions'][$key]['operator'] = 'NOT IN';
+				}
+				else if($conditions['field'] == 'field_data_field_music_category.field_music_category_tid') {
+					$query->where[1]['conditions'][$key]['field'] = 'field_data_field_music_category.field_music_category_tid';
+					$query->where[1]['conditions'][$key]['value'] = 4899;
+					$query->where[1]['conditions'][$key]['operator'] = '=';
+				}
+			}
+		}
+		else if(arg(1) == 'jazz-fusion-funk' && arg(2) == 'blues') {
+			foreach($query->where[1]['conditions'] as $key => $conditions) {
+				if($conditions['field'] == 'field_data_field_lesson_type.field_lesson_type_tid') {
+					$query->where[1]['conditions'][$key]['field'] = 'field_data_field_lesson_type.field_lesson_type_tid';
+					$query->where[1]['conditions'][$key]['value'] = array(4867,4866,4869,4871,4872);
+					$query->where[1]['conditions'][$key]['operator'] = 'NOT IN';
+				}
+				else if($conditions['field'] == 'field_data_field_music_category.field_music_category_tid') {
+					$query->where[1]['conditions'][$key]['field'] = 'field_data_field_music_category.field_music_category_tid';
+					$query->where[1]['conditions'][$key]['value'] = 4895;
+					$query->where[1]['conditions'][$key]['operator'] = '=';
+				}
+			}
+		}
+		else if(arg(1) == 'jazz-fusion-funk' && arg(2) == 'country') {
+			foreach($query->where[1]['conditions'] as $key => $conditions) {
+				if($conditions['field'] == 'field_data_field_lesson_type.field_lesson_type_tid') {
+					$query->where[1]['conditions'][$key]['field'] = 'field_data_field_lesson_type.field_lesson_type_tid';
+					$query->where[1]['conditions'][$key]['value'] = array(4867,4866,4869,4871,4872);
+					$query->where[1]['conditions'][$key]['operator'] = 'NOT IN';
+				}
+				else if($conditions['field'] == 'field_data_field_music_category.field_music_category_tid') {
+					$query->where[1]['conditions'][$key]['field'] = 'field_data_field_music_category.field_music_category_tid';
+					$query->where[1]['conditions'][$key]['value'] = 4896;
+					$query->where[1]['conditions'][$key]['operator'] = '=';
+				}
+			}
+		}
+		else if(arg(1) == 'jazz-fusion-funk' && arg(2) == 'funk') {
+			foreach($query->where[1]['conditions'] as $key => $conditions) {
+				if($conditions['field'] == 'field_data_field_lesson_type.field_lesson_type_tid') {
+					$query->where[1]['conditions'][$key]['field'] = 'field_data_field_lesson_type.field_lesson_type_tid';
+					$query->where[1]['conditions'][$key]['value'] = array(4867,4866,4869,4871,4872);
+					$query->where[1]['conditions'][$key]['operator'] = 'NOT IN';
+				}
+				else if($conditions['field'] == 'field_data_field_music_category.field_music_category_tid') {
+					$query->where[1]['conditions'][$key]['field'] = 'field_data_field_music_category.field_music_category_tid';
+					$query->where[1]['conditions'][$key]['value'] = 4903;
+					$query->where[1]['conditions'][$key]['operator'] = '=';
+				}
+			}
+		}
+		else if(arg(1) == 'jazz-fusion-funk' && arg(2) == 'jazz-fusion') {
+			foreach($query->where[1]['conditions'] as $key => $conditions) {
+				if($conditions['field'] == 'field_data_field_lesson_type.field_lesson_type_tid') {
+					$query->where[1]['conditions'][$key]['field'] = 'field_data_field_lesson_type.field_lesson_type_tid';
+					$query->where[1]['conditions'][$key]['value'] = array(4867,4866,4869,4871,4872);
+					$query->where[1]['conditions'][$key]['operator'] = 'NOT IN';
+				}
+				else if($conditions['field'] == 'field_data_field_music_category.field_music_category_tid') {
+					$query->where[1]['conditions'][$key]['field'] = 'field_data_field_music_category.field_music_category_tid';
+					$query->where[1]['conditions'][$key]['value'] = 4916;
+					$query->where[1]['conditions'][$key]['operator'] = '=';
+				}
+			}
+		}
+		else if(arg(1) == 'jazz-fusion-funk' && arg(2) == 'traditional') {
+			foreach($query->where[1]['conditions'] as $key => $conditions) {
+				if($conditions['field'] == 'field_data_field_lesson_type.field_lesson_type_tid') {
+					$query->where[1]['conditions'][$key]['field'] = 'field_data_field_lesson_type.field_lesson_type_tid';
+					$query->where[1]['conditions'][$key]['value'] = array(4867,4866,4869,4871,4872);
+					$query->where[1]['conditions'][$key]['operator'] = 'NOT IN';
+				}
+				else if($conditions['field'] == 'field_data_field_music_category.field_music_category_tid') {
+					$query->where[1]['conditions'][$key]['field'] = 'field_data_field_music_category.field_music_category_tid';
+					$query->where[1]['conditions'][$key]['value'] = 4905;
+					$query->where[1]['conditions'][$key]['operator'] = '=';
+				}
+			}
+		}
+	}
+	if ($view->name == 'guitar_rock') {
+		if(arg(1) == 'pop-rock' && arg(2) == '') {
+			foreach($query->where[1]['conditions'] as $key => $conditions) {
+				if($conditions['field'] == 'field_data_field_lesson_type.field_lesson_type_tid') {
+					$query->where[1]['conditions'][$key]['field'] = 'field_data_field_lesson_type.field_lesson_type_tid';
+					$query->where[1]['conditions'][$key]['value'] = array(4867,4866,4869,4871,4872);
+					$query->where[1]['conditions'][$key]['operator'] = 'NOT IN';
+				}
+				else if($conditions['field'] == 'field_data_field_music_category.field_music_category_tid') {
+					$query->where[1]['conditions'][$key]['field'] = 'field_data_field_music_category.field_music_category_tid';
+					$query->where[1]['conditions'][$key]['value'] = array(4897,4900,4912,4913,4914,4915);
+					$query->where[1]['conditions'][$key]['operator'] = 'IN';
+				}
+			}
+		}
+		else if(arg(1) == 'pop-rock' && arg(2) == 'hard-rock') {
+			foreach($query->where[1]['conditions'] as $key => $conditions) {
+				if($conditions['field'] == 'field_data_field_lesson_type.field_lesson_type_tid') {
+					$query->where[1]['conditions'][$key]['field'] = 'field_data_field_lesson_type.field_lesson_type_tid';
+					$query->where[1]['conditions'][$key]['value'] = array(4867,4866,4869,4871,4872);
+					$query->where[1]['conditions'][$key]['operator'] = 'NOT IN';
+				}
+				else if($conditions['field'] == 'field_data_field_music_category.field_music_category_tid') {
+					$query->where[1]['conditions'][$key]['field'] = 'field_data_field_music_category.field_music_category_tid';
+					$query->where[1]['conditions'][$key]['value'] = 4912;
+					$query->where[1]['conditions'][$key]['operator'] = '=';
+				}
+			}
+		}
+		else if(arg(1) == 'pop-rock' && arg(2) == 'punk-rock') {
+			foreach($query->where[1]['conditions'] as $key => $conditions) {
+				if($conditions['field'] == 'field_data_field_lesson_type.field_lesson_type_tid') {
+					$query->where[1]['conditions'][$key]['field'] = 'field_data_field_lesson_type.field_lesson_type_tid';
+					$query->where[1]['conditions'][$key]['value'] = array(4867,4866,4869,4871,4872);
+					$query->where[1]['conditions'][$key]['operator'] = 'NOT IN';
+				}
+				else if($conditions['field'] == 'field_data_field_music_category.field_music_category_tid') {
+					$query->where[1]['conditions'][$key]['field'] = 'field_data_field_music_category.field_music_category_tid';
+					$query->where[1]['conditions'][$key]['value'] = 4913;
+					$query->where[1]['conditions'][$key]['operator'] = '=';
+				}
+			}
+		}
+		else if(arg(1) == 'pop-rock' && arg(2) == 'rock-ballad') {
+			foreach($query->where[1]['conditions'] as $key => $conditions) {
+				if($conditions['field'] == 'field_data_field_lesson_type.field_lesson_type_tid') {
+					$query->where[1]['conditions'][$key]['field'] = 'field_data_field_lesson_type.field_lesson_type_tid';
+					$query->where[1]['conditions'][$key]['value'] = array(4867,4866,4869,4871,4872);
+					$query->where[1]['conditions'][$key]['operator'] = 'NOT IN';
+				}
+				else if($conditions['field'] == 'field_data_field_music_category.field_music_category_tid') {
+					$query->where[1]['conditions'][$key]['field'] = 'field_data_field_music_category.field_music_category_tid';
+					$query->where[1]['conditions'][$key]['value'] = 4914;
+					$query->where[1]['conditions'][$key]['operator'] = '=';
+				}
+			}
+		}
+		else if(arg(1) == 'pop-rock' && arg(2) == 'rock-vintage') {
+			foreach($query->where[1]['conditions'] as $key => $conditions) {
+				if($conditions['field'] == 'field_data_field_lesson_type.field_lesson_type_tid') {
+					$query->where[1]['conditions'][$key]['field'] = 'field_data_field_lesson_type.field_lesson_type_tid';
+					$query->where[1]['conditions'][$key]['value'] = array(4867,4866,4869,4871,4872);
+					$query->where[1]['conditions'][$key]['operator'] = 'NOT IN';
+				}
+				else if($conditions['field'] == 'field_data_field_music_category.field_music_category_tid') {
+					$query->where[1]['conditions'][$key]['field'] = 'field_data_field_music_category.field_music_category_tid';
+					$query->where[1]['conditions'][$key]['value'] = 4915;
+					$query->where[1]['conditions'][$key]['operator'] = '=';
+				}
+			}
+		}
+		else if(arg(1) == 'pop-rock' && arg(2) == 'pop-rock-subcat') {
+			foreach($query->where[1]['conditions'] as $key => $conditions) {
+				if($conditions['field'] == 'field_data_field_lesson_type.field_lesson_type_tid') {
+					$query->where[1]['conditions'][$key]['field'] = 'field_data_field_lesson_type.field_lesson_type_tid';
+					$query->where[1]['conditions'][$key]['value'] = array(4867,4866,4869,4871,4872);
+					$query->where[1]['conditions'][$key]['operator'] = 'NOT IN';
+				}
+				else if($conditions['field'] == 'field_data_field_music_category.field_music_category_tid') {
+					$query->where[1]['conditions'][$key]['field'] = 'field_data_field_music_category.field_music_category_tid';
+					$query->where[1]['conditions'][$key]['value'] = 4900;
+					$query->where[1]['conditions'][$key]['operator'] = '=';
+				}
+			}
+		}
+		else if(arg(1) == 'pop-rock' && arg(2) == 'fusion') {
+			foreach($query->where[1]['conditions'] as $key => $conditions) {
+				if($conditions['field'] == 'field_data_field_lesson_type.field_lesson_type_tid') {
+					$query->where[1]['conditions'][$key]['field'] = 'field_data_field_lesson_type.field_lesson_type_tid';
+					$query->where[1]['conditions'][$key]['value'] = array(4867,4866,4869,4871,4872);
+					$query->where[1]['conditions'][$key]['operator'] = 'NOT IN';
+				}
+				else if($conditions['field'] == 'field_data_field_music_category.field_music_category_tid') {
+					$query->where[1]['conditions'][$key]['field'] = 'field_data_field_music_category.field_music_category_tid';
+					$query->where[1]['conditions'][$key]['value'] = 4902;
+					$query->where[1]['conditions'][$key]['operator'] = '=';
+				}
+			}
+		}
+		else if(arg(1) == 'pop-rock' && arg(2) == 'rock-other') {
+			foreach($query->where[1]['conditions'] as $key => $conditions) {
+				if($conditions['field'] == 'field_data_field_lesson_type.field_lesson_type_tid') {
+					$query->where[1]['conditions'][$key]['field'] = 'field_data_field_lesson_type.field_lesson_type_tid';
+					$query->where[1]['conditions'][$key]['value'] = array(4867,4866,4869,4871,4872);
+					$query->where[1]['conditions'][$key]['operator'] = 'NOT IN';
+				}
+				else if($conditions['field'] == 'field_data_field_music_category.field_music_category_tid') {
+					$query->where[1]['conditions'][$key]['field'] = 'field_data_field_music_category.field_music_category_tid';
+					$query->where[1]['conditions'][$key]['value'] = 4897;
+					$query->where[1]['conditions'][$key]['operator'] = '=';
+				}
+			}
+		}
+	}
+	if ($view->name == 'guitar_shred') {
+		//print "<pre>";print_r($query);exit;
+		if(arg(1) == 'shred' && arg(2) == '') {
+			foreach($query->where[1]['conditions'] as $key => $conditions) {
+				if($conditions['field'] == 'field_data_field_lesson_type.field_lesson_type_tid') {
+					$query->where[1]['conditions'][$key]['field'] = 'field_data_field_lesson_type.field_lesson_type_tid';
+					$query->where[1]['conditions'][$key]['value'] = array(4867,4866,4869,4871,4872);
+					$query->where[1]['conditions'][$key]['operator'] = 'NOT IN';
+				}
+				else if($conditions['field'] == 'field_data_field_music_category.field_music_category_tid') {
+					$query->where[1]['conditions'][$key]['field'] = 'field_data_field_music_category.field_music_category_tid';
+					$query->where[1]['conditions'][$key]['value'] = array(4894,4918,4917);
+					$query->where[1]['conditions'][$key]['operator'] = 'IN';
+				}
+			}
+		}
+		else if(arg(1) == 'shred' && arg(2) == 'shred-picking') {
+			foreach($query->where[1]['conditions'] as $key => $conditions) {
+				if($conditions['field'] == 'field_data_field_lesson_type.field_lesson_type_tid') {
+					$query->where[1]['conditions'][$key]['field'] = 'field_data_field_lesson_type.field_lesson_type_tid';
+					$query->where[1]['conditions'][$key]['value'] = array(4867,4866,4869,4871,4872);
+					$query->where[1]['conditions'][$key]['operator'] = 'NOT IN';
+				}
+				else if($conditions['field'] == 'field_data_field_music_category.field_music_category_tid') {
+					$query->where[1]['conditions'][$key]['field'] = 'field_data_field_music_category.field_music_category_tid';
+					$query->where[1]['conditions'][$key]['value'] = 4894;
+					$query->where[1]['conditions'][$key]['operator'] = '=';
+				}
+			}
+		}
+		else if(arg(1) == 'shred' && arg(2) == 'shred-sweep-picking') {
+			foreach($query->where[1]['conditions'] as $key => $conditions) {
+				if($conditions['field'] == 'field_data_field_lesson_type.field_lesson_type_tid') {
+					$query->where[1]['conditions'][$key]['field'] = 'field_data_field_lesson_type.field_lesson_type_tid';
+					$query->where[1]['conditions'][$key]['value'] = array(4867,4866,4869,4871,4872);
+					$query->where[1]['conditions'][$key]['operator'] = 'NOT IN';
+				}
+				else if($conditions['field'] == 'field_data_field_music_category.field_music_category_tid') {
+					$query->where[1]['conditions'][$key]['field'] = 'field_data_field_music_category.field_music_category_tid';
+					$query->where[1]['conditions'][$key]['value'] = 4917;
+					$query->where[1]['conditions'][$key]['operator'] = '=';
+				}
+			}
+		}
+		else if(arg(1) == 'shred' && arg(2) == 'shred-legato') {
+			foreach($query->where[1]['conditions'] as $key => $conditions) {
+				if($conditions['field'] == 'field_data_field_lesson_type.field_lesson_type_tid') {
+					$query->where[1]['conditions'][$key]['field'] = 'field_data_field_lesson_type.field_lesson_type_tid';
+					$query->where[1]['conditions'][$key]['value'] = array(4867,4866,4869,4871,4872);
+					$query->where[1]['conditions'][$key]['operator'] = 'NOT IN';
+				}
+				else if($conditions['field'] == 'field_data_field_music_category.field_music_category_tid') {
+					$query->where[1]['conditions'][$key]['field'] = 'field_data_field_music_category.field_music_category_tid';
+					$query->where[1]['conditions'][$key]['value'] = 4918;
+					$query->where[1]['conditions'][$key]['operator'] = '=';
+				}
+			}
+		}
+	}
+	if ($view->name == 'guitar_band') {
+		//print "<pre>";print_r($query);exit;
+		if(arg(1) == 'band-class' && arg(2) == '') {
+			foreach($query->where[0]['conditions'] as $key => $conditions) {
+				if($conditions['field'] == 'taxonomy_index.tid') {
+					$query->where[0]['conditions'][$key]['field'] = 'taxonomy_index.tid';
+					$query->where[0]['conditions'][$key]['value'] = array(4867, 4866, 4873, 4871, 4869, 4872);
+					$query->where[0]['conditions'][$key]['operator'] = 'in';
+				}
+			}
+		}
+		if(arg(1) == 'band-class' && arg(2) == 'miscellaneous-lessons') {
+			foreach($query->where[0]['conditions'] as $key => $conditions) {
+				if($conditions['field'] == 'taxonomy_index.tid') {
+					$query->where[0]['conditions'][$key]['field'] = 'taxonomy_index.tid';
+					$query->where[0]['conditions'][$key]['value'] = array(4869, 4872, 4873);
+					$query->where[0]['conditions'][$key]['operator'] = 'in';
+				}
+			}
+		}
+	}
+	if ($view->name == 'guitar_metal') {
+		//print "<pre>";print_r($query);exit;
+		if(arg(1) == 'metal' && arg(2) == '') {
+			foreach($query->where[1]['conditions'] as $key => $conditions) {
+				if($conditions['field'] == 'field_data_field_lesson_type.field_lesson_type_tid') {
+					$query->where[1]['conditions'][$key]['field'] = 'field_data_field_lesson_type.field_lesson_type_tid';
+					$query->where[1]['conditions'][$key]['value'] = array(4867,4866,4869,4871,4872);
+					$query->where[1]['conditions'][$key]['operator'] = 'NOT IN';
+				}
+				else if($conditions['field'] == 'field_data_field_music_category.field_music_category_tid') {
+					$query->where[1]['conditions'][$key]['field'] = 'field_data_field_music_category.field_music_category_tid';
+					$query->where[1]['conditions'][$key]['value'] = array(4908, 4910, 4911, 4909, 4907, 4898);
+					$query->where[1]['conditions'][$key]['operator'] = 'IN';
+				}
+			}
+		}
+		else if(arg(2) == 'classic') {
+			foreach($query->where[1]['conditions'] as $key => $conditions) {
+				if($conditions['field'] == 'field_data_field_lesson_type.field_lesson_type_tid') {
+					$query->where[1]['conditions'][$key]['field'] = 'field_data_field_lesson_type.field_lesson_type_tid';
+					$query->where[1]['conditions'][$key]['value'] = array(4867,4866,4869,4871,4872);
+					$query->where[1]['conditions'][$key]['operator'] = 'NOT IN';
+				}
+				else if($conditions['field'] == 'field_data_field_music_category.field_music_category_tid') {
+					$query->where[1]['conditions'][$key]['field'] = 'field_data_field_music_category.field_music_category_tid';
+					$query->where[1]['conditions'][$key]['value'] = 4908;
+					$query->where[1]['conditions'][$key]['operator'] = '=';
+				}
+			}
+		}
+		else if(arg(2) == 'modern') {
+			foreach($query->where[1]['conditions'] as $key => $conditions) {
+				if($conditions['field'] == 'field_data_field_lesson_type.field_lesson_type_tid') {
+					$query->where[1]['conditions'][$key]['field'] = 'field_data_field_lesson_type.field_lesson_type_tid';
+					$query->where[1]['conditions'][$key]['value'] = array(4867,4866,4869,4871,4872);
+					$query->where[1]['conditions'][$key]['operator'] = 'NOT IN';
+				}
+				else if($conditions['field'] == 'field_data_field_music_category.field_music_category_tid') {
+					$query->where[1]['conditions'][$key]['field'] = 'field_data_field_music_category.field_music_category_tid';
+					$query->where[1]['conditions'][$key]['value'] = 4909;
+					$query->where[1]['conditions'][$key]['operator'] = '=';
+				}
+			}
+		}
+		else if(arg(2) == 'epic') {
+			foreach($query->where[1]['conditions'] as $key => $conditions) {
+				if($conditions['field'] == 'field_data_field_lesson_type.field_lesson_type_tid') {
+					$query->where[1]['conditions'][$key]['field'] = 'field_data_field_lesson_type.field_lesson_type_tid';
+					$query->where[1]['conditions'][$key]['value'] = array(4867,4866,4869,4871,4872);
+					$query->where[1]['conditions'][$key]['operator'] = 'NOT IN';
+				}
+				else if($conditions['field'] == 'field_data_field_music_category.field_music_category_tid') {
+					$query->where[1]['conditions'][$key]['field'] = 'field_data_field_music_category.field_music_category_tid';
+					$query->where[1]['conditions'][$key]['value'] = 4910;
+					$query->where[1]['conditions'][$key]['operator'] = '=';
+				}
+			}
+		}
+		else if(arg(2) == 'progressive') {
+			foreach($query->where[1]['conditions'] as $key => $conditions) {
+				if($conditions['field'] == 'field_data_field_lesson_type.field_lesson_type_tid') {
+					$query->where[1]['conditions'][$key]['field'] = 'field_data_field_lesson_type.field_lesson_type_tid';
+					$query->where[1]['conditions'][$key]['value'] = array(4867,4866,4869,4871,4872);
+					$query->where[1]['conditions'][$key]['operator'] = 'NOT IN';
+				}
+				else if($conditions['field'] == 'field_data_field_music_category.field_music_category_tid') {
+					$query->where[1]['conditions'][$key]['field'] = 'field_data_field_music_category.field_music_category_tid';
+					$query->where[1]['conditions'][$key]['value'] = 4907;
+					$query->where[1]['conditions'][$key]['operator'] = '=';
+				}
+			}
+		}
+		else if(arg(2) == 'extreme') {
+			foreach($query->where[1]['conditions'] as $key => $conditions) {
+				if($conditions['field'] == 'field_data_field_lesson_type.field_lesson_type_tid') {
+					$query->where[1]['conditions'][$key]['field'] = 'field_data_field_lesson_type.field_lesson_type_tid';
+					$query->where[1]['conditions'][$key]['value'] = array(4867,4866,4869,4871,4872);
+					$query->where[1]['conditions'][$key]['operator'] = 'NOT IN';
+				}
+				else if($conditions['field'] == 'field_data_field_music_category.field_music_category_tid') {
+					$query->where[1]['conditions'][$key]['field'] = 'field_data_field_music_category.field_music_category_tid';
+					$query->where[1]['conditions'][$key]['value'] = 4911;
+					$query->where[1]['conditions'][$key]['operator'] = '=';
+				}
+			}
+		}
+		else if(arg(2) == 'other') {
+			foreach($query->where[1]['conditions'] as $key => $conditions) {
+				if($conditions['field'] == 'field_data_field_lesson_type.field_lesson_type_tid') {
+					$query->where[1]['conditions'][$key]['field'] = 'field_data_field_lesson_type.field_lesson_type_tid';
+					$query->where[1]['conditions'][$key]['value'] = array(4867,4866,4869,4871,4872);
+					$query->where[1]['conditions'][$key]['operator'] = 'NOT IN';
+				}
+				else if($conditions['field'] == 'field_data_field_music_category.field_music_category_tid') {
+					$query->where[1]['conditions'][$key]['field'] = 'field_data_field_music_category.field_music_category_tid';
+					$query->where[1]['conditions'][$key]['value'] = 4898;
+					$query->where[1]['conditions'][$key]['operator'] = '=';
+				}
+			}
+		}
+	}
+	if ($view->name == 'guitar_lessons') {
+		//print "<pre>";print_r($query);exit;
+		if(arg(0) == 'video-lessons' && arg(1) == 'acoustic-lessons' && arg(2) == '') {
+			foreach($query->where[1]['conditions'] as $key => $conditions) {
+				if($conditions['field'] == 'field_data_field_music_category.field_music_category_tid') {
+					$query->where[1]['conditions'][$key]['field'] = 'field_data_field_music_category.field_music_category_tid';
+					$query->where[1]['conditions'][$key]['value'] = array(4901, 4904);
+					$query->where[1]['conditions'][$key]['operator'] = 'IN';
+				}
+				if($conditions['field'] == 'field_data_field_lesson_type.field_lesson_type_tid') {
+					$query->where[1]['conditions'][$key]['field'] = 'field_data_field_lesson_type.field_lesson_type_tid';
+					$query->where[1]['conditions'][$key]['value'] = 4863;
+					$query->where[1]['conditions'][$key]['operator'] = '=';
+				}
+			}
+			//print "<pre>";print_r($query);exit;
+		}
+		else if(arg(0) == 'video-lessons' && arg(1) == 'acoustic-lessons' && arg(2) == 'acoustic-other') {
+			foreach($query->where[1]['conditions'] as $key => $conditions) {
+				if($conditions['field'] == 'field_data_field_music_category.field_music_category_tid') {
+					$query->where[1]['conditions'][$key]['field'] = 'field_data_field_music_category.field_music_category_tid';
+					$query->where[1]['conditions'][$key]['value'] = array(4901, 4904);
+					$query->where[1]['conditions'][$key]['operator'] = 'NOT IN';
+				}
+				if($conditions['field'] == 'field_data_field_lesson_type.field_lesson_type_tid') {
+					$query->where[1]['conditions'][$key]['field'] = 'field_data_field_lesson_type.field_lesson_type_tid';
+					$query->where[1]['conditions'][$key]['value'] = 4863;
+					$query->where[1]['conditions'][$key]['operator'] = '=';
+				}
+			}
+		//print "<pre>";print_r($query);exit;
+		}
+		else if(arg(0) == 'video-lessons' && arg(1) == 'acoustic-lessons' && arg(2) == 'classical') {
+			foreach($query->where[1]['conditions'] as $key => $conditions) {
+				if($conditions['field'] == 'field_data_field_music_category.field_music_category_tid') {
+					$query->where[1]['conditions'][$key]['field'] = 'field_data_field_music_category.field_music_category_tid';
+					$query->where[1]['conditions'][$key]['value'] = 4901;
+					$query->where[1]['conditions'][$key]['operator'] = '=';
+				}
+				if($conditions['field'] == 'field_data_field_lesson_type.field_lesson_type_tid') {
+					$query->where[1]['conditions'][$key]['field'] = 'field_data_field_lesson_type.field_lesson_type_tid';
+					$query->where[1]['conditions'][$key]['value'] = array(4867, 4866, 4871, 4869, 4872, 4873);
+					$query->where[1]['conditions'][$key]['operator'] = 'NOT IN';
+				}
+			}
+		}
+		else if(arg(0) == 'video-lessons' && arg(1) == 'acoustic-lessons' && arg(2) == 'flamenco') {
+			foreach($query->where[1]['conditions'] as $key => $conditions) {
+				if($conditions['field'] == 'field_data_field_music_category.field_music_category_tid') {
+					$query->where[1]['conditions'][$key]['field'] = 'field_data_field_music_category.field_music_category_tid';
+					$query->where[1]['conditions'][$key]['value'] = 4904;
+					$query->where[1]['conditions'][$key]['operator'] = '=';
+				}
+				if($conditions['field'] == 'field_data_field_lesson_type.field_lesson_type_tid') {
+					$query->where[1]['conditions'][$key]['field'] = 'field_data_field_lesson_type.field_lesson_type_tid';
+					$query->where[1]['conditions'][$key]['value'] = array(4867, 4866, 4871, 4869, 4872, 4873);
+					$query->where[1]['conditions'][$key]['operator'] = 'NOT IN';
+				}
+			}
+		}
+	}
+	if ($view->name == 'page_404_lessons_list') {
+		foreach($query->where[1]['conditions'] as $key => $conditions) {
+			if($conditions['field'] == 'node.nid') {
+				$query->where[1]['conditions'][$key]['field'] = 'node.nid';
+				$query->where[1]['conditions'][$key]['value'] = array(41006, 41203, 41262, 40916, 41243, 41244, 40496, 40544, 36981, 40845, 40501, 36941);
+				$query->where[1]['conditions'][$key]['operator'] = 'IN';
+			}
+		}
+
+	}
+}
+
+function support_views_pre_execute(&$view) {
+   if($view->name=="guitar_lessons") {
+     //print $view->build_info['query'];exit;
+   }
+}
+
+function lession_display_set() {
+  $arg = arg(2);
+  if ($arg == 'classical') {
+    $val = 4901;
+	  $datastr = display_data(47785);
+	  $_SESSION['video-lessons-meta-tid'] = 47785;
+	  $category = 'Classical';
+  } elseif ($arg == 'flamenco') {
+    $val = 4904;
+	  $datastr = display_data(47786);
+	  $_SESSION['video-lessons-meta-tid'] = 47786;
+	  $category = 'Flamenco';
+  } elseif ($arg == 'acoustic-other') {
+    $val = 4863;
+    $datastr = display_data(47787);
+	  $_SESSION['video-lessons-meta-tid'] = 47787;
+	  $category = 'Acoustic - Other';
+  } else {
+    $datastr = display_data(47784);
+	  $_SESSION['video-lessons-meta-tid'] = 47784;
+    $val = 4863;
+    $category = 'Acoustic';
+  }
+  $filset = "im_field_music_category:(4901 OR 4904)";
+  $set1 =  _get_categories_lessons('tid', $val, '0', '8', 'is_published_at', 'desc', $category, 'latest', $filset); 
+  $set2 =  _get_categories_lessons('tid', $val, '0', '8', 'ss_one_day_view', 'desc', $category, 'rated', $filset);
+  //$set1 =  views_embed_view('guitar_lessons', $display_id = 'block_1', $val);
+	//$set2 =  views_embed_view('guitar_lessons', $display_id = 'block_2', $val);
+  $module_path  =  drupal_get_path('module', 'support');  
+  $latest_img   = $module_path.'/latest.png';
+  $rate_img     = $module_path.'/MostPopular.png';
+  $str = $datastr[0];
+  $str         .=  "<div class='lesseon'><div class='column one-half guitar-view-lessons-left'><img class='left-image' src='/$latest_img' title='Latest'/> $set1 </div>";
+  $str         .= "<div class='column one-half guitar-view-lessons-right'><img class='right-image' src='/$rate_img' title='Highest rated'/> $set2 </div><var></var></div>";
+  return $str;
+}
+
+//display band content
+function lession_display_band() {
+	$arg = arg(2);
+	$val = 4867;
+	$str = '';
+	if (arg(1) == 'band-class' && $arg == '') {
+		$datastr = display_data(47788);
+		$_SESSION['video-lessons-meta-tid'] = 47788;
+		$val = '4867+4866+4873+4871+4869+4872';
+		$category = 'Band';
+	}
+	else if ($arg == 'bass-lessons') {
+		$datastr = display_data(47789);
+		$_SESSION['video-lessons-meta-tid'] = 47789;
+		$val = 4867;
+		$category = 'Bass';
+	}
+	else if ($arg == 'singing-for-guitarists') {
+		$datastr = display_data(47790);
+		$_SESSION['video-lessons-meta-tid'] = 47790;
+		$val = 4866;
+		$category = 'Singing';
+	}
+	else if ($arg == 'piano-lessons') {
+		$datastr = display_data(47791);
+		$_SESSION['video-lessons-meta-tid'] = 47791;
+		$val = 4873;
+		$category = 'Piano';
+	}
+	else if ($arg == 'drums') {
+		$datastr = display_data(47792);
+		$_SESSION['video-lessons-meta-tid'] = 47792;
+		$val = 4871;
+		$category = 'Drums';
+	}
+	else if ($arg == 'miscellaneous-lessons') {
+		$datastr = display_data(47793);
+		$_SESSION['video-lessons-meta-tid'] = 47793;
+		$val = '4869+4872+4873';
+		$category = 'Recording-, gear- & community';
+	}
+	$str = $datastr[0];
+	$view = views_get_view('guitar_band');
+	$view->set_display('block');
+	$output = $view->preview();
+	$filset = '';
+	// now print the view.
+	//if ($view->result) {
+	  $set1 =  _get_categories_lessons('tid', $val, '0', '8', 'is_published_at', 'desc', $category, 'latest', $filset); 
+    $set2 =  _get_categories_lessons('tid', $val, '0', '8', 'ss_one_day_view', 'desc', $category, 'rated', $filset);
+		//$set1 =  views_embed_view('guitar_band', $display_id = 'block_1', $val);
+		//$set2 =  views_embed_view('guitar_band', $display_id = 'block_2', $val);
+	//}
+	$module_path  =  drupal_get_path('module', 'support');  
+	$latest_img   = $module_path.'/latest.png';
+	$rate_img     = $module_path.'/MostPopular.png';
+	$str          .= "<div class='lesseon'><div class='column one-half guitar-view-lessons-left'><img class='left-image' src='/$latest_img' title='Latest'/> $set1 </div>";
+	$str         .= "<div class='column one-half guitar-view-lessons-right' ><img class='right-image' src='/$rate_img' title='Highest rated'/> $set2 </div><var></var></div>";
+
+	return $str;
+}
+  //display instractors content
+function lession_display_instractors() {
+	if (arg(2) == 'featured-instructors' || arg(2) == '') {
+		$set1 =  views_embed_view('featured_instructors', $display_id = 'block_5');//, 'all'
+		$title = '<h2><img src="/font/Featured+Instructors/12/" alt="Featured Instructors"></h2>';
+	} else {
+		$ex = explode("-",arg(2));
+		$set1 =  views_embed_view('featured_instructors', $display_id = 'block_5');//, $ex[0]
+		$title = '<h2><img src="/font/'.ucwords($ex[0]).'+Instructors/12/" alt="'.ucwords($ex[0]).' Instructors"></h2>';
+	}
+	$block = module_invoke('support', 'block_view', 'genre');
+	$str = '<div id="instructor-list-container">
+			<div id="instructor-list-menu">
+				<div class="content-block">
+					<h2><img src="/font/Genre/12/" alt="Genre"></h2>
+					<div class="top"></div>'
+					.$block['content'].
+					'<var></var>
+				</div>
+			</div>
+			<div id="instructor-list-content">
+				<div class="content-block">
+					'.$title.'
+					<div class="top"></div>'
+					.$set1.
+					'<var></var>
+				</div>
+			</div>
+			<var></var>
+		</div>';
+	return $str;
+}
+  //display guitar_levels content
+function lession_display_levels() {
+  $filter  = 'sm_field_difficulty_level';
+  $arg = arg(2);
+  
+  if ($arg == 'all') {
+    $val = '*';
+	  $datastr = display_data(47794);
+	  $_SESSION['video-lessons-meta-tid'] = 47794;
+	  $category = 'By level';
+  } elseif ($arg == 'absolute-beginner') {
+    $val = 1;
+	  $datastr = display_data(47795);
+	  $_SESSION['video-lessons-meta-tid'] = 47795;
+	  $category = 'Absolute Beginner';
+  } elseif ($arg == 'beginner') {
+    $val = 2;
+	  $datastr = display_data(47796);
+	  $_SESSION['video-lessons-meta-tid'] = 47796;
+	  $category = 'Beginner';
+  } elseif ($arg == 'intermediate') {
+    $val = '3+4';
+	  $datastr = display_data(47797);
+	  $_SESSION['video-lessons-meta-tid'] = 47797;
+	  $category = 'Intermediate';
+  } elseif ($arg == 'advanced') {
+    $val = '5+6';
+	  $datastr = display_data(47798);
+	  $_SESSION['video-lessons-meta-tid'] = 47798;
+	  $category = 'Advanced';
+  } elseif ($arg == 'extremely-advanced') {
+    $val = '7+8';
+	  $datastr = display_data(47799);
+	  $_SESSION['video-lessons-meta-tid'] = 47799;
+	  $category = 'Extremely Advanced';
+  } elseif ($arg == 'insane') {
+    $val = '9+10';
+	  $datastr = display_data(47800);
+	  $_SESSION['video-lessons-meta-tid'] = 47800;
+	  $category = 'Insane';
+  } else {
+    $val = '*';
+    $filter = '*';
+	  $datastr = display_data(47794);
+	  $_SESSION['video-lessons-meta-tid'] = 47794;
+	  $category = 'By level';
+  }
+  $str = $datastr[0];
+  $filset = '';
+  $set1 =  _get_categories_lessons('sm_field_difficulty_level', $val, '0', '8', 'is_published_at', 'desc', $category, 'latest', $filset); 
+  //views_embed_view('guitar_levels', $display_id = 'block_1', $val);
+  $set2 =  _get_categories_lessons('sm_field_difficulty_level', $val, '0', '8', 'ss_one_day_view', 'desc', $category, 'rated', $filset); 
+  //views_embed_view('guitar_levels', $display_id = 'block_2', $val);
+  $module_path  =  drupal_get_path('module', 'support');  
+  $latest_img   = $module_path.'/latest.png';
+  $rate_img     = $module_path.'/MostPopular.png';
+  $str          .=  "<div class='lesseon'><div class='column one-half guitar-view-lessons-left'><img class='left-image' src='/$latest_img' title='Latest'/> $set1 </div>";
+  $str         .= "<div class='column one-half guitar-view-lessons-right' ><img class='right-image' src='/$rate_img' title='Highest rated'/> $set2 </div><var></var></div>";
+  return $str;
+}
+
+
+ //display guitar_levels content
+function lession_display_style() {
+  $arg = arg(2);
+  if ($arg == 'metal') {
+	  $datastr = display_data(47802);
+	  $_SESSION['video-lessons-meta-tid'] = 47802;
+    $val = 4910;//'1248+1247+1253+1245+1246+1249';
+    $filset = "ts_the_style_of:(*) & im_field_music_category:(4898 OR 4907 OR 4908 OR 4909 OR 4910 OR 4911)";
+    $category = 'Metal';
+  } elseif ($arg == 'rock') {
+	  $datastr = display_data(47803);
+	  $_SESSION['video-lessons-meta-tid'] = 47803;
+    $val = 4912;//'1252+1244+1250+1243';
+    $filset = "ts_the_style_of:(*) & im_field_music_category:(4897 OR 4900 OR 4912 OR 4913 OR 4914 OR 4915)";
+    $category = 'Rock';
+  } elseif ($arg == 'acoustic') {
+	  $datastr = display_data(47804);
+	  $_SESSION['video-lessons-meta-tid'] = 47804;
+    $val = 4863;//'1';
+    $filset = "ts_the_style_of:(*) & im_field_lesson_type:(4863)";
+    $category = 'Acoustic';
+  } elseif ($arg == 'shred') {
+	  $datastr = display_data(47805);
+	  $_SESSION['video-lessons-meta-tid'] = 47805;
+    $val = 4918;//'1255+1251+1242';
+    $filset = "ts_the_style_of:(*) & im_field_music_category:(4894 OR 4917 OR 4918)";
+    $category = 'Shred';
+  } elseif ($arg == 'more-styles') {
+	  $datastr = display_data(47806);
+	  $_SESSION['video-lessons-meta-tid'] = 47806;
+	  $filset = "ts_the_style_of:(*) & im_field_music_category:(4895 OR 4896 OR 4899 OR 4903 OR 4916)";
+    $val = 4857;//'1261';
+    $category = 'More Styles';
+  } else {
+    $filset = "ts_the_style_of:(*)";
+	  $datastr = display_data(47801);
+	  $_SESSION['video-lessons-meta-tid'] = 47801;
+    $val = '*'; //4910+4912+4863+4918+4857';4867,4866,4869,4871,4872
+    $category = 'In the style of';
+  }
+  $filset = $filset.' & -im_field_lesson_type:(4867 OR 4866 OR 4869 OR 4871 OR 4872)';
+  $str = $datastr[0];
+  $set1 =  _get_categories_lessons('is_cover_lesson', '0', '0', '8', 'is_published_at', 'desc', $category, 'latest', $filset); 
+  $set2 =  _get_categories_lessons('is_cover_lesson', '0', '0', '8', 'ss_one_day_view', 'desc', $category, 'rated', $filset); 
+  //$set1 =  views_embed_view('guitar_style', $display_id = 'block_1', $val);
+  //$set2 =  views_embed_view('guitar_style', $display_id = 'block_2', $val);
+  $module_path  =  drupal_get_path('module', 'support');  
+  $latest_img   = $module_path.'/latest.png';
+  $rate_img     = $module_path.'/MostPopular.png';
+  $str          .= "<div class='lesseon'><div class='column one-half guitar-view-lessons-left'><img class='left-image' src='/$latest_img' title='Latest'/> $set1 </div>";
+  $str         .= "<div class='column one-half guitar-view-lessons-right' ><img class='right-image' src='/$rate_img' title='Highest rated'/> $set2 </div><var></var></div>";
+  return $str;
+} 
+
+
+//display guitar_metal content
+function lession_display_metal() {
+  $arg = arg(2);
+  if ($arg == 'classic') {
+	  $datastr = display_data(47808);
+	  $_SESSION['video-lessons-meta-tid'] = 47808;
+    $val = 4908;//'1248';
+    $filset = "im_field_music_category:(4908)";
+    $category = 'Classic';
+  } elseif ($arg == 'epic') {
+	  $datastr = display_data(47810);
+	  $_SESSION['video-lessons-meta-tid'] = 47810;
+    $val = 4910;//'1247';
+    $filset = "im_field_music_category:(4910)";
+    $category = 'Epic';
+  } elseif ($arg == 'extreme') {
+	  $datastr = display_data(47812);
+	  $_SESSION['video-lessons-meta-tid'] = 47812;
+    $val = 4911;//'1253';
+    $filset = "im_field_music_category:(4911)";
+    $category = 'Extreme';
+  } elseif ($arg == 'modern') {
+	  $datastr = display_data(47809);
+	  $_SESSION['video-lessons-meta-tid'] = 47809;
+    $val = 4909;//'1245';
+    $filset = "im_field_music_category:(4909)";
+    $category = 'Modern';
+  } elseif ($arg == 'progressive') {
+	  $datastr = display_data(47811);
+	  $_SESSION['video-lessons-meta-tid'] = 47811;
+    $val = 4907;//'1249';
+    $filset = "im_field_music_category:(4907)";
+    $category = 'Progressive';
+  } elseif ($arg == 'other') {
+	  $datastr = display_data(47813);
+	  $_SESSION['video-lessons-meta-tid'] = 47813;
+    $val = 4898;//'1246';
+    $filset = "im_field_music_category:(4898)";
+    $category = 'Metal other';
+  } else {
+    $filset = "im_field_music_category:(4908 OR 4910 OR 4911 OR 4909 OR 4907 OR 4898)";
+	  $datastr = display_data(47807);
+	  $_SESSION['video-lessons-meta-tid'] = 47807; 
+	  $category = 'Metal';
+  }
+  $val = '*';
+  $filset = $filset.' & -im_field_lesson_type:(4867 OR 4866 OR 4869 OR 4871 OR 4872)';
+  $str = $datastr[0];
+
+  $set1 =  _get_categories_lessons('tid', $val, '0', '8', 'is_published_at', 'desc', $category, 'latest', $filset); 
+  $set2 =  _get_categories_lessons('tid', $val, '0', '8', 'ss_one_day_view', 'desc', $category, 'rated', $filset); 
+  //$set1 =  views_embed_view('guitar_metal', $display_id = 'block_1', $val);
+  //$set2 =  views_embed_view('guitar_metal', $display_id = 'block_2', $val);
+  $module_path  =  drupal_get_path('module', 'support');  
+  $latest_img   = $module_path.'/latest.png';
+  $rate_img     = $module_path.'/MostPopular.png';
+  $str          .=  "<div class='lesseon'><div class='column one-half guitar-view-lessons-left'><img class='left-image' src='/$latest_img' title='Latest'/> $set1 </div>";
+  $str         .= "<div class='column one-half guitar-view-lessons-right' ><img class='right-image' src='/$rate_img' title='Highest rated'/> $set2 </div><var></var></div>";
+  return $str;
+}
+
+  //display guitar_metal content
+function lession_display_rock() {
+  $arg = arg(2);
+  if ($arg == 'rock-ballad') {
+	  $datastr = display_data(47824);
+	  $_SESSION['video-lessons-meta-tid'] = 47824;
+    $val = 4914;//'1252';
+    $filset = "im_field_music_category:(4914)";
+    $category = 'Ballad';
+  } elseif ($arg == 'hard-rock') {
+	  $datastr = display_data(47822);
+	  $_SESSION['video-lessons-meta-tid'] = 47822;
+    $val = 4912;//'1244';
+    $filset = "im_field_music_category:(4912)";
+    $category = 'Hard Rock';
+  } elseif ($arg == 'rock-other') {
+	  $datastr = display_data(47828);
+	  $_SESSION['video-lessons-meta-tid'] = 47828;
+    $val = 4897;//'1244';
+    $filset = "im_field_music_category:(4897)";
+    $category = 'Rock other';
+  } elseif ($arg == 'pop-rock-subcat') {
+	  $datastr = display_data(47826);
+	  $_SESSION['video-lessons-meta-tid'] = 47826;
+    $val = 4900;//'1245';
+    $filset = "im_field_music_category:(4900)";
+    $category = 'Pop Rock';
+  } elseif ($arg == 'punk-rock') {
+	  $datastr = display_data(47823);
+	  $_SESSION['video-lessons-meta-tid'] = 47823;
+    $val = 4913;//'1252';
+    $filset = "im_field_music_category:(4913)";
+    $category = 'Punk';
+  } elseif ($arg == 'fusion') {
+	  $datastr = display_data(47827);
+	  $_SESSION['video-lessons-meta-tid'] = 47827;
+    $val = 4902;//'1243';
+    $filset = "im_field_music_category:(4902)";
+    $category = 'rock fusion';
+  } elseif ($arg == 'rock-vintage') {
+	  $datastr = display_data(47825);
+	  $_SESSION['video-lessons-meta-tid'] = 47825;
+    $val = 4915;//'1250';
+    $filset = "im_field_music_category:(4915)";
+    $category = 'vintage';
+  } else {
+	  $datastr = display_data(47821);
+	  $_SESSION['video-lessons-meta-tid'] = 47821;
+    $val = '4914+4912+4897+4900+4913+4902+4902+4915';//'1250+1243+1252+1245+1244+1252';
+    $filset = "im_field_music_category:(4897 OR 4900 OR 4912 OR 4913 OR 4914 OR 4915)";
+    $category = 'rock';
+  }
+  $val = '*';
+  $filset = $filset." & -im_field_lesson_type:(4867 OR 4866 OR 4869 OR 4871 OR 4872)";
+
+  
+  $str = $datastr[0];
+  $set1 =  _get_categories_lessons('tid', $val, '0', '8', 'is_published_at', 'desc', $category, 'latest', $filset); 
+  $set2 =  _get_categories_lessons('tid', $val, '0', '8', 'ss_one_day_view', 'desc', $category, 'rated', $filset); 
+  //$set1 =  views_embed_view('guitar_rock', $display_id = 'block_1', $val);
+  //$set2 =  views_embed_view('guitar_rock', $display_id = 'block_2', $val);
+  $module_path  =  drupal_get_path('module', 'support');  
+  $latest_img   = $module_path.'/latest.png';
+  $rate_img     = $module_path.'/MostPopular.png';
+  $str         .= "<div class='lesseon'><div class='column one-half guitar-view-lessons-left'><img class='left-image' src='/$latest_img' title='Latest'/> $set1 </div>";
+  $str         .= "<div class='column one-half guitar-view-lessons-right' ><img class='right-image' src='/$rate_img' title='Highest rated'/> $set2 </div><var></var></div>";
+  return $str;
+}
+
+   
+ //display guitar_metal content
+function lession_display_fusion() {
+  $arg = arg(2);
+  if ($arg == 'blues') {
+	  $datastr = display_data(47816);
+	  $_SESSION['video-lessons-meta-tid'] = 47816;
+    $val = 4895;//'4148';
+    $filset = "im_field_music_category:(4895)";
+    $category = 'blues';
+  } elseif ($arg == 'country') {
+	  $datastr = display_data(47817);
+	  $_SESSION['video-lessons-meta-tid'] = 47817;
+    $val = 4896;//'4149';
+    $filset = "im_field_music_category:(4896)";
+    $category = 'country';
+  } elseif ($arg == 'funk') {
+	  $datastr = display_data(47818);
+	  $_SESSION['video-lessons-meta-tid'] = 47818;
+    $val = 4903;//'1253';
+    $filset = "im_field_music_category:(4903)";
+    $category = 'funk';
+  } elseif ($arg == 'jazz') {
+	  $datastr = display_data(47815);
+	  $_SESSION['video-lessons-meta-tid'] = 47815;
+    $val = 4899;//'4150';
+    $filset = "im_field_music_category:(4899)";
+    $category = 'jazz';
+  } elseif ($arg == 'jazz-fusion') {
+	  $datastr = display_data(47819);
+	  $_SESSION['video-lessons-meta-tid'] = 47819;
+    $val = 4916;//'1254';
+    $filset = "im_field_music_category:(4916)";
+    $category = 'jazz fusion';
+  } elseif ($arg == 'traditional') {
+	  $datastr = display_data(47820);
+	  $_SESSION['video-lessons-meta-tid'] = 47820;
+    $val = 4905;//'1246';
+    $filset = "im_field_music_category:(4905)";
+    $category = 'traditional';
+  } else {
+	  $datastr = display_data(47814);
+	  $_SESSION['video-lessons-meta-tid'] = 47814;
+    $val = '4895+4896+4903+4899+4916+4905';
+    $filset = "im_field_music_category:(4895 OR 4896 OR 4899 OR 4903 OR 4916)";
+    $category = 'more styles';
+  }
+  $val = '*';
+  $filset = $filset." & -im_field_lesson_type:(4867 OR 4866 OR 4869 OR 4871 OR 4872)";
+  $str = $datastr[0];
+  $set1 =  _get_categories_lessons('tid', $val, '0', '8', 'is_published_at', 'desc', $category, 'latest', $filset); 
+  $set2 =  _get_categories_lessons('tid', $val, '0', '8', 'ss_one_day_view', 'desc', $category, 'rated', $filset); 
+  //$set1 =  views_embed_view('guitar_fusion', $display_id = 'block_1', $val);
+  //$set2 =  views_embed_view('guitar_fusion', $display_id = 'block_2', $val);
+  $module_path  =  drupal_get_path('module', 'support');  
+  $latest_img   = $module_path.'/latest.png';
+  $rate_img     = $module_path.'/MostPopular.png';
+  $str         .= "<div class='lesseon'><div class='column one-half guitar-view-lessons-left'><img class='left-image' src='/$latest_img' title='Latest'/> $set1 </div>";
+  $str         .= "<div class='column one-half guitar-view-lessons-right'><img class='right-image' src='/$rate_img' title='Highest rated'/> $set2 </div><var></var></div>";
+  return $str;
+}
+
+//display guitar_series content
+function lession_display_series() {
+  $set1 =  views_embed_view('series_lessones', $display_id = 'block_2');
+  $str  =  "<div class='lesseon'>".$set1."</div>";
+  return $str;
+}
+//display guitar_song content
+function lession_display_song() {
+  $datastr = display_data(47833);
+  $str = $datastr[0];
+	$category = $datastr[1];
+	$filset = '';
+	$category = 'songs';
+  $set1 =  _get_categories_lessons('is_cover_lesson', '1', '0', '8', 'is_published_at', 'desc', $category, 'latest', $filset); 
+  $set2 =  _get_categories_lessons('is_cover_lesson', '1', '0', '8', 'ss_one_day_view', 'desc', $category, 'rated', $filset); 
+  //$set1 =  views_embed_view('guitar_songs', $display_id = 'block_1');//, 4862
+  //$set2 =  views_embed_view('guitar_songs', $display_id = 'block_2');//, 4862
+  $module_path  =  drupal_get_path('module', 'support');  
+  $latest_img   = $module_path.'/latest.png';
+  $rate_img     = $module_path.'/MostPopular.png';
+  $dataxd = '';
+  $_SESSION['video-lessons-meta-tid'] = 47833;
+  $str .= $dataxd."<div class='lesseon'><div class='column one-half guitar-view-lessons-left'><img class='left-image' src='/$latest_img' title='Latest'/> $set1 </div>";
+  $str .= "<div class='column one-half guitar-view-lessons-right'><img class='right-image' src='/$rate_img' title='Highest rated'/> $set2 </div><var></var></div>";
+  return $str;
+}
+
+//display guitar_song content
+function lession_display_shred() {
+  $arg = arg(2);
+  $module_path  =  drupal_get_path('module', 'support');  
+  $latest_img   = $module_path.'/latest.png';
+  $rate_img     = $module_path.'/MostPopular.png';
+  if ($arg == 'shred-picking') {
+	  $datastr = display_data(47830);
+	  $_SESSION['video-lessons-meta-tid'] = 47830;
+    $val = 4894;//'1251';
+    $filset = "im_field_music_category:(4894)";
+    $category = 'Picking';
+  } elseif ($arg == 'shred-legato') {
+	  $datastr = display_data(47832);
+	  $_SESSION['video-lessons-meta-tid'] = 47832;
+    $val = 4918;//'1255';
+    $filset = "im_field_music_category:(4918)";
+    $category = 'legato';
+  } elseif ($arg == 'shred-sweep-picking') {
+	  $datastr = display_data(47831);
+	  $_SESSION['video-lessons-meta-tid'] = 47831;
+    $dataimage = 'music-genre-shred-sweep-picking.jpg';
+    $val = 4917;//'1242';
+    $filset = "im_field_music_category:(4917)";
+    $category = 'Sweep Picking';
+  } else {
+	  $datastr = display_data(47829);
+	  $_SESSION['video-lessons-meta-tid'] = 47829;
+    $val = '4894+4918+4917';//'1242+1251+1255';
+    $filset = "im_field_music_category:(4894 OR 4918 OR 4917)";
+    $category = 'Shred';
+  }
+  $val = '*';
+  $filset = $filset." & -im_field_lesson_type:(4867 OR 4866 OR 4869 OR 4871 OR 4872)";
+  $str = $datastr[0];
+  $set1 =  _get_categories_lessons('tid', $val, '0', '8', 'is_published_at', 'desc', $category, 'latest', $filset); 
+  $set2 =  _get_categories_lessons('tid', $val, '0', '8', 'ss_one_day_view', 'desc', $category, 'rated', $filset); 
+  //$set1 =  views_embed_view('guitar_shred', $display_id = 'block_1', $val);
+  //$set2 =  views_embed_view('guitar_shred', $display_id = 'block_2', $val);
+  $str  .=  "<div class='lesseon'><div class='column one-half guitar-view-lessons-left'><img class='left-image' src='/$latest_img' title='Latest'/> $set1 </div>";
+  $str .=  "<div class='column one-half guitar-view-lessons-right'><img class='right-image' src='/$rate_img' title='Highest rated'/> $set2 </div><var></var></div>";
+  return $str;
+}
+
+/** Implemented the Block for base on the terms filter of data
+  * for video lession
+  *
+  **/
+function get_lession_data_per_term() {
+ print 'ddd1';
+  $term = arg(2);
+  $ex = explode("-",$term);
+	$tax = taxonomy_get_term_by_name($ex[0]);
+	foreach($tax as $tax) {
+		$tax = $tax->tid;
+	}
+
+  print 'ddd11';
+  $query = db_select('users', 'u');
+      $query->innerJoin('node', 'n', 'n.uid = u.uid');
+      $query->innerJoin('taxonomy_index', 't', 't.nid = n.nid');
+      $stat = $query
+      ->fields('n',array('title', 'nid', 'uid'))->distinct('u.uid')
+      ->fields('u',array('name'))->distinct('u.name')
+      ->condition('n.type', array('Lessons'),'=')
+      ->condition('n.status', 1,'=')
+      ->orderBy('u.name', 'ASC')
+      ->execute();
+  print 'ddd';
+  while($record = $stat->fetchAssoc()) {
+       $xx[] = $record;
+    }
+  print '<pre>';
+  print_r($xx);
+  exit;
+     
+}
+
+function support_block_info() {
+  $blocks['genre'] = array(
+    'info' => t('Genre'),
+  );
+  $blocks['lesson_series_heder'] = array(
+    'info' => t('Lesson Series'),
+  );
+  return $blocks;
+}
+
+function support_block_view($delta) {
+  $block = array();
+  switch ($delta) {
+    case 'genre':
+      //use helper functions to set the blocks. Cleaner.
+      $block['content'] = support_genre();
+    break;
+    case 'lesson_series_heder':
+      //use helper functions to set the blocks. Cleaner.
+      $block['content'] = lesson_series_heder();
+    break;
+  }
+  return $block;
+}
+
+function support_genre() {
+  $items =array(
+                 array('data' => t('<h3>Guitar Instructors</h3>'), 'id' => 'genre-guitar-head'),
+                 l(t('All instructors'), 'video-lessons/instructors/all-instructors'), 
+                 l(t('Featured instructors'), 'video-lessons/instructors'), 
+                 l(t('Acoustic'), 'video-lessons/instructors/acoustic-instructors'), 
+                 l(t('Blues'), 'video-lessons/instructors/blues'), 
+                 l(t('Country'), 'video-lessons/instructors/country'), 
+                 l(t('Classical'), 'video-lessons/instructors/classical'), 
+                 l(t('Flamenco'), 'video-lessons/instructors/flamenco'), 
+                 l(t('Funk'), 'video-lessons/instructors/funk'), 
+                 l(t('Jazz'), 'video-lessons/instructors/jazz-instructors'), 
+                 l(t('Metal'), 'video-lessons/instructors/metal-instructors'), 
+                 l(t('Rock'), 'video-lessons/instructors/rock-instructors'),
+                 l(t('Shred'), 'video-lessons/instructors/shred'), 
+                 l(t('Traditional'), 'video-lessons/instructors/traditional'),
+                 array('data' => t('<h3><small>Band Class Instructors</small></h3>'), 'id' => 'genre-band-head'),
+                 l(t('Bass'), 'video-lessons/instructors/bass-lessons'),
+                 l(t('Drums'), 'video-lessons/instructors/drums'),
+                 l(t('Piano'), 'video-lessons/instructors/piano-lessons'),
+                 l(t('Singing'), 'video-lessons/instructors/singing-for-guitarists')
+           );
+  
+  //$title = t('Genre');
+  $title = '';
+  return theme_item_list(array('items' => $items, 'title' => $title, 'type' => 'ul', 'attributes' => array()));
+}
+
+/**
+ * Callback function to print videos lessons title, image and description
+ * @return $output;
+ **/
+function display_data($tid) {
+	$tid_data = taxonomy_term_load($tid);
+	$image = file_create_url($tid_data->field_category_image['und']['0']['uri']);
+	$title = $tid_data->field_video_lessons_title['und']['0']['value'];
+	$output = array();
+	$output[0] = '<div class="column-container">
+				<div class="column one-half guitar-lessons-left">
+					<div class="padding category-description">
+						<h1 class="blank-margin font_size_100"><img src="/font/'.$title.'/12/" alt="'.$title.'"></h1>
+						'.$tid_data->description.'
+					</div>
+				</div>
+				<div class="column one-half guitar-lessons-right">
+					<div id="about-music-category"><img src="'.$image.'"/></div>
+				</div>
+			</div>';
+	$output[1] = $title;
+	return $output;
+}
+
+function lesson_series_heder() {
+	$output = '';
+	$result = db_query("SELECT n.nid FROM node n INNER JOIN field_data_field_other fo ON n.nid = fo.entity_id AND (fo.entity_type = 'node' AND fo.deleted = '0') WHERE n.status = '1' AND n.type IN  ('lessons_series') AND fo.field_other_value = '2' ORDER BY n.created ASC");//->fetchAll();
+	$output = '<style type="text/css">			 
+			 	#flip{min-height:165px;}
+				.lesson_series_hover_text{height:43px;}
+				.lesson_series_hover_text table {visibility:hidden;}
+				.lesson_series_hover_ul .lesson_series_hover_text table {visibility:visible;}
+		</style>
+		<div class="column-container">
+			<div style="width:260px;" class="column one-half guitar-lessons-left">
+				<div style="" class="padding category-description">
+					<h1 style="margin-bottom:18px;" class="blank-margin font_size_100">
+						<img alt="Lesson Series" src="/font/Lesson+Series/20/">
+					</h1>GMC Series allow for in-depth learning and give you a clear start and end point.
+				</div>
+			</div>
+			<div style="width:500px;padding-left:30px;margin-top: -20px;" class="column one-half guitar-lessons-right">
+				<div id="coverflip" style="display: block;">
+					<ul id="flip" class="ui-jcoverflip ">';
+	foreach($result as $data) {
+		$node_detail = node_load($data->nid);
+		$url_alias = db_query("SELECT alias FROM url_alias WHERE source = :source", array(':source' => 'node/'.$node_detail->nid))->fetchField();
+		$image = file_create_url($node_detail->field_image['und']['0']['uri']);
+		$output .= '<li class="reflection ui-jcoverflip--item" style="left: 10px; bottom: 0px;">
+							<span class="title lesson_series_hover_text" style="display: none;">
+								<table align="center">
+									<tbody>
+										<tr>
+											<td><a href="/'.$url_alias.'"><span class="left_round">&nbsp;</span></a></td>
+											<td><a href="/'.$url_alias.'"><span class="center">'.$node_detail->title.'</span></a></td>
+											<td><a href="/'.$url_alias.'"><span class="right_round">&nbsp;</span></a></td>
+										</tr>
+									</tbody>
+								</table>
+							</span>
+							<img alt="'.$node_detail->title.'" src="'.$image.'" class="reflected" style="width: 60px;"/>
+						</li>';
+	}
+	$output .= '</ul>
+				</div>
+			</div>
+		</div>';
+	return $output;
+	//<!--styles/145x160/public/-->
+  /*return '<style type="text/css">
+			 
+			 	#flip{
+					min-height:165px;
+				}
+				.lesson_series_hover_text{
+					height:43px;
+				}
+				.lesson_series_hover_text table {
+					 visibility:hidden;
+				}
+				.lesson_series_hover_ul .lesson_series_hover_text table {
+					visibility:visible;
+				}
+		</style>
+		<div class="column-container">
+			<div style="width:260px;" class="column one-half guitar-lessons-left">
+				<div style="" class="padding category-description">
+					<h1 style="margin-bottom:18px;" class="blank-margin font_size_100">
+						<img alt="Lesson Series" src="/font/Lesson+Series/20/">
+					</h1>GMC Series allow for in-depth learning and give you a clear start and end point.
+				</div>
+			</div>
+			<div style="width:500px;padding-left:30px;margin-top: -20px;" class="column one-half guitar-lessons-right">
+				<div id="coverflip" style="display: block;">
+					<ul id="flip" class="ui-jcoverflip ">
+						<li class="reflection ui-jcoverflip--item" style="left: 10px; bottom: 0px;">
+							<span class="title lesson_series_hover_text" style="display: none;">
+								<table align="center">
+									<tbody>
+										<tr>
+											<td><a href="/lessonseries/Around-the-World"><span class="left_round">&nbsp;</span></a></td>
+											<td><a href="/lessonseries/Around-the-World"><span class="center">Around the World</span></a></td>
+											<td><a href="/lessonseries/Around-the-World"><span class="right_round">&nbsp;</span></a></td>
+										</tr>
+									</tbody>
+								</table>
+							</span>
+							<img alt="Around the World" src="/sites/default/files/lessonseries/around-the-world.png" class="reflected" style="width: 60px;"/>
+						</li>
+						<li class="reflection ui-jcoverflip--item" style="left: 50px; bottom: 0px;">
+							<span class="title lesson_series_hover_text" style="display: none;">
+								<table align="center">
+									<tbody>
+										<tr>
+											<td><a href="/lessonseries/Classical-Guitar-Admission-Exam"><span class="left_round">&nbsp;</span></a></td>
+											<td><a href="/lessonseries/Classical-Guitar-Admission-Exam"><span class="center">Classical Guitar Admission Exam</span></a></td>
+											<td><a href="/lessonseries/Classical-Guitar-Admission-Exam"><span class="right_round">&nbsp;</span></a></td>
+										</tr>
+									</tbody>
+								</table>
+							</span>
+							<img alt="Classical Guitar Admission Exam" src="/sites/default/files/lessonseries/classical-guitar-admission-exam.png" class="reflected" style="width: 90px;"/>
+						</li>
+						<li class="reflection ui-jcoverflip--item" style="left: 90px; bottom: 0px;">
+							<span class="title lesson_series_hover_text" style="display: none;">
+								<table align="center">
+									<tbody>
+										<tr>
+											<td><a href="/lessonseries/Pachelbel-Canon-in-D-Lessons"><span class="left_round">&nbsp;</span></a></td>
+											<td><a href="/lessonseries/Pachelbel-Canon-in-D-Lessons"><span class="center">Pachelbel Canon in D Lessons</span></a></td>
+											<td><a href="/lessonseries/Pachelbel-Canon-in-D-Lessons"><span class="right_round">&nbsp;</span></a></td>
+										</tr>
+									</tbody>
+								</table>
+							</span>
+							<img alt="Pachelbel Canon in D Lessons" src="/sites/default/files/lessonseries/Canon-in-D-Lessons.png" class="reflected" style="width: 100px;"/>
+						</li>
+						<li class="reflection ui-jcoverflip--item" style="left: 181px; bottom: 0px;">
+							<span class="title lesson_series_hover_text" style="display: none;">
+								<table align="center">
+									<tbody>
+										<tr>
+											<td><a href="/lessonseries/Bens-Vibrato-Odyssey"><span class="left_round">&nbsp;</span></a></td>
+											<td><a href="/lessonseries/Bens-Vibrato-Odyssey"><span class="center">Bens Vibrato Odyssey</span></a></td>
+											<td><a href="/lessonseries/Bens-Vibrato-Odyssey"><span class="right_round">&nbsp;</span></a></td>
+										</tr>
+									</tbody>
+								</table>
+							</span>
+							<img alt="Bens Vibrato Odyssey" src="/sites/default/files/lessonseries/post-3410-1329305895.png" class="reflected" style="width: 145px;"/>
+						</li>
+						<li class="reflection ui-jcoverflip--item" style="left: 320px; bottom: 0px;">
+							<span class="title lesson_series_hover_text" style="display: none;">
+								<table align="center">
+									<tbody>
+										<tr>
+											<td><a href="/lessonseries/Minor-Vs-Major"><span class="left_round">&nbsp;</span></a></td>
+											<td><a href="/lessonseries/Minor-Vs-Major"><span class="center">Minor Vs Major</span></a></td>
+											<td><a href="/lessonseries/Minor-Vs-Major"><span class="right_round">&nbsp;</span></a></td>
+										</tr>
+									</tbody>
+								</table>
+							</span>
+							<img alt="Minor Vs Major" src="/sites/default/files/lessonseries/post-11381-1299498370.png" class="reflected" style="width: 100px;"/>
+						</li>
+						<li class="reflection ui-jcoverflip--item" style="left: 380px; bottom: 0px;">
+							<span class="title lesson_series_hover_text" style="display: none;">
+								<table align="center">
+									<tbody>
+										<tr>
+											<td><a href="/lessonseries/Bon-Jovi"><span class="left_round">&nbsp;</span></a></td>
+											<td><a href="/lessonseries/Bon-Jovi"><span class="center">Bon Jovi</span></a></td>
+											<td><a href="/lessonseries/Bon-Jovi"><span class="right_round">&nbsp;</span></a></td>
+										</tr>
+									</tbody>
+								</table>
+							</span>
+							<img alt="Bon Jovi" src="/sites/default/files/lessonseries/post-11381-1304343066.png" class="reflected" style="width: 90px;"/>
+						</li>
+						<li class="reflection ui-jcoverflip--item" style="left: 440px; bottom: 0px;">
+							<span class="title lesson_series_hover_text" style="display: none;">
+								<table align="center">
+									<tbody>
+										<tr>
+											<td><a href="/lessonseries/Legato-Workshop"><span class="left_round">&nbsp;</span></a></td>
+											<td><a href="/lessonseries/Legato-Workshop"><span class="center">Legato Workshop</span></a></td>
+											<td><a href="/lessonseries/Legato-Workshop"><span class="right_round">&nbsp;</span></a></td>
+										</tr>
+									</tbody>
+								</table>
+							</span>
+							<img alt="Legato Workshop" src="/sites/default/files/lessonseries/post-3410-1329305914.png" class="reflected" style="width: 60px;"/>
+						</li>
+					</ul>
+				</div>
+			</div>
+		</div>';*/
+}
+
+function generate_thumbnail(){
+	
+	$nids = db_query("SELECT nid,created FROM node where type = :type ORDER BY created ASC", array(':type' => 'lessons'));
+	//print "<pre>";print_r($nids);exit;
+	$inserted = array();
+	foreach($nids as $nid) {
+		$path = '/opt/web/guitarmasterclass.net/drupal_test/sites_default_files/uploads/'.$nid->nid.'/small_'.$nid->nid.'.jpg';
+		if (!file_exists($path)) {
+			foreach (glob("/opt/web/guitarmasterclass.net/drupal_test/sites_default_files/uploads/$nid->nid/*.mp4") as $filename) {
+				if (file_exists($filename)) {
+					//print "$filename size " . filesize($filename) . "<br/>";
+					print "$nid->nid = not found <br/><br/>";
+					
+					$file = $filename;
+					$newfile = str_replace(" ", "_", $filename);
+					copy($file, $newfile);
+					$thumbnail = "/opt/web/guitarmasterclass.net/drupal_test/sites_default_files/uploads/$nid->nid/small_$nid->nid.jpg";
+					$cmd1 = "ffmpeg -i $newfile -deinterlace -an -ss 1 -t 00:00:05 -r 1 -y -vcodec mjpeg -f mjpeg $thumbnail 2>&1";
+					exec($cmd1,$op);
+					$inserted[] = $nid->nid;
+
+					break;
+				}
+			}
+		}
+	}
+	print "<pre>";print_r($inserted);exit;
+	/*$video = "/opt/web/guitarmasterclass.net/drupal_test/sites_default_files/uploads/40328/lekcija_118_-_slow_country_phrasing_Sony_AVC_GMC_WIDE[0].mp4";
+	$thumbnail = "/opt/web/guitarmasterclass.net/drupal_test/sites_default_files/uploads/40328/small_40328.jpg";
+
+	$cmd1 = "ffmpeg -i $video -deinterlace -an -ss 1 -t 00:00:02 -r 1 -y -vcodec mjpeg -f mjpeg $thumbnail 2>&1";
+
+	exec($cmd1,$op);
+	echo "<pre>";
+	print_r($op);
+	echo "</pre>";*/
+
+}
+/**
+ * Callback function for testing.
+ **/
+function gmc_bookmarks_folder(){
+	$flag = flag_get_flag('bookmarks');
+	$flagged = $flag->is_flagged(36630);
+	print 'flagged = '.$flagged.'<br/><br/>';
+	print "<pre>";print_r($_SESSION);exit;
+}
+/**
+ * Callback function to set folder parent id in session.
+ **/
+function gmc_bookmark_parent_folder(){
+	if(isset($_POST['parent_id'])) {
+		$_SESSION['bookmark_parent_id'] = $_POST['parent_id'];
+		print 'true';
+	}
+}
+/**
+ * Callback function to displayed bookmarks folder
+ **/
+function gmc_bookmark_folder(){
+	global $user;
+	$output = '';
+	$index = 0;
+	$folders = gmc_bookmark_get_items($user->uid, $index);
+	$output .= '<div class="gmc-user-folder-list"><table id="gmc-folder-select" class="bookmarkorganizer-index-table preview-disabled sticky-enabled tabledrag-processed tableheader-processed sticky-table">
+	<tbody>';
+	foreach ($folders as $folder) {
+		if($folder->label != 'Trash') {
+			$indentation = '';
+			if($folder->depth != 0) {
+				for($x = 0; $x < $folder->depth; $x++) {
+					$indentation .= '<div class="indentation">&nbsp;</div>';
+				}
+			}
+			$output .= '<tr class="folder open">
+				<td class="row-label indentation-0">
+					'.$indentation.'
+					<div class="folder-link"></div>
+					<span id="label-'.$folder->id.'" class="label" value="'.$folder->id.'">'.$folder->label.'</span>
+				</td>
+			</tr>';
+		}
+	}
+	$output .= '</tbody></table></div>';
+	return $output;
+}
+/**
+ * Callback function to collect bookmarks folder
+ **/
+function gmc_bookmark_get_items($uid, $index = 0) {
+	$query = db_select('bookmarkorganizer_item', 'boi');
+	$query->leftJoin('bookmarkorganizer_folder', 'bof', 'boi.content_id = bof.id');
+	$query->fields('boi');
+	$query->addField('bof', 'collapsed');
+	$query->addField('bof', 'public');
+	$query->condition('boi.uid', $uid);
+	$query->condition('boi.type', 'folder');
+	$query->orderBy('boi.weight', 'ASC');
+	$result = $query->execute();
+
+	$items = array();
+	while ($row = $result->fetch()) {
+		$items[$row->parent][] = $row;
+	}
+
+    module_load_include('inc', 'bookmarkorganizer');
+	$items = bookmarkorganizer_recursive_tree_flatten($items, $index);
+	return $items;
+}
+/**
+ * Callback function to return count of bookmarks folder
+ **/
+function gmc_bookmark_folder_count(){
+	global $user;
+	$folders_count = db_query("SELECT COUNT(id) FROM bookmarkorganizer_item WHERE uid = :uid AND type = :type", array(':uid' => $user->uid, ':type' => 'folder'))->fetchField();
+	return $folders_count;
+}
+/**
+ * Callback function to return user bookmark list
+ **/
+function gmc_bookmark_list(){
+	global $user;
+	module_load_include('inc', 'bookmarkorganizer', 'bookmarkorganizer');
+	$bookmarks = bookmarkorganizer_main_view($user, $item_id = NULL);
+	unset($bookmarks['preview']);
+	$bookmark = drupal_render($bookmarks);
+	print $bookmark;
+}
+/**
+ * Callback function to return user bookmark list after delete
+ **/
+function gmc_bookmark_list_delete(){
+	global $user;
+	$nid = $_POST['nid'];
+	$type = $_POST['type'];
+	if($type == 'node') {
+		module_load_include('inc', 'bookmarkorganizer', 'bookmarkorganizer');
+		$bookmarks = bookmarkorganizer_main_view($user, $item_id = NULL);
+		unset($bookmarks['preview']);
+		$lesson_flag = 'no-data';
+		$flagged = 1;
+		$folder_count = gmc_bookmark_folder_count();
+		$node_data = node_load($nid);
+		$flag = flag_get_flag('bookmarks');
+		$flagged = $flag->is_flagged($node_data->nid);
+		if($node_data->type == 'lessons') {
+			$lesson_flag = flag_create_link('bookmarks', $node_data->nid);
+		}
+		if($folder_count == 2 && !$flagged) {
+			//print $lesson_flag;
+			print '<div class="bookmark-link"><span class="gmc-flag-bookmark" style="display: block;"><a href="javascript:void(0)">Bookmark this lesson...</a></span><span class="gmc-flag-link" style="display: none;">'.$lesson_flag.'</span></div>';
+		}
+		else if($folder_count == 2 && !$flagged) {
+			print '<div class="bookmark-link"><span class="gmc-flag-bookmark" style="display: none;"><a href="javascript:void(0)">Bookmark this lesson...</a></span><span class="gmc-flag-link" style="display: block;">'.$lesson_flag.'</span></div>';
+		}
+		else if($folder_count > 2 && !$flagged) {
+			print '<div class="bookmark-link"><span class="gmc-flag-bookmark" style="display: block;"><a href="javascript:void(0)">Bookmark this lesson...</a></span><span class="gmc-choose-folder" style="display: none;"><a href="javascript:void(0)">Choose a folder</a></span><span class="gmc-flag-link" style="display: none;">'.$lesson_flag.'</span></div>';
+		}
+		else {
+			print '<div class="bookmark-link"><span class="gmc-flag-bookmark" style="display: none;"><a href="javascript:void(0)">Bookmark this lesson...</a></span><span class="gmc-choose-folder" style="display: none;"><a href="javascript:void(0)">Choose a folder</a></span><span class="gmc-flag-link" style="display: block;">'.$lesson_flag.'</span></div>';
+		}			
+	}
+}
+/**
+ * Callback function for lessons videos URLs
+ **/
+function gmc_actions_getlessonpartslist($nid) {
+	$node_data = node_load($nid);
+	$json = array();
+	$file1 = file_create_url($node_data->field_video_upload['und']['0']['uri']);
+	$json['parts'] = array(array($file1));
+	$file2 = file_create_url($node_data->field_backtrack_upload['und']['0']['uri']);
+	$title = $node_data->field_backtrack_upload['und']['0']['filename'];
+	$json['backingtracks'] = array(
+						'title'     => $title,
+						'url'    => $file2,
+						);
+	$json['free_tacks'] = array() ;
+	$json['coverlesson'] =  false ;
+	$json['tools']    = array() ;
+	$json['coverd_lesson']  = false ;
+	if( isset($_GET['jsonp']) ) {
+		echo preg_replace('/[^\w\.]/', '_', $_GET['jsonp']) . ' = ' . json_encode($json) . ';' ;
+		exit ;
+	}
+	echo json_encode($json);
+}
+//gmc-test-html5
+function gmc_test_html5(){
+	$node_data = node_load(36425);
+
+	print '************Timestamp************<br/>';
+	
+	$total_diff_sec = floor(time() - $node_data->created);
+	$days = floor($total_diff_sec/86400);
+	print "Total days = $days<br/>";
+	
+	//print "<pre>";print_r($node_data);
+	
+	$member_views = $node_data->field_member_views['und']['0']['value'];
+	$guest_views = $node_data->field_guest_views['und']['0']['value'];
+	$total_count = (int)$member_views + (int)$guest_views;
+	
+	$one_day_view = round($total_count/$days);
+	
+	
+	print "member_views = $member_views<br/>";
+	print "guest_views = $guest_views<br/>";
+	print "one_day_view = $one_day_view";
+	
+	exit;
+
+	$output = '<script src="/sites/all/modules/custom/support/html5Player/html5player/html5player.js"></script>';
+	$output .= '<script>
+		window[\'gmc_player_instance\'] = GmcPlayer(\'videoPlayer\', {
+			lesson_id: 46835,
+			lesson_part: 1,
+			lesson_lotd: 0 
+		} );
+
+	</script>';
+	return $output;
+}
+
+/**
+ * Callback function gmc_loadmore_session()
+ * to set session for loadmore of view at video-lessons page
+ * #latest=2;rated=1
+ **/
+function gmc_loadmore_session() {
+   $url = $_POST['url'];
+  if (!empty($url)) {
+    $data1 = explode(';', $url);
+    $data2 = explode('#latest=', $data1[0]);
+    $data3 = explode('rated=', $data1[1]);
+    $_SESSION['loadmore_latest'] = $data2[1];
+    $_SESSION['loadmore_rated'] = $data3[1];
+    print $_SESSION['loadmore_latest'].'+'.$_SESSION['loadmore_rated'];
+  } else {
+    unset($_SESSION['loadmore_latest']);
+    unset($_SESSION['loadmore_rated']);
+    print  'false';
+  }
+	/*if(!isset($_SESSION['loadmore_latest'])) {
+		if(!isset($_SESSION['reload_video_lessons'])) {
+			$_SESSION['reload_video_lessons'] = 1;
+			$url = $_POST['url'];
+			$data1 = explode(';', $url);
+			$data2 = explode('#latest=', $data1[0]);
+			$data3 = explode('rated=', $data1[1]);
+			$_SESSION['loadmore_latest'] = $data2[1];
+			$_SESSION['loadmore_rated'] = $data3[1];
+		}
+		else {
+			unset($_SESSION['reload_video_lessons']);
+		}
+		if(isset($_SESSION['reload_video_lessons'])) {
+			print 'loadmore_latest = '.$_SESSION['loadmore_latest'].' AND loadmore_rated = '.$_SESSION['loadmore_rated'];
+		}
+		else {
+			printc;
+		}
+	}*/
+}
+
+/**
+ * Callback function gmc_lessons_view_count()
+ * to return total count of member view and guest view
+ * #latest=2;rated=1
+ **/
+function gmc_lessons_view_count($nid){
+	$member_views = db_query("SELECT field_member_views_value FROM field_data_field_member_views WHERE entity_id = :nid", array(':nid' => $nid))->fetchField();
+	$guest_views = db_query("SELECT field_guest_views_value FROM field_data_field_guest_views WHERE entity_id = :nid", array(':nid' => $nid))->fetchField();
+	$total_count = (int)$member_views + (int)$guest_views;
+	$published_at = db_query("SELECT published_at FROM publication_date WHERE nid = :nid", array(':nid' => $nid))->fetchField();
+	$total_diff_sec = floor(time() - $published_at);
+	$days = floor($total_diff_sec/86400);
+	if($days == 0) {
+		$days = 1;
+	}
+	$one_day_view = round($total_count/$days);
+	return $one_day_view;
+}
+/**
+ * Callback function gmc_instructor_publish_lessons()
+ * to return true or false if user has posted lessons
+ * and lesson has published
+ **/
+function gmc_instructor_publish_lessons($uid) {
+	$output = TRUE;
+	$post_count = db_query("SELECT COUNT(nid) FROM node WHERE status = :status AND type = :type AND uid = :uid AND created < :now", array(':status' => 1, ':type' =>'lessons', ':uid' => $uid, ':now' => time()))->fetchField();
+	if($post_count >= 1) {
+		$output = FALSE;
+	}
+	return $output;
+}
+/**
+ * Callback function gmc_welcome_video()
+ * to return welcome video or Featured Content image
+ * reyurn $output;
+ **/
+function gmc_welcome_video() {
+  ob_clean();
+  $cookie_name = "the_cookie";
+	global $user, $base_url;
+	$output = '<div class="datadis">';
+	if (!isset($_COOKIE['test_cookie']) || $_COOKIE['test_cookie'] != '2') {
+		$output .= '<div class="custom-padding">
+		<div id="" style="padding:13px 55px;">
+			  <video width="320" height="240" src="'.$base_url.'/sites/all/themes/gmc_v2/FILM/flash/intro_video_nofree_noemail_stor_0.mp4"  controls autoplay>
+			 <source src="'.$base_url.'/sites/all/themes/gmc_v2/FILM/flash/intro_video_nofree_noemail_stor_0.mp4" type="video/mp4" >
+				Your browser does not support this video format.  
+		  </video> 
+			</div>
+		</div>';
+	}
+	else {
+		/*$view = views_get_view('featured_content');
+		$view->set_display('block_3');
+		$output = $view->preview();
+		if ($view->result) {
+			$output .= views_embed_view('featured_content', $display_id = 'block_3');
+		}*/
+		//$output .= views_embed_view('featured_content', $display_id = 'block_3');
+		$output .= '<a href="http://www.guitarmasterclass.net/guitar_forum/index.php?showtopic=51900"><img typeof="foaf:Image" src="http://admin.prod.gmc.my/sites/default/files/uploads/back_to_the_80s_final_429x270.jpg" width="429" height="270" alt=""> </a>';
+	}
+	$output .= '</div>';
+	if (isset($_COOKIE['the_cookie'])) {
+    $value = 2;
+    setcookie($cookie_name, $value);
+  } else {
+    $value = 1;
+    setcookie($cookie_name, $value);
+  }
+	return $output;
+}

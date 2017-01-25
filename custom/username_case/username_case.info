@@ -1,0 +1,7 @@
+name = "Username Case Sensitivity"
+description = "Allows you to make usernames case sensitive"
+
+core = 7.x
+version = "7.x-1.0"
+
+configure = admin/config/people/accounts

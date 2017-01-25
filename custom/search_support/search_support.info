@@ -1,0 +1,11 @@
+name = GMC Search Support
+description = Custom GMC Search Support Module to display form.
+package = Custom
+version = VERSION
+core = 7.x
+files[] = search_support.module
+dependencies[] = search
+; Information added by drupal.org packaging script on 2013-02-20
+version = "7.custom"
+project = support
+

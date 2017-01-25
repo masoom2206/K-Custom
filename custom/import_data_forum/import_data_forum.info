@@ -1,0 +1,9 @@
+name = Import Data Forum
+description = Import Data Forum for GMC.
+package = Custom
+version = VERSION
+core = 7.x
+files[] = import_data_forum.module
+; Information added by drupal.org packaging script on 2013-08-17
+version = "7.custom"
+project = import_data_forum

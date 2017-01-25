@@ -1,0 +1,43 @@
+<?php
+/**
+ * Implements hook_schema().
+ */
+function instructor_subscirption_schema() {
+  $schema['instructor_lesson_subscirption'] = array(
+    'fields' => array(
+      'id' => array(
+        'type' => 'serial',
+        'not null' => TRUE,
+        'description' => 'Private Message Draft ID',
+      ),
+      'uid' => array(
+        'description'   => 'UID of the author',
+        'type'          => 'int',
+        'not null'      => TRUE,
+      ),
+      'instructor_id' => array(
+        'description'   => 'UID of the commenter author',
+        'type'          => 'int',
+        'not null'      => TRUE,
+      ),
+      'comment_date'     => array(
+        'description'   => 'comment date',
+        'type'          => 'int',
+        'not null'      => TRUE,
+      ),
+      'comment_approved' => array(
+        'description'   => 'comment status',
+        'type'          => 'int',
+        'not null'      => TRUE,
+        'default' => 0
+      ),	
+      
+    ),
+    'primary key' => array('id'),
+    'indexes' => array(
+       'uid' => array('uid'),
+       'instructor_id' => array('instructor_id'),
+    ),
+  );
+  return $schema;
+}

@@ -1,0 +1,11 @@
+name = GMC Forum Count
+description = Custom GMC Forum Count Module to Store Live Site forum views count.
+package = Custom
+version = VERSION
+core = 7.x
+files[] = gmc_forum_count.module
+files[] = gmc_forum_count.install
+; Information added by drupal.org packaging script on 2013-02-20
+version = "7.custom"
+project = support
+

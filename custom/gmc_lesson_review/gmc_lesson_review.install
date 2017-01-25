@@ -1,0 +1,109 @@
+<?php
+
+/**
+ * @file Rules - Installation file.
+ */
+
+/**
+ * Implements hook_schema().
+ */
+function gmc_lesson_review_schema() {
+	//Save subscribe user/instructor detail
+  $schema['gmc_lesson_review'] = array(
+    'fields' => array(
+      'id' => array(
+        'type' => 'serial',
+        'not null' => TRUE,
+        'description' => 'Subscription ID',
+      ),
+      'uid' => array(
+        'description'   => 'UID of the subscriber',
+        'type'          => 'int',
+        'not null'      => TRUE,
+      ),
+      'entity_id' => array(
+        'description'   => 'Subscribe id of Instructor uid, tid amd nid',
+        'type'          => 'int',
+        'not null'      => TRUE,
+      ),
+      'approved' => array(
+        'description'   => 'Aproved',
+        'type'          => 'varchar',
+        'length'        => 255,
+        'not null'      => TRUE,
+      ),	  
+      'sid' => array(
+        'description'   => 'Sid',
+        'type'          => 'varchar',
+        'length'        => 255,
+        'not null'      => TRUE,
+      ),
+      'email' => array(
+        'description'   => 'Email for the notification',
+        'type'          => 'varchar',
+        'length'        => 255,
+        'not null'      => TRUE,
+      ),
+      'date'     => array(
+        'description'   => 'Lesson Subscribe date',
+        'type'          => 'int',
+        'not null'      => TRUE,
+      ),
+    ),
+    'primary key' => array('id'),
+  );
+  $schema['gmc_files_review'] = array(
+    'fields' => array(
+      'id' => array(
+        'type' => 'serial',
+        'not null' => TRUE,
+        'description' => 'Subscription ID',
+      ),
+      'uid' => array(
+        'description'   => 'UID of the subscriber',
+        'type'          => 'int',
+        'not null'      => TRUE,
+      ),
+      'fid' => array(
+        'description'   => 'Subscribe id of Instructor uid, tid amd nid',
+        'type'          => 'int',
+        'not null'      => TRUE,
+      ),
+      'nid' => array(
+        'description'   => 'Subscribe id of Instructor uid, tid amd nid',
+        'type'          => 'int',
+        'not null'      => TRUE,
+      ),
+      'approved' => array(
+        'description'   => 'Aproved',
+        'type'          => 'varchar',
+        'length'        => 255,
+        'not null'      => TRUE,
+      ),	  
+      'sid' => array(
+        'description'   => 'Sid',
+        'type'          => 'varchar',
+        'length'        => 255,
+        'not null'      => TRUE,
+      ),
+      'email' => array(
+        'description'   => 'Email for the notification',
+        'type'          => 'varchar',
+        'length'        => 255,
+        'not null'      => TRUE,
+      ),
+      'date'     => array(
+        'description'   => 'Lesson Subscribe date',
+        'type'          => 'int',
+        'not null'      => TRUE,
+      ),
+    ),
+    'revision' => array(
+      'description'   => 'Subscribe id of Instructor uid, tid amd nid',
+      'type'          => 'int',
+      'not null'      => TRUE,
+    ),
+    'primary key' => array('id'),
+  );
+  return $schema;
+}

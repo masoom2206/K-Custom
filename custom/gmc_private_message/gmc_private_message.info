@@ -1,0 +1,11 @@
+name = GMC Private Message
+description = Custom GMC Private Message Module to alter privatemsg module component.
+package = Custom
+version = VERSION
+core = 7.x
+files[] = gmc_private_message.module
+dependencies[] = privatemsg
+; Information added by drupal.org packaging script on 2013-02-20
+version = "7.custom"
+project = support
+

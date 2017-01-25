@@ -1,0 +1,43 @@
+<?php
+
+/**
+ * @file Rules - Installation file.
+ */
+
+/**
+ * Implements hook_schema().
+ */
+function gmc_new_lessons_schema() {
+	//Save files revisons detail
+  $schema['gmc_lesson_spots_data'] = array(
+    'fields' => array(
+      'id' => array(
+        'type' => 'serial',
+        'not null' => TRUE,
+        'description' => 'serial ID',
+      ),
+      'nid' => array(
+        'description'   => 'node nid',
+        'type'          => 'int',
+        'not null'      => TRUE,
+      ),
+      'uid' => array(
+        'description'   => 'user uid',
+        'type'          => 'int',
+        'not null'      => TRUE,
+      ),
+      'spot' => array(
+        'description'   => 'spots',
+        'type'          => 'int',
+        'not null'      => TRUE,
+      ),	  
+      'date'     => array(
+        'description'   => 'Lesson Subscribe date',
+        'type'          => 'int',
+        'not null'      => TRUE,
+      ),
+    ),
+    'primary key' => array('id'),
+  );
+  return $schema;
+}

@@ -1,0 +1,10 @@
+name = GMC Subscribe
+description = Custom GMC Subscribe Module to Subscribe Instructor lessons, Forum board and Forum Topic.
+package = Custom
+version = VERSION
+core = 7.x
+files[] = gmc_subscribe.module
+; Information added by drupal.org packaging script on 2013-02-20
+version = "7.custom"
+project = support
+

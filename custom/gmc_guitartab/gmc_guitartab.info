@@ -1,0 +1,9 @@
+name = GMC Guitar Tab
+description = A custom module to embed Guitar Tab in editor.
+core = 7.x
+
+; Information added by drupal.org packaging script on 2012-05-11
+version = VERSION
+core = "7.x"
+project = "support"
+

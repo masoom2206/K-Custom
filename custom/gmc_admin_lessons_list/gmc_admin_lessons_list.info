@@ -1,0 +1,11 @@
+name = GMC Admin Lessons List
+description = Custom GMC Admin Lessons List Module to display Lessons List.
+package = Custom
+version = VERSION
+core = 7.x
+files[] = gmc_admin_lessons_list.module
+dependencies[] = views
+; Information added by drupal.org packaging script on 2013-02-20
+version = "7.custom"
+project = support
+

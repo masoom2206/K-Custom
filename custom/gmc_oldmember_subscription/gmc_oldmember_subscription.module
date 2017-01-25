@@ -1,0 +1,365 @@
+<?php
+/**
+ * GMC Old Member Subscription module to update
+ * live site user role as paid or unpaid
+ * @file gmc_oldmember_subscription.module for member subscription
+ **/
+
+/**
+* Implementation of hook_menu
+*/
+function gmc_oldmember_subscription_menu() {
+  $items = array();
+  //Updating Old Member Subscription
+  $items['admin/update/member/%/%/%/%'] = array(
+    'title' => 'GMC Old Member Subscription',
+    'description' => 'Update user role',
+	  'page arguments'   => array(3, 4, 5, 6),
+    'page callback' => 'update_oldmember_subscription',
+    'access arguments'	=> array('access administration pages'),
+    'type' => MENU_LOCAL_TASK,
+  );
+  $items['user/%/subscription/status'] = array(
+    'title' => t('Subscription Status'),
+    'description' => t('Subscription Status'),
+	  'page arguments'   => array(1),
+    'page callback' => 'subscription_stasus',
+    'access arguments'	=> array('access content'),
+    'type' => MENU_LOCAL_TASK,
+  );
+  $items['user/%/subscription/action/%/%'] = array(
+    'title' => t('Subscription Status'),
+    'description' => t('Subscription Status'),
+	  'page arguments'   => array(1, 4, 5),
+    'page callback' => 'subscription_stasus_action',
+    'access arguments'	=> array('access content'),
+    'type' => MENU_CALLBACK,
+  );
+  $items['user/%/subscription/change/%/%'] = array(
+    'title' => t('Are you sure you want to cancel this recurring fee?'),
+    'description' => t('Are you sure you want to cancel this recurring fee?'),
+	  'page arguments'   => array('subscription_stasus_change', 1, 4, 5),
+    'page callback' => 'drupal_get_form',
+    'access arguments'	=> array('access content'),
+    'type' => MENU_NORMAL_ITEM,
+  );
+  $items['user/%/subscription/dibs/cancel/%/%/%'] = array(
+    'title' => t('Are you sure you want to cancel this recurring fee?'),
+    'description' => t('Are you sure you want to cancel this recurring fee?'),
+	  'page callback' => 'drupal_get_form',
+	  'page arguments'   => array('subscription_stasus_dibs_cancel', 1, 5, 6),
+    'access arguments'	=> array('access content'),
+    'type' => MENU_CALLBACK,
+  );
+  return $items;
+}
+
+/*
+ * Call back function for implement for for subscription page
+ *
+ */
+function subscription_stasus_change($form, &$form_state) {
+  $form['contact_information'] = array(
+    '#markup' => 'This action cannot be undone and may result in the termination of subscription services.<br/><br/>',
+  );
+  $form['submit_one'] = array(
+    '#type' => 'submit',
+    '#value' => t('Yes, I want to cancel the subscription'),
+    '#suffix' => l('No, I want to continue with the subscription' , '#'),
+    '#submit' => array('my_module_form_submit_one'),
+  );
+  return $form;
+}
+
+function subscription_stasus_dibs_cancel ($form, &$form_state, $ag1, $ar2, $ar4) {
+  
+  $form['contact_information'] = array(
+    '#markup' => 'This action cannot be undone and may result in the termination of subscription services.<br/><br/>',
+  );
+  $form['merchantId'] = array(
+    '#type' => 'hidden',
+    '#value' => $settings['general']['merchant'],
+  );
+  $form['MAC'] = array(
+    '#type' => 'hidden',
+    '#value' => $data['api_module'],
+  );
+  $form['transactionId'] = array(
+    '#type' => 'hidden',
+    '#value' => $data['api_module'],
+  );
+  $form['submit_one'] = array(
+    '#type' => 'submit',
+    '#value' => t('Yes, I want to cancel the subscription'),
+    '#suffix' => l('No, I want to continue with the subscription' , '#'),
+    '#submit' => array('my_module_form_submit_one'),
+  );
+  $form['#action'] = 'https://payment.architrade.com/paymentweb/start.action';
+  if (!empty($settings['auto_submit'])) {
+    $form['submit']['#attached']['js'][] = drupal_get_path('module', 'dibs') . '/dibs.auto_submit.js';
+  }
+
+  return $form;
+}
+
+
+function my_module_form_submit_one($form, &$form_state) {
+  //$args = func_get_args();
+  //print '<pre>';
+  //print_r($args); exit;
+}
+
+
+/*
+ * A callback function for implement actions for user subscription
+ * $uid : @arg(2)
+ */
+function subscription_stasus_action($uid, $ac1, $ac2) {
+  global $user;
+  if(!is_numeric($uid)) {
+    return;
+  }
+  if ($user->uid != 1 && $user->uid == $uid) {
+    $uid = $user->uid;
+    $email = $user->mail;
+  } else {
+    $account = user_load($uid);
+    $email = $account->mail;
+  } 
+  if (is_numeric($uid) && md5('unsubscribe') == $ac1 && md5($uid) == $ac2) {
+    $project_dir = '/opt/web/app' ;
+    $php_path = '/usr/bin/php' ;
+    $cmd = sprintf('%s %s gmc:task:unsubscribe --email=%s', $php_path, escapeshellarg($project_dir . '/console' ), escapeshellarg($email) );
+    $ret = null ;
+    $output = null ;
+   // exec($cmd, $output, $ret );
+    if( $ret ) {
+    throw new \Exception( json_encode($output) );
+    }
+    $json = json_decode( array_pop($output), true) ;
+    if( $json['error'] ) {
+      echo $json['error'] ;
+    } else {
+      echo $json['message'] ;
+    }
+  }
+  if (is_numeric($uid) && md5('update') == $ac1 && md5($uid) == $ac2) {
+    $email = 'test@memeber.com' ;
+    $domain = $base_url;
+    $url = sprintf('%s/payment/unsubscribe/%s', $domain, $email);
+    $json_data = file_get_contents($url) ;
+    $json = json_decode($json_data, true) ;
+    if( $json['error'] ) {
+      echo $json['error'] ;
+    } else {
+      echo $json['message'] ;
+    }
+  }
+}
+/*
+ * A callback function for update/edit/add paid user subscription
+ * $uid : @arg(2)
+ */
+function subscription_stasus($uid) {
+	global $user;
+	//$order = db_query("SELECT * FROM uc_orders WHERE uid = :uid", array(':uid' => $user->uid))->fetchAll();
+	/*$order = uc_order_new(55520);
+	$order = uc_order_load(1983);
+	print "<pre>";print_r($order);exit;
+	$fee = uc_recurring_fee_user_load(95);
+	print "<pre>";print_r($fee);exit;*/
+	if($user->uid == 0) {
+		drupal_goto('<front>');
+	}
+	else if ($user->uid != 1) {
+		$uid = $user->uid;
+	}
+	
+	$live_subscription = db_select('gmc_oldmember_subscription', 's')
+		->fields('s')
+		->condition('uid', $uid, '=')
+		->execute()
+		->fetchObject();
+	if(!empty($live_subscription)){
+		$ops = array('n/a');
+		$header = array(t('Order'), t('Amount'), t('Full Access Expiry'), t('Status'), t('Remaining'), t('Options'));
+		if(!empty($live_subscription->payment_method)) {
+			$ops = array('<a href="/actions/unsubscribe/" class="confirm-link" onClick="return confirm(\'Do you really want to cancel your GMC Subscription?\')"><u>Cancel</u></a>');
+			$header = array(t('Order'), t('Amount'), t('Next charge'), t('Status'), t('Remaining'), t('Options'));
+		}
+		$rows[] = array(
+			'data' => array(
+				empty($live_subscription->payment_method) ? '<a href="javascript:void(0);">n/a</a>' : '<a href="javascript:void(0);">'.$live_subscription->payment_method.'</a>',
+				'n/a',
+				(strtotime($live_subscription->live_date) > time()) ? $live_subscription->live_date : 'n/a',
+				'<span class="recurring-status-0">' . (!empty($live_subscription->payment_method) ? 'active' : 'non active') . '</span>',
+				(!empty($live_subscription->payment_method) && strtotime($live_subscription->live_date) > time()) ? floor((strtotime($live_subscription->live_date) - time())/(60*60*24)) .' days' : '',
+				array(
+					'data' => implode(' | ', $ops),
+					'nowrap' => 'nowrap',
+				),
+			),
+		);
+	}
+	else {
+		$query = db_select('uc_roles_expirations', 'e')
+			->fields('e')
+			->condition('uid', $uid)
+			->condition('rid', 6)
+			->execute()->fetchAll();
+		//print_r($uid);
+		$header = array(t('Order'), t('Amount'), t('Interval'), t('Next charge'), t('Status'), t('Remaining'), t('Options'));
+		if (count($query) > 0) {
+			$header = array(t('Order'), t('Amount'), t('Interval'), t('Next charge'), t('Status'), t('Remaining'), t('Options'));
+			$rec_count = db_query("SELECT COUNT(rfid) FROM {uc_recurring_users} WHERE uid = :uid AND status = :status ORDER BY order_id DESC", array(':uid' => $user->uid, ':status' => 0))->fetchField();
+			if($rec_count == 0){
+				$header = array(t('Order'), t('Amount'), t('Interval'), t('Full Access Expiry'), t('Status'), t('Remaining'), t('Options'));
+			}
+			$fees = uc_recurring_get_user_fees($uid);
+			foreach ($fees as $fee) {
+				// Get the user operations links for the current fee.
+				$ops = uc_recurring_get_fee_ops('user', $fee);
+				if($user->uid != 1 && !empty($ops)) {
+					$ops = array('cancel' => $ops['cancel']);
+				}
+				// Add the row to the table for display.
+				$rows[] = array(
+					'data' => array(
+						l($fee->order_id, 'user/' . $uid . '/orders/' . $fee->order_id),
+						theme('uc_price', array('price' => $fee->fee_amount)),
+						array(
+							'data' => check_plain(($fee->regular_interval == '1 months') ? '1 month' : $fee->regular_interval),
+							'nowrap' => 'nowrap',
+						),
+						format_date($fee->next_charge, 'short'),
+						'<span class="recurring-status-' . intval($fee->status) . '">' . ($fee->status == 0 ? 'active' : 'non active') . '</span>',
+						$fee->remaining_intervals < 0 ? t('Until cancelled') : $fee->remaining_intervals,
+						array(
+							'data' => implode(' | ', $ops),
+							'nowrap' => 'nowrap',
+						),
+					),
+				);
+			}
+			$dibdata = db_query("SELECT *  FROM {uc_orders} WHERE uid = :uid AND {payment_method} LIKE 'dibs'", array(':uid' => $uid))->fetchAll();
+			if (count($dibdata) > 0) {
+				$dibdata = $dibdata[0];
+			}
+			if (empty($rows) && !empty($dibdata->uid) ) {
+				$header = array(t('Order'), t('Amount'), t('DIBS transaction Number'), t('Next charge'), t('Status'), t('Remaining'), t('Options'));
+				if($user->uid != 1) {
+					$ops = array(l(t('Cancel'), 'user/'.$uid.'/subscription/dibs/cancel/'.md5('unsubscribe').'/'.md5($uid)));
+				}
+				else {
+					$ops = array('change', l(t('edit'), 'user/'.$uid.'/edit' ), l(t('Cancel'), 'user/'.$uid.'/subscription/dibs/cancel/'.md5('unsubscribe').'/'.md5($uid)));
+				}
+				$tradibs = db_query("SELECT *  FROM `dibs_transactions` WHERE `order_info_short` = :oid", array(':oid' => 'Order #'.$dibdata->order_id))->fetchAll();
+
+				$dibs_order = uc_order_new($user->uid);
+				foreach ($query as $fee) {
+					// Add the row to the table for display.
+					$rows[] = array(
+						'data' => array(
+							l('DIBS', 'user/'.$user->uid.'/orders/'.$dibs_order->order_id),
+							theme('uc_price', array('price' => $dibdata->order_total)),
+							$tradibs[0]->payment_transaction_id,
+							format_date($fee->expiration, 'short'),
+							'<span class="recurring-status-0">' . ($fee->status == 0 ? 'active' : 'non active') . '</span>',
+							$fee->remaining_intervals < 0 ? t('Until cancelled') : $order_total->remaining_intervals,
+							array(
+								'data' => implode(' | ', $ops),
+								'nowrap' => 'nowrap',
+							),
+						),
+					);
+				}
+			}
+			$udata = db_query("SELECT * FROM {gmc_users} WHERE uid = :uid", array(':uid' => $uid))->fetchAll();
+			if (count($udata) > 0) {
+				$udata = $udata[0];
+			}
+			//  print_r($fees); exit;
+			if (empty($rows) && !empty($udata->uid)) {
+				//   print_r($query); exit;
+				if($user->uid != 1) {
+					$ops = array(l(t('Cancel'), 'user/'.$uid.'/subscription/change/'.md5('unsubscribe').'/'.md5($uid)));
+				}
+				else {
+					$ops = array('change', l(t('edit'), 'user/'.$uid.'/edit' ), l(t('Cancel'), 'user/'.$uid.'/subscription/change/'.md5('unsubscribe').'/'.md5($uid)));
+				}
+
+				foreach ($query as $fee) {
+					if (empty($fee->remaining_intervals)) {
+						$fee->remaining_intervals = 0;
+					}
+					if (empty($fee->status)) {
+						$fee->status = 0;
+					}
+					if (empty($fee->fee_amount)) {
+						$fee->fee_amount = 0;
+					}
+					// Add the row to the table for display.
+					$rows[] = array(
+						'data' => array(
+							'<a href="javascript:void(0);">n/a</a>',
+							theme('uc_price', array('price' => $fee->fee_amount)),
+							array(
+								'data' => check_plain($fee->regular_interval),
+								'nowrap' => 'nowrap',
+							),
+							format_date($fee->expiration, 'short'),
+							'<span class="recurring-status-0">' . ($fee->status == 0 ? 'active' : 'non active') . '</span>',
+							$fee->remaining_intervals < 0 ? t('Until cancelled') : $fee->remaining_intervals,
+							array(
+								'data' => implode(' | ', $ops),
+								'nowrap' => 'nowrap',
+							),
+						),
+					);
+				}
+			}
+		}
+	}
+	if (empty($rows)) {
+		$rows[] = array(array(
+			'data' => t('Your account has no subscription plan.'),
+			'colspan' => 7,
+		));
+	}
+	return  $data = theme('table', array('header' => $header, 'rows' => $rows, 'attributes' => array('class' => array('gmc-subscription-status'))));
+}
+
+
+
+/**
+ * Callback function update_oldmember_subscription
+ * to update Old Member Subscription
+ //dGVzdGFjY291bnRAZ21jLmNvbQ==
+ //27521
+ //4021e8ad51eb17ec0f04bc29eb5ea19f
+ //paid = 76e084771e78c194efd0e2d5b8920bea 
+ //unpaid = 0ec6340325336cb5d99f39fcca52b1a9 
+http://admin.prod.gmc.my/admin/update/member/dGVzdGFjY291bnRAZ21jLmNvbQ==/27521/4021e8ad51eb17ec0f04bc29eb5ea19f/76e084771e78c194efd0e2d5b8920bea
+http://admin.prod.gmc.my/admin/update/member/dGVzdGFjY291bnRAZ21jLmNvbQ==/27521/4021e8ad51eb17ec0f04bc29eb5ea19f/0ec6340325336cb5d99f39fcca52b1a9
+ **/
+function update_oldmember_subscription($email, $live_uid, $converted_live_uid, $token) {
+	$user_email = base64_decode($email);
+	$drupal_uid = db_select('users', 'u')
+	  ->fields('u', array('uid'))
+	  ->condition('mail', $user_email)
+	  ->execute()->fetchField();
+	$user_detail = user_load($drupal_uid);
+	if(md5("paid") == $token && md5($live_uid) == $converted_live_uid) {
+		if ($user_detail !== FALSE && !isset($user_detail->roles[6])) {
+			$roles = $user_detail->roles + array(6 => 'paid user');
+			user_save($user_detail, array('roles' => $roles));
+		}
+	}
+	else if(md5("unpaid") == $token && md5($live_uid) == $converted_live_uid){
+		if ($user_detail !== FALSE && isset($user_detail->roles[6])) {
+			unset($user_detail->roles[6]);
+			user_save($user_detail);
+		}
+	}
+	print "<pre>";print_r($user_detail);exit;
+}

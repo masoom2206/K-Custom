@@ -1,0 +1,53 @@
+<?php
+
+/**
+ * @file Rules - Installation file.
+ */
+
+/**
+ * Implements hook_schema().
+ */
+function gmc_oldmember_subscription_schema() {
+	//Save subscribe user/instructor detail
+  $schema['gmc_oldmember_subscription'] = array(
+    'fields' => array(
+      'subscription_id' => array(
+        'type' => 'serial',
+        'not null' => TRUE,
+        'description' => 'Serial Number',
+      ),
+      'uid' => array(
+        'description'   => 'Drupal UID of the subscriber',
+        'type'          => 'int',
+        'not null'      => TRUE,
+      ),
+      'live_id' => array(
+        'description'   => 'Live ID of the subscriber',
+        'type'          => 'int',
+        'not null'      => TRUE,
+      ),
+      'email' => array(
+        'description'   => 'Live email ID of the subscriber',
+        'type'          => 'varchar',
+        'length'        => 255,
+        'not null'      => TRUE,
+      ),
+      'payment_method' => array(
+        'description'   => 'Payment Method of the subscriber',
+        'type'          => 'varchar',
+        'length'        => 255,
+      ),	  
+      'live_date' => array(
+        'description'   => 'Live date of the subscriber',
+        'type'          => 'varchar',
+        'length'        => 255,
+      ),
+    ),
+    'primary key' => array('subscription_id'),
+    'indexes' => array(
+       'subscription_id' => array('subscription_id'),
+       'uid' => array('uid'),
+    ),
+  );
+  return $schema;
+}

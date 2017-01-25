@@ -1,0 +1,106 @@
+<?php
+
+/**
+ * @file Rules - Installation file.
+ */
+
+/**
+ * Implements hook_schema().
+ */
+function gmc_lessons_listing_schema() {
+	//Save files revisons detail
+  $schema['gmc_files_review'] = array(
+    'fields' => array(
+      'id' => array(
+        'type' => 'serial',
+        'not null' => TRUE,
+        'description' => 'Subscription ID',
+      ),
+      'uid' => array(
+        'description'   => 'UID of the subscriber',
+        'type'          => 'int',
+        'not null'      => TRUE,
+      ),
+      'fid' => array(
+        'description'   => 'files fid',
+        'type'          => 'int',
+        'not null'      => TRUE,
+      ),
+      'approved' => array(
+        'description'   => 'Aproved',
+        'type'          => 'int',
+        'not null'      => TRUE,
+      ),	  
+      'note' => array(
+        'description'   => 'note for the lesson part',
+        'type' => 'text',
+        'size' => 'big',
+        'not null'      => TRUE,
+      ),
+      'description' => array(
+        'description'   => 'description for the lesson part',
+        'type' => 'text',
+        'size' => 'big',
+        'not null'      => TRUE,
+      ),
+      'date'     => array(
+        'description'   => 'Lesson Subscribe date',
+        'type'          => 'int',
+        'not null'      => TRUE,
+      ),
+    ),
+    'primary key' => array('fid'),
+  );
+  $schema['gmc_node_complete_tab'] = array(
+    'fields' => array(
+      'id' => array(
+        'type' => 'serial',
+        'not null' => TRUE,
+        'description' => 'Primary Key: Unique comment ID.',
+      ),
+      'nid' => array(
+        'description'   => 'The node.nid to which this comment is a reply.',
+        'type'          => 'int',
+        'not null'      => TRUE,
+      ),
+      'description' => array(
+        'description'   => 'The Complete text with revision',
+        'type' => 'text',
+        'size' => 'big',
+        'not null'      => TRUE,
+      ),
+      'date'     => array(
+        'description'   => 'The lesson update date',
+        'type'          => 'int',
+        'not null'      => TRUE,
+      ),
+    ),
+    'primary key' => array('nid'),
+  );
+  $schema['gmc_node_backing_revision'] = array(
+    'fields' => array(
+      'id' => array(
+        'type' => 'serial',
+        'not null' => TRUE,
+        'description' => 'Primary Key: Unique comment ID.',
+      ),
+      'nid' => array(
+        'description'   => 'The node.nid to which this comment is a reply.',
+        'type'          => 'int',
+        'not null'      => TRUE,
+      ),
+      'fid' => array(
+        'description'   => 'The fid to which this is a Backing tracks.',
+        'type'          => 'int',
+        'not null'      => TRUE,
+      ),
+      'date'     => array(
+        'description'   => 'The lesson update date',
+        'type'          => 'int',
+        'not null'      => TRUE,
+      ),
+    ),
+    'primary key' => array('nid'),
+  );
+  return $schema;
+}

@@ -1,0 +1,9 @@
+name = Import lesson data
+description = Import Data Lesson for GMC.
+package = Custom
+version = VERSION
+core = 7.x
+files[] = lessondata_import.module
+; Information added by drupal.org packaging script on 2013-10-22
+version = "7.custom"
+project = lessondata_import

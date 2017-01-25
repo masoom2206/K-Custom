@@ -1,0 +1,12 @@
+name = GMC User Signup
+description = Custom GMC User Signup Module.
+package = Custom
+version = VERSION
+core = 7.x
+files[] = gmc_user_signup.module
+files[] = template/gmc_user_signup.tpl.php
+files[] = js/gmc_user_signup.js
+; Information added by drupal.org packaging script on 2013-02-20
+version = "7.custom"
+project = support
+

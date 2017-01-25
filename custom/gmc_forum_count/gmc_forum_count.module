@@ -1,0 +1,1378 @@
+<?php
+/**
+ * GMC Forum Count module for display
+ * live site count and drupal site count
+ * @file gmc_forum_count.module for total view count
+ **/
+
+/**
+* Implementation of hook_menu
+*/
+function gmc_forum_count_menu() {
+  $items = array();
+  //Testing Batch Operation
+  $items['admin/config/data/migrate'] = array(
+    'title' => 'Migrate GMC Live Data',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('gmc_admin_migrate_data'),
+    //'file' => 'gmc_migrate_data.inc',
+    'type' => MENU_LOCAL_TASK,
+    'access arguments' => array('access content'),
+  );
+  //Testing Batch Operation
+  $items['data-migrate-test'] = array(
+    'title' => 'Migrate GMC Live Data',
+    'page callback' => 'data_migrate_test',
+    //'file' => 'gmc_migrate_data.inc',
+	//'page callback' => 'import_live_data_live_subscription',
+	//'page callback' => 'import_live_data_private_msg_bycron',
+	//'page callback' => 'gmc_extra_users_extra_insert',
+    'type' => MENU_LOCAL_TASK,
+    'access arguments' => array('access content'),
+  );
+  $items['forum-count'] = array(
+    'title' => '',
+    'description' => 'Print forum count',
+	'page callback' => 'gmc_forum_view_count_test',
+    'access callback' => TRUE,
+    'type' => MENU_LOCAL_TASK,
+  );
+  $items['user-post-count'] = array(
+    'title' => '',
+    'description' => 'Display user forum post count',
+	'page callback' => 'gmc_user_forum_post_count',
+    'access callback' => TRUE,
+    'type' => MENU_LOCAL_TASK,
+  );
+ return $items;
+}
+/**
+ * Implements hook_cron()
+ * To import live site updated data for
+ * (1) Live site private message
+ * (2) Live site subscription (sign up)
+ **/
+function gmc_forum_count_cron() {
+	import_live_data_private_msg_bycron();
+	import_live_data_live_subscription_bycron();
+}
+
+/**
+ * Implements hook__views_api().
+ */
+ function gmc_forum_count_views_api() {
+  return array(
+    'api' => 3,
+    'path' => drupal_get_path('module', 'gmc_forum_count'),
+  );
+}
+/**
+ * Implements hook_views_data().
+ */
+ function gmc_forum_count_views_data() {
+   $data['custom']['table']['group'] = t('GMC Custom');
+   $data['custom']['table']['join'] = array(
+     // #global is a special flag which let's a table appear all the time.
+     '#global' => array(),
+   );
+    $data['custom']['gmc_user_forum_comment_count'] = array(
+    'title' => t('User Forum Post Count'),
+    'help' => t('GMC custom field displays the "User Forum Post Count".'),
+    'field' => array(
+      'handler' => 'views_handler_custom_handler',
+    ),
+  );
+   return $data;
+}
+/**
+ * Callback function gmc_forum_view_count
+ * to display total view count of forum topic
+ * live site count + drupal site count
+ * return $total_count
+ **/
+function gmc_forum_view_count($nid) {
+	$drupal_count = db_query("SELECT COUNT(uid) FROM node_view_count WHERE nid = :nid", array(':nid' => $nid))->fetchField();
+	$live_count = db_query("SELECT view_count FROM gmc_forum_count WHERE nid = :nid", array(':nid' => $nid))->fetchField();
+	$total_count = $live_count + $drupal_count;
+	return $total_count;
+}
+/**
+ * Callback function gmc_user_view_count
+ * to display total view count of user profile
+ * live site count + drupal site count
+ * return $total_count
+ **/
+function gmc_user_view_count($uid) {
+	$drupal_count = user_visits_total($uid);
+	$live_count = db_query("SELECT view_count FROM gmc_user_view_count WHERE uid = :uid", array(':uid' => $uid))->fetchField();
+	$total_count = $live_count + $drupal_count;
+	return $total_count;
+}
+
+/**
+ * Callback function gmc_user_forum_post_count
+ * to display total count of user post in forum
+ * return $total_count
+ **/
+function gmc_user_forum_post_count(){
+	$uid = $_POST['uid'];
+	if(!empty($uid)) {
+		$query = db_select('comment', 'c');
+		$query->join('node', 'n', 'c.nid = n.nid');
+		$query->condition('c.uid', $uid, '=');
+		$query->condition('n.type', 'forum', '=');
+		$query->condition('n.status', '1', '=');
+		$query->condition('c.status', '1', '=');
+		$query->addExpression('COUNT(1)', 'count');
+		$result = $query->execute();
+		if ($record = $result->fetchAssoc())
+			print $record['count'];
+	}
+}
+
+
+/**
+ * Test function
+ * URL: forum-count
+ **/
+function gmc_forum_view_count_test(){
+	$records = db_query("SELECT author_id, post_date, post, author_name FROM ds2_gmc.ibf_posts WHERE topic_id = :topic_id", array(':topic_id' => 2145))->fetchAll();
+	print "<pre>";print_r($records);exit;
+	foreach ($records as $values) {
+		$author_email = db_query("SELECT email FROM ds2_gmc.ibf_members WHERE id = :author_id", array(':author_id' => $values->author_id))->fetchField();
+		$user_id = db_query("SELECT uid FROM dev_syn_drupal.users WHERE mail = :email", array(':email' => $author_email))->fetchField();
+		print "author_email = $author_email <br/>";
+		print "user_id = $user_id <br/>";
+		print "<pre>";print_r($values);exit;
+	}
+}
+
+
+
+/**
+ * Callback function gmc_add_target_blank_forum_topic()
+ * to add target blank attribute in anchor tag
+ * //gmc-user-signature-update
+ **/
+function gmc_live_comment_replace($content){
+	global $base_url;
+	$content = str_replace("http://www.guitarmasterclass.net/guitar_forum/style_emoticons/<#EMO_DIR#>/",'/style_emoticons/default/', $content);
+	$content = str_replace("style_emoticons/<#EMO_DIR#>","/style_emoticons/default", $content);
+	$content = str_replace("<#EMO_DIR#>","default", $content);
+	$content = str_replace("style_emoticons/&lt;#EMO_DIR#&gt;","/style_emoticons/default", $content);
+	$content = str_replace("<{POST_SNAPBACK}>",'<img src="/sites/all/themes/gmc_v2/images/post_snapback.gif"/>', $content);
+	if(isset($_GET['page'])) {
+		$content = str_replace("#entry",'?page='.$_GET['page'].'#entry', $content);
+
+	}
+	
+ 	$matches = array();
+	if($content != NULL) {
+		$content = bbcodeHtml($content);
+		$pattern = array(
+			"/<p><\/p>/",
+			"/<p> <\/p>/",
+			"/<!--\/sizeo-->/",
+			"/<!--sizec-->/",
+			"/<!--\/sizec-->/",
+			"/<!--sizeo:(.*?)-->/",
+			"/<!--\/coloro-->/",
+			"/<!--colorc-->/",
+			"/<!--\/colorc-->/",
+			"/<!--coloro:(.*?)-->/",
+			"/<!--quotec-->/",
+			"/<!--QuoteEnd-->/",
+			"/<!--QuoteEEnd-->/",
+			"/\n\n/",
+		);
+		$replacement = array(
+			"",
+			"",
+			"",
+			"",
+			"",
+			"",
+			"",
+			"",
+			"",
+			"",
+			"",
+			"",
+			"",
+			"",
+		);
+		$content = str_replace("<br />\n<img","<br /><img",$content);
+		//Firstly remove blank tag
+		$content = preg_replace($pattern, $replacement, $content);
+		$pattern = array(
+			"/<p><span style=\"(.*?)\"><\/span><\/p>\n<p><b><\/b><\/p>\n<p><span style=\"(.*?)\"><\/span><\/p>\n<p>(.*?)<\/p><p><b>(.*?)<\/b><\/p>/",
+			"/<p><span style=\"(.*?)\"><\/span><\/p>\n<p><b>(.*?)<\/b><\/p>/",
+			"/<p><b><\/b><\/p>\n<p><span style=\"(.*?)\"><\/span><\/p>\n<p><span style=\"(.*?)\"><\/span><\/p>\n<p>(.*?)<\/p>\n<p>(.*?)<\/p>/",
+			"/<p><span style=\"(.*?)\"><\/span><\/p>\n<p><span style=\"(.*?)\"><\/span><\/p>\n<p>(.*?)<\/p>\n<p>/",
+		);
+		$replacement = array(
+			'<div class="forum-title-style-replace"><span style="$1; font-weight: bold;"><span style="$2;">$3</span></span><br/><b>$4</b></div>',
+			'<p class="forum-title-style-replace"><span style="$1; font-weight: bold;">$2</span></p>',
+			'<p><b><span style="$1"><span style="$2">$3</span></span>$4</b></p>',
+			'<p><span style="$1"><span style="$2">$3</span></span>',
+		);
+		//Now Replace the tag data
+		$content = preg_replace($pattern, $replacement, $content);
+		if(preg_match_all('/<a href=\"(.*?)\">\[view_full_image_link\]<\/a><br \/>/i',$content,$matches)){
+			//print "<pre>";print_r($matches);exit;
+			for($i = 0; $i <= count($matches[0]); $i++){
+				if(isset($matches[0][$i])) {
+					//$new = preg_replace('/target=[^ ]+/i', '', $matches[0][$i]);
+					//print "<pre>";print_r($matches);exit;
+					$doc = new DOMDocument();
+					$doc->loadHTML($matches[0][$i]);
+					$xpath = new DOMXPath($doc);
+					$src = $xpath->evaluate("string(//a/@href)");
+					$image = $base_url.$src;
+					$size = getimagesize($image);
+					//print $src.'<br/>'.$image;
+					//print "<pre>";print_r($size);exit;
+					if($size[0] <= 700) {
+						$new = preg_replace('/<a href=\"(.*?)\">\[view_full_image_link\]<\/a><br \/>/i', '', $matches[0][$i]);
+						$content = str_replace($matches[0][$i],$new,$content); //done!
+					}
+					else {
+						$new = preg_replace('/<a href=\"(.*?)\">\[view_full_image_link\]<\/a><br \/>/i', '<div class="click-to-view-full-image" title="Click to view full image"><a href="$1" target="_blank"><img border="0" alt="" style="vertical-align:middle" src="/sites/all/modules/custom/gmc_lesson_review/img-resized.png"> Click to view full image</a></div>', $matches[0][$i]);
+						$content = str_replace($matches[0][$i],$new,$content); //done!
+					}
+				}
+			}
+		}
+		if(preg_match_all('/<a\s[^>]*href=[^# ]+[^>]*>/i',$content,$matches)){
+			//loop through
+			for($i = 0; $i <= count($matches[0]); $i++){
+				if(isset($matches[0][$i])) {
+					$new = preg_replace('/target=[^ ]+/i', '', $matches[0][$i]);
+					$new = rtrim($new,'>') . ' target="_blank"' . '>';
+					//this should be exact
+					$new = str_replace('>',' target="_blank">',$new); //done!
+					$content = str_replace($matches[0][$i],$new,$content); //done!
+				}
+			}
+		}
+	}
+	return $content;
+}
+
+
+/**
+ * Callback function data_migrate_test()
+ * for testing purpose
+ * //data-migrate-test
+ **/
+function data_migrate_test() {
+	global $base_url;
+	//$records = db_query("SELECT * FROM users_extra WHERE uid = 23801")->fetchAll();
+	//$records = db_query("SELECT * FROM ds2_gmc.ibf_polls ip INNER JOIN dev_syn_drupal.import_topics_comment itc ON itc.live_topic_id = ip.tid INNER JOIN dev_syn_drupal.field_data_taxonomy_forums tf ON tf.entity_id = itc.topic_id LEFT JOIN dev_syn_drupal.gmc_rec_grade rg ON rg.entity_id = itc.topic_id WHERE tf.taxonomy_forums_tid = 4758 AND rg.entity_id IS NULL AND ip.votes != 0 ORDER BY ip.tid ASC")->fetchAll();
+	//$query = db_query("SELECT * FROM comment ORDER BY cid ASC LIMIT 102000, 1")->fetchAll();
+	
+	//$query = db_query("SELECT * FROM ibf_attachments WHERE attach_rel_module = :post LIMIT 0 , 30", array(':post' => 'post'))->fetchAll();
+	
+	//$query = db_query("SELECT att.attach_file, att.attach_rel_id FROM ds2_gmc.ibf_attachments att LEFT JOIN dev_syn_drupal.file_managed fm ON fm.filename = att.attach_file WHERE att.attach_rel_module = :post AND fm.filename IS NULL", array(':post' => 'post'))->fetchAll();
+	
+	/*$comments = comment_load(324925);
+	$comments->field_upload_files['und'][] = array(
+	  'fid' => 277903,
+	  'display' => 1,
+	  'description' => '',
+	);
+	comment_save($comments);
+	print "<pre>";
+	print_r($comments);
+	exit;*/
+	
+	
+	//*****//
+	$data = array();
+	$x = 0;
+	$attachments = db_query("SELECT att.attach_id, att.attach_file, att.attach_rel_id, att.attach_location, itc.cid, itc.nid FROM ds2_gmc.ibf_attachments att INNER JOIN dev_syn_drupal.import_topics_comment_reply itc ON itc.pid = att.attach_rel_id WHERE att.attach_rel_module = :post ORDER BY att.attach_id LIMIT 30000, 2000", array(':post' => 'post'))->fetchAll();
+	foreach($attachments as $attachment) {
+		$fid_count = db_query("SELECT COUNT(fm.fid) AS count FROM dev_syn_drupal.file_managed fm WHERE fm.filename LIKE :file", array(':file' => $attachment->attach_file))->fetchField();
+		if($fid_count == 0) {
+
+			$comments = comment_load($attachment->cid);
+			$comment = $comments->comment_body['und']['0']['value'];
+			$comment = preg_replace( "#\[attachment=(\d+?)\:(?:[^\]]+?)\]#is", '[attachment]'."$1".'[/attachment]', $comment);
+			$find = '[attachment]'.$attachment->attach_id.'[/attachment]';
+			$pos = strpos($comment, $find);
+			if ($pos === false) {
+				$path = '/opt/web/guitarmasterclass.net/public_html/guitar_forum/uploads/'.$attachment->attach_location; 
+				if (file_exists($path)) {
+					$fp = file_get_contents($path);
+					$lsfilename = str_replace(' ', '_', $attachment->attach_file);
+					$xpath = 'public://forum_topic_file/'.$lsfilename;
+					$file = file_save_data($fp, $xpath, FILE_EXISTS_RENAME);
+					$file->status = FILE_STATUS_PERMANENT;
+					$file->uid = $comments->uid;
+					file_save($file);
+				}
+
+				$comments->field_upload_files['und'][] = array(
+				  'fid' => $file->fid,
+				  'display' => 1,
+				  'description' => '',
+				);
+				comment_save($comments);
+				$data[] = $attachment;
+				$x++;
+			}
+		}
+		//SELECT * FROM dev_syn_drupal.import_topics_comment_reply WHERE pid = 20750
+		/*print "fid_count = $fid_count";
+		print "<pre>";
+		print_r($attachment);
+		exit;*/
+	}
+	print "Total: $x*****<br/>";
+	print "<pre>";
+	print_r($data);
+	exit;
+	/*$comment = $comments->comment_body['und']['0']['value'];
+	$query = db_query("SELECT * FROM ds2_gmc.ibf_attachments WHERE attach_rel_id = :id", array(':id' => 696678))->fetchAll();
+	$comment .= '<div><span class="edit">Attached File(s)</span>';
+	foreach($query as $ls) {
+		$path = '/opt/web/guitarmasterclass.net/public_html/guitar_forum/uploads/'.$ls->attach_location; 
+		if (file_exists($path)) {
+			$fp = file_get_contents($path);
+			$lsfilename = str_replace(' ', '_', $ls->attach_file);
+			$xpath = 'public://forum_topic_file/'.$lsfilename;
+			$file = file_save_data($fp, $xpath, FILE_EXISTS_RENAME);
+			$file->status = FILE_STATUS_PERMANENT;
+			$file->uid = $comments->uid;
+			file_save($file);
+			$bytes = $ls->attach_filesize;
+			if ($bytes >= 1073741824) {
+				$bytes = number_format($bytes / 1073741824, 2) . ' GB';
+			}
+			elseif ($bytes >= 1048576) {
+				$bytes = number_format($bytes / 1048576, 2) . ' MB';
+			}
+			elseif ($bytes >= 1024) {
+				$bytes = number_format($bytes / 1024, 2) . ' KB';
+			}
+			elseif ($bytes > 1) {
+				$bytes = $bytes . ' bytes';
+			}
+			elseif ($bytes == 1) {
+				$bytes = $bytes . ' byte';
+			}
+			else {
+				$bytes = '0 bytes';
+			}
+			$file_url = $base_url.'/sites/default/files/forum_topic_file/'.$lsfilename;
+			$comment .= '<div><a href="'.$file_url.'" title="Download attachment" target="_blank"><img src="/modules/file/icons/audio-x-generic.png" alt="Attached File"></a>&nbsp;<a href="'.$file_url.'" title="Download attachment" target="_blank">'.$lsfilename.'</a> ( '.$bytes.' )</div>';
+		}
+	}
+	$comment .= '</div>';
+	$comments->comment_body['und'][0]['value'] = $comment;
+	$comments->comment_body['und'][0]['format'] = 'full_html';
+	comment_save($comments);*/
+}
+/**
+ * Implements hook_user_insert()
+ * to save uid and extra info
+ * in users_extra table
+ **/
+function gmc_forum_count_user_insert(&$edit, $account, $category) {
+	$value = $account;
+	$count = db_query("SELECT COUNT(id) as cid FROM users_extra WHERE uid = :uid", array(':uid' => $value->uid))->fetchField();
+	if($count == 0){
+		if(in_array('instructor', $value->roles)) {
+			$user_group = '<img src="/sites/all/themes/gmc_v2/images/staff2.jpg" alt="Group Icon"><br><br>Group: <span class="gmc-instructor">GMC Instructor</span><br>';
+		}
+		else {
+			$user_group = 'Group: Members<br/>';
+		}
+		//$forum_post_count = forum_comment_count($value->uid);
+		$query = db_select('comment', 'c');
+		$query->join('node', 'n', 'c.nid = n.nid');
+		$query->condition('c.uid', $value->uid, '=');
+		$query->condition('n.type', 'forum', '=');
+		$query->condition('n.status', '1', '=');
+		$query->condition('c.status', '1', '=');
+		$query->addExpression('COUNT(1)', 'count');
+		$result = $query->execute();
+		if ($record = $result->fetchAssoc())
+			$forum_post_count = $record['count'];
+			
+		$name = '';
+		if(isset($value->field_first_name['und'][0]['value'])) {
+			if(isset($value->field_last_name['und'][0]['value'])) {
+				$name = $value->field_first_name['und'][0]['value'].' '.$value->field_last_name['und'][0]['value'];
+			}
+			else {
+				$name = $value->field_first_name['und'][0]['value'];
+			}
+		}
+		else if (empty($name)) {
+			$name = $value->name;
+		}
+		$user_full_name = ucwords($name);
+		$profile_views_count = gmc_user_view_count($value->uid);
+		db_insert('users_extra')
+			->fields(array(
+				'uid' => $value->uid,
+				'user_group' => $user_group,
+				'forum_post_count' => $forum_post_count,
+				'user_full_name' => $user_full_name,
+				'profile_views_count' => $profile_views_count,
+			))
+			->execute();
+	}
+}
+/**
+ * Implements hook_user_update()
+ * to update user extra info
+ * in users_extra table
+ **/
+function gmc_forum_count_user_update(&$edit, $account, $category) {
+	$value = $edit;
+	if(isset($value['roles']['4'])) {
+		$user_group = '<img src="/sites/all/themes/gmc_v2/images/staff2.jpg" alt="Group Icon"><br><br>Group: <span class="gmc-instructor">GMC Instructor</span><br>';
+	}
+	else {
+		$user_group = 'Group: Members<br/>';
+	}
+	$name = '';
+	if(isset($value['field_first_name']['und'][0]['value'])) {
+		if(isset($value['field_last_name']['und'][0]['value'])) {
+			$name = $value['field_first_name']['und'][0]['value'].' '.$value['field_last_name']['und'][0]['value'];
+		}
+		else {
+			$name = $value['field_first_name']['und'][0]['value'];
+		}
+	}
+	else if (empty($name)) {
+		$name = $value['name'];
+	}
+	$user_full_name = ucwords($name);
+	$users_extra = db_update('users_extra')->fields(array('user_group' => $user_group, 'user_full_name' => $user_full_name))->condition('uid', $account->uid, '=')->execute();
+}
+/**
+ * Implements hook_comment_insert()
+ * to update user extra info
+ * in users_extra table
+ **/
+function gmc_forum_count_comment_insert($comment){
+	$query = db_select('comment', 'c');
+	$query->join('node', 'n', 'c.nid = n.nid');
+	$query->condition('c.uid', $comment->uid, '=');
+	$query->condition('n.type', 'forum', '=');
+	$query->condition('n.status', '1', '=');
+	$query->condition('c.status', '1', '=');
+	$query->addExpression('COUNT(1)', 'count');
+	$result = $query->execute();
+	if ($record = $result->fetchAssoc())
+		$forum_post_count = $record['count'];
+	$users_extra = db_update('users_extra')->fields(array('forum_post_count' => $forum_post_count))->condition('uid', $comment->uid, '=')->execute();
+}
+/**
+ * Implements hook_comment_publish()
+ * to update user extra info
+ * in users_extra table
+ **/
+function gmc_forum_count_comment_publish($comment){
+	$query = db_select('comment', 'c');
+	$query->join('node', 'n', 'c.nid = n.nid');
+	$query->condition('c.uid', $comment->uid, '=');
+	$query->condition('n.type', 'forum', '=');
+	$query->condition('n.status', '1', '=');
+	$query->condition('c.status', '1', '=');
+	$query->addExpression('COUNT(1)', 'count');
+	$result = $query->execute();
+	if ($record = $result->fetchAssoc())
+		$forum_post_count = $record['count'];
+	$users_extra = db_update('users_extra')->fields(array('forum_post_count' => $forum_post_count))->condition('uid', $comment->uid, '=')->execute();
+}
+/**
+ * Implements hook_comment_unpublish()
+ * to update user extra info
+ * in users_extra table
+ **/
+function gmc_forum_count_comment_unpublish($comment){
+	$query = db_select('comment', 'c');
+	$query->join('node', 'n', 'c.nid = n.nid');
+	$query->condition('c.uid', $comment->uid, '=');
+	$query->condition('n.type', 'forum', '=');
+	$query->condition('n.status', '1', '=');
+	$query->condition('c.status', '1', '=');
+	$query->addExpression('COUNT(1)', 'count');
+	$result = $query->execute();
+	if ($record = $result->fetchAssoc())
+		$forum_post_count = $record['count'];
+	$users_extra = db_update('users_extra')->fields(array('forum_post_count' => $forum_post_count))->condition('uid', $comment->uid, '=')->execute();
+}
+
+/**
+ * Implements hook_init()
+ * to update user extra info
+ * in users_extra table
+ **/
+function gmc_forum_count_init(){
+	global $user;
+	if (arg(0) == 'user' && is_numeric(arg(1)) && !arg(2)) {
+		if ($user->uid != arg(1)) {
+			$profile_views_count = gmc_user_view_count($user->uid);
+			$users_extra = db_update('users_extra')->fields(array('profile_views_count' => $profile_views_count))->condition('uid', $user->uid, '=')->execute();
+		}
+	}
+}
+/****************************Data Migration code Start*********************************/
+function gmc_admin_migrate_data() {
+	$form['description'] = array(
+		'#type' => 'markup',
+		'#markup' => t('Importing GMC Live data.'),
+	);
+	$form['batch'] = array(
+		'#type' => 'select',
+		'#title' => 'Choose batch',
+		'#options' => array(
+			'0' => t('Select Import Option'),
+			'private_msg' => t('Import Private Message With Attachment'),
+			'live_subscription' => t('Import/Update live subscription data'),
+			'update_role' => t('Update live site user role'),
+			'update_forum_post' => t('Update Forum Post (Comment)'),
+			'users_extra' => t('Insert User Extra Information'),
+		),
+	);
+	$form['submit'] = array(
+		'#type' => 'submit',
+		'#value' => 'Go',
+	);
+	return $form;
+}
+
+/**
+ * Form API Submit for batch operation
+ **/
+function gmc_admin_migrate_data_submit($form, &$form_state){
+	$function = 'import_live_data_' . $form_state['values']['batch'];
+	$_SESSION['http_request_count'] = 0; // reset counter for debug information.
+	$batch = $function();
+	batch_set($batch);
+}
+/**
+ * Callback function import_live_data_private_msg()
+ * to import user Private Message data with attachment
+ **/
+function import_live_data_private_msg() {
+	$live_mid = db_query("SELECT live_mid FROM dev_syn_drupal.pm_migrate_ids ORDER BY live_mid DESC LIMIT 0, 1")->fetchField();
+	$records = db_query("SELECT * FROM ds2_gmc.ibf_message_text m INNER JOIN ds2_gmc.ibf_message_topics mt ON m.msg_id = mt.mt_msg_id WHERE mt.mt_vid_folder != :unsent AND mt.mt_msg_id > :live_mid ORDER BY m.msg_id ASC", array(':unsent' => 'unsent', ':live_mid' => $live_mid));
+	//$records = db_query("SELECT * FROM ds2_gmc.ibf_message_text m INNER JOIN ds2_gmc.ibf_message_topics mt ON m.msg_id = mt.mt_msg_id WHERE mt.mt_vid_folder != :unsent AND mt.mt_from_id = mt.mt_to_id ORDER BY m.msg_id ASC", array(':unsent' => 'unsent'));
+	$i=1;
+	foreach ($records as $values) {
+		$operations[] = array('import_data_private_msg', array($values, t('(Operation @operation)', array('@operation' => $i))));
+		$i++;
+	}
+	$batch = array(
+		'operations' => $operations,
+		'finished' => 'import_data_finished',
+	);
+	return $batch;
+}
+/**
+ * Callback function import_data_private_msg()
+ * to save live user Private Message data with attachment in drupal database
+ **/
+function import_data_private_msg($value, $operation_details, &$context) {
+	$migrate_ids = db_query("SELECT drupal_mid FROM dev_syn_drupal.pm_migrate_ids WHERE live_mid = :live_mid", array(':live_mid' => $value->mt_msg_id));
+	$count = $migrate_ids->rowCount();
+	if($count == 0) {
+		$author_email = db_query("SELECT email FROM ds2_gmc.ibf_members WHERE id = :id", array(':id' => $value->mt_from_id))->fetchField();
+		if(!empty($author_email)) {
+			$author = db_query("SELECT uid FROM dev_syn_drupal.users WHERE mail = :mail", array(':mail' => $author_email))->fetchField();
+		}
+		$recipient_email = db_query("SELECT email FROM ds2_gmc.ibf_members WHERE id = :id", array(':id' => $value->mt_to_id))->fetchField();
+		if(!empty($recipient_email)) {
+			$recipient = db_query("SELECT uid FROM dev_syn_drupal.users WHERE mail = :mail", array(':mail' => $recipient_email))->fetchField();
+		}
+		if(!empty($author) && !empty($recipient)) {
+			$body = str_replace("style_emoticons/<#EMO_DIR#>","/style_emoticons/default", $value->msg_post);
+			$body = str_replace("<#EMO_DIR#>","default", $body);
+			$body = str_replace("style_emoticons/&lt;#EMO_DIR#&gt;","/style_emoticons/default", $body);
+			$body = str_replace("http://www.guitarmasterclass.net/guitar_forum/style_emoticons/default/", "/style_emoticons/default/", $body);
+			$args = array();
+			$args['subject'] = $value->mt_title;
+			$args['author'] = $author;
+			$args['body'] = $body;
+			$args['format'] = 'full_html';
+			$args['timestamp'] = $value->msg_date;
+			$args['has_tokens'] = 0;
+			//$mid = 1;
+			$mid = db_insert('pm_message')
+			  ->fields($args)
+			  ->execute();
+			
+			$query = db_insert('pm_index')->fields(array('mid', 'thread_id', 'recipient', 'type', 'is_new', 'deleted'));
+			$query->values(array(
+				'mid' => $mid,
+				'thread_id' => $mid,
+				'recipient' => $author,
+				'type' => 'user',
+				'is_new' => 0,
+				'deleted' => 0,
+			));
+			if($author != $recipient){
+				$query->values(array(
+					'mid' => $mid,
+					'thread_id' => $mid,
+					'recipient' => $recipient,
+					'type' => 'user',
+					'is_new' => 0,
+					'deleted' => 0,
+				));
+			}
+			$query->execute();
+
+			$pm_tags = db_insert('pm_tags_index')
+			->fields(array(
+				'tag_id' => 1,
+				'uid' => $recipient,
+				'thread_id' => $mid,
+			))
+			->execute();
+
+			$migrate_ids = db_insert('pm_migrate_ids')
+			->fields(array(
+				'live_mid' => $value->msg_id,
+				'drupal_mid' => $mid,
+				'drupal_draft_id' => 0,
+			))
+			->execute();
+			
+			//Insert attachment
+			$attachments = db_query("SELECT * FROM ds2_gmc.ibf_attachments WHERE attach_rel_id = :msg_id AND attach_rel_module LIKE :msg", array(':msg_id' => $value->mt_msg_id, 'msg' => 'msg'));
+			$attach_count = $attachments->rowCount();
+			if($attach_count != 0) {
+				$update = 0;
+				foreach($attachments as $attachment){
+					$thumb = '/opt/web/guitarmasterclass.net/public_html/guitar_forum/uploads/'.$attachment->attach_location;
+					
+					$fp = file_get_contents($thumb);
+					//print $fp;exit;
+					if(!empty($fp)) {
+						$file = file_save_data($fp,"public://mail_attachment/".$attachment->attach_file,FILE_EXISTS_RENAME);
+						$file->status = FILE_STATUS_PERMANENT;
+						$file->uid = $author;
+						$file = file_save($file);
+						//print "<pre>";print_r($file);exit;
+						if(!empty($file->fid) && !empty($mid)){
+							db_insert('file_usage')
+								->fields(array('fid' => $file->fid, 'module' => 'file', 'type' => 'privatemsg_message', 'id' => $mid, 'count' => 1))
+								->execute();
+								
+							$delta_count = db_query("SELECT COUNT(delta) FROM field_data_field_counter WHERE entity_id = :entity_id", array(':entity_id' => $mid))->fetchField();
+							db_insert('field_data_field_counter')
+								->fields(array('entity_type' => 'privatemsg_message', 'bundle' => 'privatemsg_message', 'deleted' => 0, 'entity_id' => $mid, 'revision_id' => $mid, 'language' => 'und', 'delta' => $delta_count, 'field_counter_value' => 0))
+								->execute();
+							db_insert('field_revision_field_counter')
+								->fields(array('entity_type' => 'privatemsg_message', 'bundle' => 'privatemsg_message', 'deleted' => 0, 'entity_id' => $mid, 'revision_id' => $mid, 'language' => 'und', 'delta' => $delta_count, 'field_counter_value' => 0))
+								->execute();
+								
+							$delta_count = db_query("SELECT COUNT(delta) FROM field_data_field_mail_attachment WHERE entity_id = :entity_id", array(':entity_id' => $mid))->fetchField();
+							db_insert('field_data_field_mail_attachment')
+								->fields(array('entity_type' => 'privatemsg_message', 'bundle' => 'privatemsg_message', 'deleted' => 0, 'entity_id' => $mid, 'revision_id' => $mid, 'language' => 'und', 'delta' => $delta_count, 'field_mail_attachment_fid' => $file->fid, 'field_mail_attachment_display' => 1, 'field_mail_attachment_description' => ''))
+								->execute();
+							db_insert('field_revision_field_mail_attachment')
+								->fields(array('entity_type' => 'privatemsg_message', 'bundle' => 'privatemsg_message', 'deleted' => 0, 'entity_id' => $mid, 'revision_id' => $mid, 'language' => 'und', 'delta' => $delta_count, 'field_mail_attachment_fid' => $file->fid, 'field_mail_attachment_display' => 1, 'field_mail_attachment_description' => ''))
+								->execute();
+
+							$delta_count = db_query("SELECT COUNT(delta) FROM field_data_field_download_files WHERE entity_id = :entity_id", array(':entity_id' => $mid))->fetchField();
+							db_insert('field_data_field_download_files')
+								->fields(array('entity_type' => 'privatemsg_message', 'bundle' => 'privatemsg_message', 'deleted' => 0, 'entity_id' => $mid, 'revision_id' => $mid, 'language' => 'und', 'delta' => $delta_count, 'field_download_files_download_fields' => 'field_mail_attachment;', 'field_download_files_download_label' => 'Download'))
+								->execute();
+							db_insert('field_revision_field_download_files')
+								->fields(array('entity_type' => 'privatemsg_message', 'bundle' => 'privatemsg_message', 'deleted' => 0, 'entity_id' => $mid, 'revision_id' => $mid, 'language' => 'und', 'delta' => $delta_count, 'field_download_files_download_fields' => 'field_mail_attachment;', 'field_download_files_download_label' => 'Download'))
+								->execute();
+							if(stripos($body,"[attachment=".$attachment->attach_id.":")) {
+								$body = str_replace("[attachment=".$attachment->attach_id.":", "[attachment=".$file->fid.":", $body);
+								$update = 1;
+							}
+						}
+					}
+				}
+				if($update) {
+					$pm_updated = db_update('pm_message')->fields(array('body' => $body))->condition('mid', $mid, '=')->execute();
+				}
+			}
+		}
+	}
+}
+/**
+ * Callback function import_live_data_live_subscription()
+ * to import live subscription data
+ **/
+function import_live_data_live_subscription() {
+	$url = "http://www.guitarmasterclass.net/payment/subscriptions.json";
+	$request = drupal_http_request($url);
+	$json_response = drupal_json_decode($request->data);
+	unset($json_response[0]);
+	$json_response = array_reverse($json_response);
+	$i=1;
+	//print "<pre>";print_r($json_response);exit;
+	/*$response_data = array();
+	for($x=28008;$x<=28048;$x++) {
+		$response_data[$x] = $json_response[$x];
+	}*/
+	foreach ($json_response as $values) {
+		$operations[] = array('import_data_live_subscription', array($values, t('(Operation @operation)', array('@operation' => $i))));
+		$i++;
+	}
+	$batch = array(
+		'operations' => $operations,
+		'finished' => 'import_data_finished',
+	);
+	return $batch;
+}
+/**
+ * Callback function import_data_live_subscription()
+ * to save live subscription data in drupal database
+ **/
+function import_data_live_subscription($value, $operation_details, &$context) {
+	$account = _add_live_members(trim($value[0]), trim($value[1]));
+	//$uid = db_query('SELECT uid FROM {dev_syn_drupal.gmc_users} WHERE juid = :juid', array(':juid' => trim($value[0])))->fetchField();
+	if($account != 'DILIP') {
+		$count = db_query("SELECT COUNT(subscription_id) FROM gmc_oldmember_subscription WHERE uid = :uid AND live_id = :live_id AND email = :email", array(':uid' => $account->uid, 'live_id' => $value[0], 'email' => $value[1]))->fetchField();
+		//print "<pre>";print_r($account);exit;
+		$user_detail = user_load($account->uid);
+		if(!empty($value[2]) && !empty($value[3])) {
+			$user_detail->roles[5] = 'member';
+			$user_detail->roles[6] = 'paid user';
+			user_save($user_detail);
+		}
+		else if(empty($value[2]) && !empty($value[3]) && (strtotime($value[3]) > time())) {
+			$user_detail->roles[5] = 'member';
+			$user_detail->roles[6] = 'paid user';
+			user_save($user_detail);
+		}
+		else if(empty($value[2]) && !empty($value[3])) {
+			$user_detail->roles[5] = 'member';
+			unset($user_detail->roles[6]);
+			user_save($user_detail);
+		}
+		else if(empty($value[2]) && empty($value[3])) {
+			unset($user_detail->roles[5]);
+			unset($user_detail->roles[6]);
+			user_save($user_detail);
+		}
+		if($count == 0) {
+			db_insert('gmc_oldmember_subscription')
+				->fields(array(
+					'uid' => $account->uid,
+					'live_id' => $value[0],
+					'email' => $value[1],
+					'payment_method' => $value[2],
+					'live_date' => $value[3],
+				))
+				->execute();
+		}
+		else {
+			db_update('gmc_oldmember_subscription')
+				->fields(array(
+					'payment_method' => $value[2],
+					'live_date' => $value[3],
+				))
+				->condition('uid', $account->uid, '=')
+				->condition('live_id', $value[0], '=')
+				->condition('email', $value[1], '=')
+				->execute();
+		}
+	}
+}
+/**
+ * Callback function _add_live_members()
+ * to fetch user id or create new user
+ **/
+function _add_live_members($author_id, $email) {
+  $userdata = db_query('SELECT * FROM {dev_syn_drupal.gmc_users} WHERE juid = :juid', array(':juid' => trim($author_id)))->fetchAll();
+	//print "<pre>";print_r($userdata);exit;
+  
+  if (count($userdata) > 0) {
+    $u = user_load($userdata[0]->uid);
+	if(!empty($u)) {
+		return $u;
+	}
+	/*else {
+		return $u = (object)array('uid' => $userdata[0]->uid);
+	}*/
+  }
+  $ins = db_query('SELECT *, g.id as ID, mm.name as display_name from  {ds2_gmc.gmc_user} g left join {ds2_gmc.medlemmar} md on (md.medlem_id = g.old_id) left join {ds2_gmc.ibf_member_extra} m on (m.id = g.ipb_id) left join {ds2_gmc.ibf_members} mm on (mm.id = g.ipb_id) where g.id = :id',array(':id'=> $author_id))->fetchAll();
+  if (count($ins)) {
+   $ins = $ins[0];
+  } else {
+   return 'DILIP';
+  }
+  if (!valid_email_address($email)) {
+     $name = $email;
+     $ins->email = $email."@guitarmatserclass.net";
+	}
+  if ( !empty($ins->display_name) ) {
+		$name = $ins->display_name;
+	}
+  list($fname,$lname) = explode(" ",$name);
+  if (strtotime($ins->slut) > strtotime(date('Y-m-d')) ) {
+    $new_user_roles = array(6 => 'paid user' );
+  } else {
+    $new_user_roles = array(5 => 'member' );
+  }
+  if (empty($ins->email)) {
+    return 'DILIP';
+  }
+  $new_user->name = !empty($ins->members_l_username) ? str_replace(' ', '', $ins->members_l_username) :  $ins->email;
+	//$new_user->pass = $ins->pass_hash; // plain text, hashed later
+	$new_user->pass = user_password();
+	$new_user->mail = $ins->email;
+	$new_user->init = $ins->email;
+	$new_user->roles = $new_user_roles;
+	$new_user->field_first_name['und'][0]['value'] = $fname;
+	$new_user->field_last_name['und'][0]['value'] = $lname;
+	$new_user->status = 1; 
+	user_save($new_user);
+	$picture = '/opt/web/guitarmasterclass.net/public_html/guitar_forum/'.$ins->avatar_type."s/".$ins->avatar_location;
+	if (file_exists($picture)) {
+		$fp = file_get_contents($picture);	
+	  $file = file_save_data($fp,"public://pictures/".$ins->avatar_location,FILE_EXISTS_REPLACE);
+		if (is_object($file)) {
+	    $file->status = FILE_STATUS_PERMANENT;
+	    $file->uid = $new_user->uid;
+	    $file = file_save($file);
+	    $new_user->picture = $file;
+	  }
+	}
+	$new_user = user_save($new_user);
+	if(!empty($ins->pass_hash)) {
+		require_once DRUPAL_ROOT . '/' . variable_get('password_inc', 'includes/password.inc');
+		$pass_hash = user_hash_password(trim($ins->pass_hash));
+		db_query("UPDATE {users} SET pass = :hash WHERE uid = :uid", array(':hash' => $pass_hash, ':uid' => $new_user->uid));
+	}
+  $uid = $new_user->uid;
+    db_merge('gmc_users')
+      ->key(array('uid' => $uid, 'juid'  => $ins->ID))
+      ->fields(array(
+          'uid' => $uid,
+          'juid'  => $ins->ID,
+          'password'  => $ins->pass_hash,
+          'converted' => 0,
+          'email'  =>  $ins->email,
+          'created'  => strtotime($ins->creation_date),
+        ))  
+    ->execute();
+	return $new_user;	
+}
+/**
+ * Callback function import_live_data_live_subscription()
+ * to import live subscription data
+ **/
+function import_live_data_update_role() {
+	$i=1;
+	//$query = db_query("SELECT * FROM gmc_oldmember_subscription s WHERE live_date <> '' OR payment_method <> ''");
+	$query = db_query("SELECT * FROM gmc_oldmember_subscription s WHERE live_date IS NULL AND payment_method IS NULL");
+	foreach ($query as $values) {
+		//print "<pre>";print_r($values);exit;
+		$operations[] = array('import_data_update_role', array($values, t('(Operation @operation)', array('@operation' => $i))));
+		$i++;
+	}
+	$batch = array(
+		'operations' => $operations,
+		'finished' => 'import_data_finished',
+	);
+	return $batch;
+}
+/**
+ * Callback function import_data_live_subscription()
+ * to save live subscription data in drupal database
+ **/
+function import_data_update_role($value, $operation_details, &$context) {
+	$user_detail = user_load($value->uid);
+	/*if(!empty($value->payment_method) && !empty($value->live_date)) {
+		if(strtotime($value->live_date) > time()) {
+			$user_detail->roles[5] = 'member';
+			$user_detail->roles[6] = 'paid user';
+		}
+		else {
+			$user_detail->roles[5] = 'member';
+			unset($user_detail->roles[6]);
+		}
+		user_save($user_detail);
+	}
+	else if(empty($value->payment_method) && !empty($value->live_date)) {
+		if(strtotime($value->live_date) > time()) {
+			$user_detail->roles[5] = 'member';
+			$user_detail->roles[6] = 'paid user';
+		}
+		else {
+			$user_detail->roles[5] = 'member';
+			unset($user_detail->roles[6]);
+		}
+		user_save($user_detail);
+	}
+	else */
+	if(empty($value->payment_method) && empty($value->live_date)) {
+		$user_detail->roles[5] = 'member';
+		unset($user_detail->roles[6]);
+		user_save($user_detail);
+	}
+}
+
+/**
+ * Callback function import_live_data_update_forum_post()
+ * to update forum post comment
+ **/
+function import_live_data_update_forum_post() {
+	$i=1;
+	$query = db_query("SELECT * FROM comment ORDER BY cid ASC LIMIT 292000, 8000");
+	foreach ($query as $values) {
+		$operations[] = array('import_data_update_forum_post', array($values, t('(Operation @operation)', array('@operation' => $i))));
+		$i++;
+	}
+	$batch = array(
+		'operations' => $operations,
+		'finished' => 'import_data_finished',
+	);
+	return $batch;
+}
+/**
+ * Callback function import_data_update_forum_post()
+ * to update/save the forum post
+ **/
+function import_data_update_forum_post($value, $operation_details, &$context) {
+	$comments = comment_load($value->cid);
+	$comment_body = $comments->comment_body['und'][0]['value'];
+
+	$comment_body = str_replace("style_emoticons/<#EMO_DIR#>","/style_emoticons/default", $comment_body);
+	$comment_body = str_replace("<#EMO_DIR#>","default", $comment_body);
+	$comment_body = str_replace("style_emoticons/&lt;#EMO_DIR#&gt;","/style_emoticons/default", $comment_body);
+	$comment_body = str_replace("http://www.guitarmasterclass.net/guitar_forum/style_emoticons/<#EMO_DIR#>/",'/style_emoticons/default/', $comment_body);
+	$comment_body = str_replace("<{POST_SNAPBACK}>",'<img src="/sites/all/themes/gmc_v2/images/post_snapback.gif"/>', $comment_body);
+	//replace live scale image URL to Drupal image URL
+	$comment_body = str_replace("http://www.guitarmasterclass.net/scalegenerator","/scalegenerator",$comment_body);
+	$comment_body = str_replace("http://www.guitarmasterclass.net/images/scales/gmcscale","/sites/default/files/generatescaleimage/scales/gmcscale",$comment_body);
+	//sound cloud replace
+    $pattern = array(
+      "/<iframe allowscriptaccess=\"always\" frameborder=\"0\" height=\"81\" scrolling=\"0\" src=\"https:\/\/w.soundcloud.com\/player\/\?url=(.*?)&amp;auto_play=false&amp;hide_related=false&amp;show_comments=false&amp;show_user=fasle&amp;show_reposts=false&amp;visual=true\" type=\"application\/x-shockwave-flash\" width=\"745\"><\/iframe>/",
+      "/<iframe allowscriptaccess=\"always\" frameborder=\"0\" height=\"120\" scrolling=\"0\" src=\"https:\/\/w.soundcloud.com\/player\/\?url=(.*?)&amp;auto_play=false&amp;hide_related=false&amp;show_comments=false&amp;show_user=fasle&amp;show_reposts=false&amp;visual=true\" type=\"application\/x-shockwave-flash\" width=\"745\"><\/iframe>/",
+      "/<iframe width=\"100%\" height=\"120\" scrolling=\"no\" frameborder=\"no\" src=\"https:\/\/w.soundcloud.com\/player\/\?url=(.*?)&amp;auto_play=false&amp;hide_related=false&amp;show_comments=false&amp;show_user=fasle&amp;show_reposts=false&amp;visual=true\"><\/iframe>/",
+      "/<iframe width=\"100%\" height=\"81\" scrolling=\"no\" frameborder=\"no\" src=\"https:\/\/w.soundcloud.com\/player\/\?url=(.*?)&amp;auto_play=false&amp;hide_related=false&amp;show_comments=false&amp;show_user=fasle&amp;show_reposts=false&amp;visual=true\"><\/iframe>/",
+      "/<iframe width=\"100%\" height=\"120\" scrolling=\"no\" frameborder=\"no\" src=\"https:\/\/w.soundcloud.com\/player\/\?url=(.*?)&amp;auto_play=false&amp;hide_related=false&amp;show_comments=false&amp;show_user=false&amp;show_reposts=false&amp;visual=false\"><\/iframe>/",
+      "/<iframe width=\"(.*?)\" height=\"(.*?)\" scrolling=\"no\" frameborder=\"no\" src=\"https:\/\/w.soundcloud.com\/player\/\?url=(.*?)&amp;auto_play=false&amp;hide_related=false&amp;show_comments=true&amp;show_user=true&amp;show_reposts=false&amp;visual=true\"><\/iframe>/",
+    );
+    $replacement = array(
+      '<iframe allowscriptaccess="always" frameborder="0" height="81" src="http://player.soundcloud.com/player.swf?url=$1" type="application/x-shockwave-flash" width="745"></iframe>',
+      '<iframe allowscriptaccess="always" frameborder="0" height="81" src="http://player.soundcloud.com/player.swf?url=$1" type="application/x-shockwave-flash" width="745"></iframe>',
+      '<iframe allowscriptaccess="always" frameborder="0" height="81" src="http://player.soundcloud.com/player.swf?url=$1" type="application/x-shockwave-flash" width="745"></iframe>',
+      '<iframe allowscriptaccess="always" frameborder="0" height="81" src="http://player.soundcloud.com/player.swf?url=$1" type="application/x-shockwave-flash" width="745"></iframe>',
+      '<iframe allowscriptaccess="always" frameborder="0" height="81" src="http://player.soundcloud.com/player.swf?url=$1" type="application/x-shockwave-flash" width="745"></iframe>',
+      '<iframe allowscriptaccess="always" frameborder="0" height="81" src="http://player.soundcloud.com/player.swf?url=$3" type="application/x-shockwave-flash" width="745"></iframe>',
+    );
+    $comment_body = preg_replace($pattern, $replacement, $comment_body);
+	//Remove blank tag
+    $comment_body = bbcodeHtml($comment_body);
+    $pattern = array(
+      "/<p><\/p>/",
+      "/<p> <\/p>/",
+      "/<!--\/sizeo-->/",
+      "/<!--sizec-->/",
+      "/<!--\/sizec-->/",
+      "/<!--sizeo:(.*?)-->/",
+      "/<!--\/coloro-->/",
+      "/<!--colorc-->/",
+      "/<!--\/colorc-->/",
+      "/<!--coloro:(.*?)-->/",
+	  "/<!--quotec-->/",
+	  "/<!--QuoteEnd-->/",
+      "/<!--QuoteEEnd-->/",
+      "/\n\n/",
+    );
+    $replacement = array(
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+    );
+    $comment_body = str_replace("<br />\n<img","<br /><img",$comment_body);
+    $comment_body = preg_replace($pattern, $replacement, $comment_body);
+	//Now replace tag data
+    $pattern = array(
+      "/<p><span style=\"(.*?)\"><\/span><\/p>\n<p><b><\/b><\/p>\n<p><span style=\"(.*?)\"><\/span><\/p>\n<p>(.*?)<\/p><p><b>(.*?)<\/b><\/p>/",
+      "/<p><span style=\"(.*?)\"><\/span><\/p>\n<p><b>(.*?)<\/b><\/p>/",
+      "/<p><b><\/b><\/p>\n<p><span style=\"(.*?)\"><\/span><\/p>\n<p><span style=\"(.*?)\"><\/span><\/p>\n<p>(.*?)<\/p>\n<p>(.*?)<\/p>/",
+      "/<p><span style=\"(.*?)\"><\/span><\/p>\n<p><span style=\"(.*?)\"><\/span><\/p>\n<p>(.*?)<\/p>\n<p>/",
+      "/<object width=\"(.*?)\" height=\"(.*?)\">\n\s+<param \(\"movie\" value=\"http:\/\/www.youtube.com\/v\/(.*?)&amp;hl=en&amp;fs=1\"\/>\n\s+<param \(\"allowFullScreen\" value=\"true\"\/>\n\s+<param \(\"allowscriptaccess\" value=\"always\"\/>\n\s+<embed src=\"http:\/\/www.youtube.com\/v\/(.*?)&amp;hl=en&amp;fs=1\" type=\"application\/x-shockwave-flash\" allowscriptaccess=\"always\" allowfullscreen=\"true\" width=\"560\" height=\"340\"\/>\n<\/object>/",
+      "/<object width=\"(.*?)\" height=\"(.*?)\">\s+<param \(\"movie\" value=\"http:\/\/www.youtube.com\/v\/(.*?)&amp;hl=en&amp;fs=1\"\/>\s+<param \(\"allowFullScreen\" value=\"true\"\/>\s+<param \(\"allowscriptaccess\" value=\"always\"\/>\s+<embed src=\"http:\/\/www.youtube.com\/v\/(.*?)&amp;hl=en&amp;fs=1\" type=\"application\/x-shockwave-flash\" allowscriptaccess=\"always\" allowfullscreen=\"true\" width=\"560\" height=\"340\"\/>\s+<\/object>/",
+      "/<object width=\"(.*?)\" height=\"(.*?)\"><param \(\"movie\" value=\"http:\/\/www.youtube.com\/v\/(.*?)&hl=en&fs=1\"><\/param><param \(\"allowFullScreen\" value=\"true\"><\/param><param \(\"allowscriptaccess\" value=\"always\"><\/param><embed src=\"http:\/\/www.youtube.com\/v\/(.*?)&hl=en&fs=1\" type=\"application\/x-shockwave-flash\" allowscriptaccess=\"always\" allowfullscreen=\"true\" width=\"560\" height=\"340\"><\/embed><\/object>/",
+      '/<iframe width=\"(.*?)\" height=\"(.*?)\" src=\"http:\/\/youtube.com\/embed\/(.*?)\?autoplay=0\" frameborder=\"0\" type=\"text\/html\"><\/iframe>/',
+      '/src=\"http:\/\/youtube.com\/embed\/(.*?)\?autoplay=0\"/',
+    );
+    $replacement = array(
+      '<div class="forum-title-style-replace"><span style="$1; font-weight: bold;"><span style="$2;">$3</span></span><br/><b>$4</b></div>',
+      '<p class="forum-title-style-replace"><span style="$1; font-weight: bold;">$2</span></p>',
+      '<p><b><span style="$1"><span style="$2">$3</span></span>$4</b></p>',
+      '<p><span style="$1"><span style="$2">$3</span></span>',
+      '<iframe frameborder="0" width="$1" height="$2" src="http://youtube.com/embed/$3?autoplay=0&wmode=transparent" type="text/html"></iframe>',
+      '<iframe frameborder="0" width="$1" height="$2" src="http://youtube.com/embed/$3?autoplay=0&wmode=transparent" type="text/html"></iframe>',
+      '<iframe frameborder="0" width="$1" height="$2" src="http://youtube.com/embed/$3?autoplay=0&wmode=transparent" type="text/html"></iframe>',
+      '<iframe frameborder="0" width="$1" height="$2" src="http://youtube.com/embed/$3?autoplay=0&wmode=transparent" type="text/html"></iframe>',
+      'src="http://youtube.com/embed/$1?autoplay=0&wmode=transparent"',
+    );
+    //Now Replace the tag data
+    $comment_body = preg_replace($pattern, $replacement, $comment_body);
+	//Now replace in anchor tag
+    if(preg_match_all('/<a href=\"(.*?)\">\[view_full_image_link\]<\/a><br \/>/i',$comment_body,$matches)){
+      //print "<pre>";print_r($matches);exit;
+      for($i = 0; $i <= count($matches[0]); $i++){
+        if(isset($matches[0][$i])) {
+          //$new = preg_replace('/target=[^ ]+/i', '', $matches[0][$i]);
+          //print "<pre>";print_r($matches);exit;
+          $doc = new DOMDocument();
+          $doc->loadHTML($matches[0][$i]);
+          $xpath = new DOMXPath($doc);
+          $src = $xpath->evaluate("string(//a/@href)");
+          $image = $base_url.$src;
+          $size = getimagesize($image);
+          //print $src.'<br/>'.$image;
+          //print "<pre>";print_r($size);exit;
+          if($size[0] <= 700) {
+            $new = preg_replace('/<a href=\"(.*?)\">\[view_full_image_link\]<\/a><br \/>/i', '', $matches[0][$i]);
+            $comment_body = str_replace($matches[0][$i],$new,$comment_body); //done!
+          }
+          else {
+            $new = preg_replace('/<a href=\"(.*?)\">\[view_full_image_link\]<\/a><br \/>/i', '<div class="click-to-view-full-image" title="Click to view full image"><a href="$1" target="_blank"><img border="0" alt="" style="vertical-align:middle" src="/sites/all/modules/custom/gmc_lesson_review/img-resized.png"> Click to view full image</a></div>', $matches[0][$i]);
+            $comment_body = str_replace($matches[0][$i],$new,$comment_body); //done!
+          }
+        }
+      }
+    }
+    if(preg_match_all('/<a\s[^>]*href=[^# ]+[^>]*>/i',$comment_body,$matches)){
+      //loop through
+      for($i = 0; $i <= count($matches[0]); $i++){
+        if(isset($matches[0][$i])) {
+          $new = preg_replace('/target=[^ ]+/i', '', $matches[0][$i]);
+          $new = rtrim($new,'>') . ' target="_blank"' . '>';
+          //this should be exact
+          $new = str_replace('>',' target="_blank">',$new); //done!
+          $comment_body = str_replace($matches[0][$i],$new,$comment_body); //done!
+        }
+      }
+    }
+	//Now save attachment
+	$comment_body = preg_replace( "#\[attachment=(\d+?)\:(?:[^\]]+?)\]#is", '[attachment]'."$1".'[/attachment]', $comment_body);
+	$dess = explode('[attachment]', $comment_body);
+	$des = array();
+    foreach($dess as $key => $desx) {
+      $pos = strpos($desx, '[/attachment]');
+      if($pos !== false) {
+        $desxx = explode('[/attachment]', $desx);
+          foreach($desxx as $keys => $desxxx) {
+            if (is_numeric($desxxx) && $desxxx != '') {
+                $count = db_query("SELECT * FROM {ds2_gmc.ibf_attachments} WHERE attach_id = :id",array(':id' => $desxxx))->rowCount();
+              if ($count > 0 ) {
+                $ls = db_select('ds2_gmc.ibf_attachments', 'c')
+                        ->fields('c')
+                        ->condition('attach_id', $desxxx,'=')
+                        ->execute()
+                        ->fetchObject();
+                $path = '/opt/web/guitarmasterclass.net/public_html/guitar_forum/uploads/'.$ls->attach_location; 
+                if (file_exists($path)) {
+                  $fp = file_get_contents($path);
+                  $lsfilename = str_replace(' ', '_', $ls->attach_file);
+                  $xpath = 'public://forum_topic_file/'.$lsfilename;
+                  $file = file_save_data($fp, $xpath, FILE_EXISTS_RENAME);
+                  $file->status = FILE_STATUS_PERMANENT;
+                  $file->uid = $comments->uid;
+                  file_save($file);
+                  $dfind = '[attachment]'.$desxxx.'[/attachment]';
+                  $rep = '[attachment2]' . $file->fid . '[/attachment2]'; 
+                  $comment_body = str_replace($dfind, $rep, $comment_body);
+                }
+              }
+            }
+         }
+      }
+    }
+	$comments->comment_body['und'][0]['value'] = $comment_body; // Everything here is pretty much like with a node
+	$comments->comment_body['und'][0]['format'] = 'full_html'; 
+	comment_save($comments);
+}
+
+/**********************************Data Migration Code End**********************************/
+
+/**********************************Data Migration By Cron**********************************/
+/**
+ * Callback function import_live_data_private_msg_bycron()
+ * to import user Private Message data with attachment
+ **/
+function import_live_data_private_msg_bycron() {
+	$live_mid = db_query("SELECT live_mid FROM dev_syn_drupal.pm_migrate_ids ORDER BY live_mid DESC LIMIT 0, 1")->fetchField();
+	$records = db_query("SELECT * FROM ds2_gmc.ibf_message_text m INNER JOIN ds2_gmc.ibf_message_topics mt ON m.msg_id = mt.mt_msg_id WHERE mt.mt_vid_folder != :unsent AND mt.mt_msg_id > :live_mid ORDER BY m.msg_id ASC", array(':unsent' => 'unsent', ':live_mid' => $live_mid));
+	foreach ($records as $value) {
+		$migrate_ids = db_query("SELECT drupal_mid FROM dev_syn_drupal.pm_migrate_ids WHERE live_mid = :live_mid", array(':live_mid' => $value->mt_msg_id));
+		$count = $migrate_ids->rowCount();
+		if($count == 0) {
+			$author_email = db_query("SELECT email FROM ds2_gmc.ibf_members WHERE id = :id", array(':id' => $value->mt_from_id))->fetchField();
+			if(!empty($author_email)) {
+				$author = db_query("SELECT uid FROM dev_syn_drupal.users WHERE mail = :mail", array(':mail' => $author_email))->fetchField();
+			}
+			$recipient_email = db_query("SELECT email FROM ds2_gmc.ibf_members WHERE id = :id", array(':id' => $value->mt_to_id))->fetchField();
+			if(!empty($recipient_email)) {
+				$recipient = db_query("SELECT uid FROM dev_syn_drupal.users WHERE mail = :mail", array(':mail' => $recipient_email))->fetchField();
+			}
+			if(!empty($author) && !empty($recipient)) {
+				$body = str_replace("style_emoticons/<#EMO_DIR#>","/style_emoticons/default", $value->msg_post);
+				$body = str_replace("<#EMO_DIR#>","default", $body);
+				$body = str_replace("style_emoticons/&lt;#EMO_DIR#&gt;","/style_emoticons/default", $body);
+				$body = str_replace("http://www.guitarmasterclass.net/guitar_forum/style_emoticons/default/", "/style_emoticons/default/", $body);
+				$args = array();
+				$args['subject'] = $value->mt_title;
+				$args['author'] = $author;
+				$args['body'] = $body;
+				$args['format'] = 'full_html';
+				$args['timestamp'] = $value->msg_date;
+				$args['has_tokens'] = 0;
+				//$mid = 1;
+				$mid = db_insert('pm_message')
+				  ->fields($args)
+				  ->execute();
+				
+				$query = db_insert('pm_index')->fields(array('mid', 'thread_id', 'recipient', 'type', 'is_new', 'deleted'));
+				$query->values(array(
+					'mid' => $mid,
+					'thread_id' => $mid,
+					'recipient' => $author,
+					'type' => 'user',
+					'is_new' => 0,
+					'deleted' => 0,
+				));
+				if($author != $recipient) {
+					$query->values(array(
+						'mid' => $mid,
+						'thread_id' => $mid,
+						'recipient' => $recipient,
+						'type' => 'user',
+						'is_new' => 0,
+						'deleted' => 0,
+					));
+				}
+				$query->execute();
+
+				$pm_tags = db_insert('pm_tags_index')
+				->fields(array(
+					'tag_id' => 1,
+					'uid' => $recipient,
+					'thread_id' => $mid,
+				))
+				->execute();
+
+				$migrate_ids = db_insert('pm_migrate_ids')
+				->fields(array(
+					'live_mid' => $value->msg_id,
+					'drupal_mid' => $mid,
+					'drupal_draft_id' => 0,
+				))
+				->execute();
+				
+				//Insert attachment
+				$attachments = db_query("SELECT * FROM ds2_gmc.ibf_attachments WHERE attach_rel_id = :msg_id AND attach_rel_module LIKE :msg", array(':msg_id' => $value->mt_msg_id, 'msg' => 'msg'));
+				$attach_count = $attachments->rowCount();
+				if($attach_count != 0) {
+					$update = 0;
+					foreach($attachments as $attachment){
+						$thumb = '/opt/web/guitarmasterclass.net/public_html/guitar_forum/uploads/'.$attachment->attach_location;
+						
+						$fp = file_get_contents($thumb);
+						//print $fp;exit;
+						if(!empty($fp)) {
+							$file = file_save_data($fp,"public://mail_attachment/".$attachment->attach_file,FILE_EXISTS_RENAME);
+							$file->status = FILE_STATUS_PERMANENT;
+							$file->uid = $author;
+							$file = file_save($file);
+							//print "<pre>";print_r($file);exit;
+							if(!empty($file->fid) && !empty($mid)){
+								db_insert('file_usage')
+									->fields(array('fid' => $file->fid, 'module' => 'file', 'type' => 'privatemsg_message', 'id' => $mid, 'count' => 1))
+									->execute();
+									
+								$delta_count = db_query("SELECT COUNT(delta) FROM field_data_field_counter WHERE entity_id = :entity_id", array(':entity_id' => $mid))->fetchField();
+								db_insert('field_data_field_counter')
+									->fields(array('entity_type' => 'privatemsg_message', 'bundle' => 'privatemsg_message', 'deleted' => 0, 'entity_id' => $mid, 'revision_id' => $mid, 'language' => 'und', 'delta' => $delta_count, 'field_counter_value' => 0))
+									->execute();
+								db_insert('field_revision_field_counter')
+									->fields(array('entity_type' => 'privatemsg_message', 'bundle' => 'privatemsg_message', 'deleted' => 0, 'entity_id' => $mid, 'revision_id' => $mid, 'language' => 'und', 'delta' => $delta_count, 'field_counter_value' => 0))
+									->execute();
+									
+								$delta_count = db_query("SELECT COUNT(delta) FROM field_data_field_mail_attachment WHERE entity_id = :entity_id", array(':entity_id' => $mid))->fetchField();
+								db_insert('field_data_field_mail_attachment')
+									->fields(array('entity_type' => 'privatemsg_message', 'bundle' => 'privatemsg_message', 'deleted' => 0, 'entity_id' => $mid, 'revision_id' => $mid, 'language' => 'und', 'delta' => $delta_count, 'field_mail_attachment_fid' => $file->fid, 'field_mail_attachment_display' => 1, 'field_mail_attachment_description' => ''))
+									->execute();
+								db_insert('field_revision_field_mail_attachment')
+									->fields(array('entity_type' => 'privatemsg_message', 'bundle' => 'privatemsg_message', 'deleted' => 0, 'entity_id' => $mid, 'revision_id' => $mid, 'language' => 'und', 'delta' => $delta_count, 'field_mail_attachment_fid' => $file->fid, 'field_mail_attachment_display' => 1, 'field_mail_attachment_description' => ''))
+									->execute();
+
+								$delta_count = db_query("SELECT COUNT(delta) FROM field_data_field_download_files WHERE entity_id = :entity_id", array(':entity_id' => $mid))->fetchField();
+								db_insert('field_data_field_download_files')
+									->fields(array('entity_type' => 'privatemsg_message', 'bundle' => 'privatemsg_message', 'deleted' => 0, 'entity_id' => $mid, 'revision_id' => $mid, 'language' => 'und', 'delta' => $delta_count, 'field_download_files_download_fields' => 'field_mail_attachment;', 'field_download_files_download_label' => 'Download'))
+									->execute();
+								db_insert('field_revision_field_download_files')
+									->fields(array('entity_type' => 'privatemsg_message', 'bundle' => 'privatemsg_message', 'deleted' => 0, 'entity_id' => $mid, 'revision_id' => $mid, 'language' => 'und', 'delta' => $delta_count, 'field_download_files_download_fields' => 'field_mail_attachment;', 'field_download_files_download_label' => 'Download'))
+									->execute();
+								if(stripos($body,"[attachment=".$attachment->attach_id.":")) {
+									$body = str_replace("[attachment=".$attachment->attach_id.":", "[attachment=".$file->fid.":", $body);
+									$update = 1;
+								}
+							}
+						}
+					}
+					if($update) {
+						$pm_updated = db_update('pm_message')->fields(array('body' => $body))->condition('mid', $mid, '=')->execute();
+					}
+				}
+			}
+		}
+	}
+}
+/**
+ * Callback function import_live_data_live_subscription()
+ * to import live subscription data
+ **/
+function import_live_data_live_subscription_bycron() {
+	$url = "http://www.guitarmasterclass.net/payment/subscriptions.json";
+	$request = drupal_http_request($url);
+	$json_response = drupal_json_decode($request->data);
+	if(!empty($json_response)) {
+		unset($json_response[0]);
+		$json_response = array_reverse($json_response);
+		foreach ($json_response as $value) {
+			$account = _add_live_members(trim($value[0]), trim($value[1]));
+			if($account != 'DILIP') {
+				$count = db_query("SELECT COUNT(subscription_id) FROM gmc_oldmember_subscription WHERE uid = :uid AND live_id = :live_id AND email = :email", array(':uid' => $account->uid, 'live_id' => $value[0], 'email' => $value[1]))->fetchField();
+				$user_detail = user_load($account->uid);
+				if(!empty($value[2]) && !empty($value[3])) {
+					$user_detail->roles[5] = 'member';
+					$user_detail->roles[6] = 'paid user';
+					user_save($user_detail);
+				}
+				else if(empty($value[2]) && !empty($value[3]) && (strtotime($value[3]) > time())) {
+					$user_detail->roles[5] = 'member';
+					$user_detail->roles[6] = 'paid user';
+					user_save($user_detail);
+				}
+				else if(empty($value[2]) && !empty($value[3])) {
+					$user_detail->roles[5] = 'member';
+					unset($user_detail->roles[6]);
+					user_save($user_detail);
+				}
+				else if(empty($value[2]) && empty($value[3])) {
+					unset($user_detail->roles[5]);
+					unset($user_detail->roles[6]);
+					user_save($user_detail);
+				}
+				if($count == 0) {
+					db_insert('gmc_oldmember_subscription')
+						->fields(array(
+							'uid' => $account->uid,
+							'live_id' => $value[0],
+							'email' => $value[1],
+							'payment_method' => $value[2],
+							'live_date' => $value[3],
+						))
+						->execute();
+				}
+				else {
+					db_update('gmc_oldmember_subscription')
+						->fields(array(
+							'payment_method' => $value[2],
+							'live_date' => $value[3],
+						))
+						->condition('uid', $account->uid, '=')
+						->condition('live_id', $value[0], '=')
+						->condition('email', $value[1], '=')
+						->execute();
+				}
+			}
+		}
+	}
+}
+/**
+ * Callback function gmc_users_extra_callback()
+ * to save user extra information
+ * in users_extra custom table
+ **/
+function import_live_data_users_extra() {
+	$records = db_query("SELECT uid FROM users WHERE uid != 0 ORDER BY uid ASC LIMIT 30000, 5000");
+	$i=1;
+	foreach ($records as $uids) {
+		$values = user_load($uids->uid);
+		$operations[] = array('gmc_extra_users_extra_insert', array($values, t('(Operation @operation)', array('@operation' => $i))));
+		$i++;
+	}
+	$batch = array(
+		'operations' => $operations,
+		'finished' => 'import_data_finished',
+	);
+	return $batch;
+}
+/**
+ * callback function gmc_extra_users_extra_insert()
+ * to insert user extra infor in users_extra table
+ **/
+function gmc_extra_users_extra_insert($value, $operation_details, &$context) {
+	$count = db_query("SELECT COUNT(id) as cid FROM users_extra WHERE uid = :uid", array(':uid' => $value->uid))->fetchField();
+	if($count == 0){
+		if(in_array('instructor', $value->roles)) {
+			$user_group = '<img src="/sites/all/themes/gmc_v2/images/staff2.jpg" alt="Group Icon"><br><br>Group: <span class="gmc-instructor">GMC Instructor</span><br>';
+		}
+		else {
+			$user_group = 'Group: Members<br/>';
+		}
+		//$forum_post_count = forum_comment_count($value->uid);
+		$query = db_select('comment', 'c');
+		$query->join('node', 'n', 'c.nid = n.nid');
+		$query->condition('c.uid', $value->uid, '=');
+		$query->condition('n.type', 'forum', '=');
+		$query->condition('n.status', '1', '=');
+		$query->condition('c.status', '1', '=');
+		$query->addExpression('COUNT(1)', 'count');
+		$result = $query->execute();
+		if ($record = $result->fetchAssoc())
+			$forum_post_count = $record['count'];
+			
+		$name = '';
+		if(isset($value->field_first_name['und'][0]['value'])) {
+			if(isset($value->field_last_name['und'][0]['value'])) {
+				$name = $value->field_first_name['und'][0]['value'].' '.$value->field_last_name['und'][0]['value'];
+			}
+			else {
+				$name = $value->field_first_name['und'][0]['value'];
+			}
+		}
+		else if (empty($name)) {
+			$name = $value->name;
+		}
+		$user_full_name = ucwords($name);
+		$profile_views_count = gmc_user_view_count($value->uid);
+		db_insert('users_extra')
+			->fields(array(
+				'uid' => $value->uid,
+				'user_group' => $user_group,
+				'forum_post_count' => $forum_post_count,
+				'user_full_name' => $user_full_name,
+				'profile_views_count' => $profile_views_count,
+			))
+			->execute();
+	}
+}
+/**********************************Data Migration By Cron**********************************/

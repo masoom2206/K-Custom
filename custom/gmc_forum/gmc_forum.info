@@ -1,0 +1,6 @@
+name = "GMC forum mapping from live server"
+description = "GMC forum mapping from live server is a custom module"
+core = 7.x
+version = "7.x-1.0"
+package = Custom
+

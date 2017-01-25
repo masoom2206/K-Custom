@@ -1,0 +1,9 @@
+name = Instructor Lesseon Subscirption
+description = Instructor Lesseon Subscirption.
+package = Custom
+version = VERSION
+core = 7.x
+files[] = instructor_subscirption.module
+; Information added by drupal.org packaging script on 2013-09-27
+version = "7.custom"
+project = instructor_subscirption

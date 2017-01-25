@@ -1,0 +1,9 @@
+name = GMC New Lesson Home page Block
+description = Custom GMC Lessons Function Module for lessons node.
+package = Custom
+version = VERSION
+core = 7.x
+files[] = gmc_new_lessons.module
+; Information added by Dilip Singh on 2014-04-16
+version = "7.custom"
+project = support

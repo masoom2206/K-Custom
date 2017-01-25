@@ -1,0 +1,11 @@
+name = GMC Lessons Visits
+description = Custom GMC Lessons Visits Module to display lessons practicing members.
+package = Custom
+version = VERSION
+core = 7.x
+files[] = gmc_lessons_visits.module
+files[] = gmc_lessons_visits.install
+; Information added by drupal.org packaging script on 2013-02-20
+version = "7.custom"
+project = support
+

@@ -1,0 +1,47 @@
+<?php
+
+/**
+ * @file Rules - Installation file.
+ */
+
+/**
+ * Implements hook_schema().
+ */
+function rec_lessons_support_schema() {
+	//Save subscribe user/instructor detail
+  $schema['gmc_rec_grade'] = array(
+    'fields' => array(
+      'rec_grade_id' => array(
+        'type' => 'serial',
+        'not null' => TRUE,
+        'description' => 'REC Grade ID',
+      ),
+      'uid' => array(
+        'description'   => 'UID of the Voter',
+        'type'          => 'int',
+        'not null'      => TRUE,
+      ),
+      'entity_id' => array(
+        'description'   => 'Nid of REC Lessons node',
+        'type'          => 'int',
+        'not null'      => TRUE,
+      ),
+      'grade' => array(
+        'description'   => 'Grade number of REC Lessons node',
+        'type'          => 'int',
+        'not null'      => TRUE,
+      ),
+      'grade_date'     => array(
+        'description'   => 'REC Lesson Grade Date',
+        'type'          => 'int',
+        'not null'      => TRUE,
+      ),
+    ),
+    'primary key' => array('rec_grade_id'),
+    'indexes' => array(
+       'rec_grade_id' => array('rec_grade_id'),
+       'grade_date' => array('grade_date'),
+    ),
+  );
+  return $schema;
+}

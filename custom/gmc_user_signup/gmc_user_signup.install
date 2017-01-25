@@ -1,0 +1,114 @@
+<?php
+
+/**
+ * @file Rules - Installation file.
+ */
+
+/**
+ * Implements hook_schema().
+ */
+function gmc_user_signup_schema() {
+	//Save subscribe user/instructor detail
+  $schema['gmc_referer'] = array(
+    'fields' => array(
+      'referer_id' => array(
+        'type' => 'serial',
+        'not null' => TRUE,
+        'description' => 'Referer ID',
+      ),
+      'referer_uid' => array(
+        'description'   => 'UID of the member who refer user',
+        'type'          => 'int',
+        'not null'      => TRUE,
+      ),
+      'new_member_uid' => array(
+        'description'   => 'UID of the member refered by member',
+        'type'          => 'int',
+        'not null'      => TRUE,
+      ),
+      'signup_time' => array(
+        'description'   => 'Member signup time',
+        'type'          => 'int',
+        'not null'      => TRUE,
+      ),
+    ),
+    'primary key' => array('referer_id'),
+    'indexes' => array(
+       'referer_id' => array('referer_id'),
+    ),
+  );
+  //GMC Discount Keys Tables
+  $schema['gmc_discount_keys'] = array(
+    'fields' => array(
+      'discount_key_id' => array(
+        'type' => 'serial',
+        'not null' => TRUE,
+        'description' => 'Discount Key ID',
+      ),
+      'uid' => array(
+        'description'   => 'UID of the member who used this',
+        'type'          => 'int',
+        'not null'      => TRUE,
+      ),
+      'key_value' => array(
+        'description'   => 'Unique key value',
+        'type'          => 'varchar',
+        'length'        => 255,
+        'not null'      => TRUE,
+      ),
+      'created' => array(
+        'description'   => 'Key Created date',
+        'type'          => 'int',
+        'not null'      => TRUE,
+      ),
+      'used' => array(
+        'description'   => 'Key Used date',
+        'type'          => 'int',
+      ),
+      'never_expire' => array(
+        'description'   => 'Never expire true or false',
+        'type'          => 'int',
+        'not null'      => TRUE,
+      ),
+    ),
+    'primary key' => array('discount_key_id'),
+    'indexes' => array(
+       'discount_key_id' => array('discount_key_id'),
+    ),
+  );
+  //GMC Referer Keys Tables
+  $schema['gmc_referer_key'] = array(
+    'fields' => array(
+      'referer_key_id' => array(
+        'type' => 'serial',
+        'not null' => TRUE,
+        'description' => 'Referer Key ID',
+      ),
+      'uid' => array(
+        'description'   => 'UID of the member',
+        'type'          => 'int',
+        'not null'      => TRUE,
+      ),
+      'key_value' => array(
+        'description'   => 'Unique key value',
+        'type'          => 'varchar',
+        'length'        => 255,
+        'not null'      => TRUE,
+      ),
+      'bonus_level' => array(
+        'description'   => 'Bonus Level, means no of user has used for signup',
+        'type'          => 'int',
+      ),
+      'created' => array(
+        'description'   => 'Key Created date',
+        'type'          => 'int',
+        'not null'      => TRUE,
+      ),
+    ),
+    'primary key' => array('referer_key_id'),
+    'indexes' => array(
+       'referer_key_id' => array('referer_key_id'),
+    ),
+  );
+  return $schema;
+}

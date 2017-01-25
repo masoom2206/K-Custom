@@ -1,0 +1,9 @@
+name = HTML 5 Class
+description = HTML 5 Class.
+package = Custom
+version = VERSION
+core = 7.x
+files[] = gmc_html5_player.module
+; Information added by drupal.org packaging script on 2013-10-22
+version = "7.custom"
+project = gmc_html5_player

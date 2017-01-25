@@ -1,0 +1,1676 @@
+<?php
+/*
+ * Dislay error on this process only.
+ */
+
+  error_reporting(E_ALL);
+  ini_set("display_errors", 1);
+  ini_set('memory_limit', '-1');
+  drupal_set_time_limit(300);
+
+/* Implement hook_block_info()
+ * for creating custom block for wiki and responce videos.
+ */
+function import_data_forum_permission() {
+  return array(
+    'perform import data' => array(
+      'title' => t('Perform Import Data'),
+      'description' => t('Perform Import Data.'),
+    ),
+  );
+}
+
+/* 
+ * Implement hook_menu()
+ * for creating custom page for import process.
+ */
+function import_data_forum_menu(){
+  $items = array();
+  $items['admin/config/data/import'] = array(
+    'title' => 'Forum Import',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('forum_config_data_import'),
+    'type' => MENU_NORMAL_ITEM,
+    'access arguments' => array('access content'),
+    // Page callback, etc. need to be added here.
+  );
+  $items['get/member/name'] = array(
+    'title' => 'Forum Import',
+    'page callback' => 'import_data_d_batch_8',
+    'type' => MENU_CALLBACK,
+    'access arguments' => array('access content'),
+    // Page callback, etc. need to be added here.
+  );
+  return $items;
+}
+
+
+/*
+ * Implement the news_import_form for render the import form with batch setting for forum data.
+ *
+ */
+function forum_config_data_import(){
+
+  $form['description'] = array(
+    '#type' => 'markup',
+    '#markup' => t('Importing the content, tag and catogery data from phpbb and prevent the duplicate data.'),
+  );
+  
+  $form['batch'] = array(
+    '#type' => 'select',
+    '#title' => 'Choose batch',
+    '#options' => array(
+      'batch_1' => t('batch 1 - Import the Forum-categories data IPB to drupal'),
+      'batch_2' => t('batch 2 - update the forum categories parent'),
+    //  'batch_3' => t('batch 3 - Import the Forum-Topics data IPB to drupal'),
+     // 'batch_4' => t('batch 4 - Import the Forum-Topics data IPB to drupal'),
+    //  'batch_5' => t('batch 5 - Import GMC user to drupal'),
+      'batch_6' => t('batch 6 - Import Old PHP user to drupal'),
+    //  'batch_7' => t('batch 7 - Import Old PHP forums data to drupal'),
+    //  'batch_8' => t('batch 8 - Import test drupal'),
+      'batch_9' => t('batch 9 - Import forum livedata to drupal'),
+     // 'batch_10' => t('batch 10 - Import forum reply livedata to drupal'),
+     // 'batch_11' => t('batch 11 - Import forum set livedata to drupal'),
+      'batch_12' => t('batch 12 - Import forum reply livedata to drupal'),
+      'batch_13' => t('batch 13 - Import user comment livedata to drupal'),
+      'batch_14' => t('batch 14 - Import user profile data from livedata to drupal'),
+    ),
+  );
+  
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => 'Go',
+  );
+
+  return $form;
+}
+
+/*
+ * Implement function to incress the batch function operation
+ */
+function _import_data_update_http_requests() {
+  $_SESSION['http_request_count']++;
+}
+
+
+/*
+ * Implement function to get http request on starting on batch function operation
+ */
+function _import_data_get_http_requests() {
+  return !empty($_SESSION['http_request_count']) ? $_SESSION['http_request_count'] : 0;
+}
+
+/*
+ * Implement function to get batch opration request on starting on batch function operation
+ */
+function forum_config_data_import_submit($form, &$form_state){ 
+  $function = 'import_data_d_' . $form_state['values']['batch'];
+  $_SESSION['http_request_count'] = 0; // reset counter for debug information.
+  $batch = $function();
+  batch_set($batch);
+}
+
+
+/*
+ * Implemtent the function for import all term into dupral.
+ */
+function import_data_d_batch_1() {
+  $num_operations = db_select('ds2_gmc.ibf_forums', 'ibf')->fields('ibf')->execute()->rowCount();
+  $tids = db_select('ds2_gmc.ibf_forums', 'tc')->fields('tc')->orderBy('tc.id', 'ASC')->execute();
+  $operations = array();
+  $i = 0;
+  
+  while ($data = $tids->fetchAssoc()) {
+        $result = db_select('taxonomy_term_data', 'n')
+          ->fields('n')
+          ->condition('vid', 6,'=')
+          ->condition('n.name', $data['name'], 'LIKE')
+          ->execute()
+          ->fetchAssoc();
+    if (empty($result)) {
+      $operations[] = array('import_fdata_op_1', array($data, t('(Operation @operation)', array('@operation' => $i))));
+      $i++;
+    } 
+  }
+  drupal_set_message(t('Creating an array of @num operations', array('@num' => $i)));
+  $batch = array(
+    'operations' => $operations,
+    'finished' => 'import_data_finished',
+  );
+  return $batch;
+}
+
+/*
+ * Function saving the term and data on the drupal site.
+ */
+function import_fdata_op_1($data, $operation_details, &$context) {
+ // print_r($data);
+  //$context['message'] = t('Loading tags "@title"', array('@title' => $data['name'])) . ' ' . $operation_details;
+  $term = new stdClass();
+  $term->name = $data['name'];
+  $term->description = $data['description'];
+  $term->vid = 6;
+  if ($data['rules_title']) {
+    $term->field_rules_title['und'][0]['value'] = $data['rules_title'];
+  }
+  if ($data['rules_text']) {
+    $term->field_rules_text['und'][0]['value'] = $data['rules_text'];
+    $term->field_rules_text['und'][0]['format'] = 'full_html';
+  }
+  
+  $term->field_import_id['und'][0]['value'] = $data['id'];
+  if(!empty($data['id'])) {
+    taxonomy_term_save($term);
+  }
+  _import_data_update_http_requests();
+}
+
+
+/*
+ * Function update term parend data on the drupal site.
+ */
+function import_data_d_batch_2() {
+  $terms = taxonomy_get_tree(6);
+  $options = array();
+  $operations = array();
+  $i = 0;
+  foreach ($terms as $term) {
+    $term_entity = entity_load('taxonomy_term', array($term->tid));
+    $num_operations = db_select('ds2_gmc.ibf_forums', 'ibf')->fields('ibf')->condition('ibf.id', $term_entity[$term->tid]->field_import_id['und'][0]['value'], '=')->execute()->fetchAssoc();
+    $numdata = db_select('field_data_field_import_id', 'ibf')->fields('ibf')->condition('ibf.field_import_id_value', $num_operations['parent_id'], '=')->execute()->fetchAssoc();
+      
+      if ($num_operations['parent_id'] > 0 && !empty($num_operations['parent_id'])) {
+        $data['tid'] = $term->tid;
+        $data['ptid'] = $numdata['revision_id'];
+         $operations[] = array('import_fdata_op_2', array($data, t('(Operation @operation)', array('@operation' => $i))));
+      $i++;
+        
+      }
+  }
+  drupal_set_message(t('Creating an array of @num operations', array('@num' => $i)));
+  $batch = array(
+    'operations' => $operations,
+    'finished' => 'import_data_finished',
+  );
+  return $batch;
+}
+
+/*
+ * Function update term parend data on the drupal site.
+ */
+function import_fdata_op_2($data, $operation_details, &$context) {
+  $term = taxonomy_term_load($data['tid']);
+  $term->parent = array($data['ptid']);
+  taxonomy_term_save($term);
+  _import_data_update_http_requests();
+}
+
+
+/*
+ * Implemtent the function for import all term into dupral.
+ */
+function import_data_d_batch_3() {
+  
+  $num_operations = db_select('ds2_gmc.ibf_topics', 'ibf')->fields('ibf')->execute()->rowCount();
+  $tids = db_select('ds2_gmc.ibf_topics', 'tc')->fields('tc')->orderBy('tc.tid', 'ASC')->execute();
+  
+  drupal_set_message(t('Creating an array of @num operations', array('@num' => $num_operations)));
+  $operations = array();
+  $i = 0;
+
+  while ($data = $tids->fetchAssoc()) {
+    $operations[] = array('import_fdata_op_3', array($data, t('(Operation @operation)', array('@operation' => $i))));
+    $i++;
+  }
+  $batch = array(
+    'operations' => $operations,
+    'finished' => 'import_data_finished',
+  );
+  return $batch;
+}
+
+/*
+ * Implemtent the function for import all term into dupral.
+ */
+function import_fdata_op_3($data, $operation_details, &$context) {
+  $context['message'] = t('Loading tags "@title"', array('@title' => $term->name)) . ' ' . $operation_details;
+  $node = new stdClass();
+  $node->title = $data['title'];
+  $node->body['und'][0]['value'] = $data['description'];
+  $node->type = 'forum';   // Your specified content type
+  $node->created = $data['start_date'];
+  $node->changed = $data['last_post'];
+  $node->status = 1;       // To have published, else use 0
+  $node->promote = 1;      // If you want promoted to front page, else use 0
+  $node->sticky = 0;
+  $node->body['und'][0]['format'] = 'full_html';       // Filtered HTML
+  //$node->uid = $member->uid;          // UID of content owner
+	if ($t->state == 'open') {
+ 		 $node->comment = 2;
+	}
+	else {
+		$node->comment = 1;	
+	}
+  $node->language = 'en';
+  $node->taxonomy_forums['und'][0]['tid'] = $tax->tid;
+  //node_save($node);
+
+  $com = db_select('ds2_gmc.ibf_posts', 'cn')
+           ->fields('cn')
+           ->condition('cn.topic_id', $data['tid'],'=')
+           ->execute();
+
+  while ( $datacommment = $com->fetchAssoc() ) {
+    $comment = (object) array(
+      'nid' => $node_id,
+      'cid' => 0,
+      'pid' => 0,
+      'uid' => 1,
+      'mail' => '',
+      'is_anonymous' => 0,
+      'homepage' => '',
+      'status' => COMMENT_PUBLISHED,
+      'subject' => substr($node->title,0,30),
+      'language' => LANGUAGE_NONE,
+      'created' => $datacommment['post_date'],
+      'changed' => $datacommment['created'],
+      'comment_body' => array(
+        LANGUAGE_NONE => array(
+          0 => array (
+            'value' => $datacommment['post'],
+            'format' => 'full_html'
+          )
+        )
+      ),
+    );
+
+    //comment_submit($comment);
+    //comment_save($comment);
+  }
+  print_r($comment);
+  exit;
+}
+
+
+/*
+ * Implemtent the function for import all term into dupral.
+ */
+function import_data_d_batch_4() {
+  
+  $num_operations = db_select('ds2_gmc.ibf_forums', 'ibf')->fields('ibf')->execute()->rowCount();
+  $tids = db_select('ds2_gmc.ibf_forums', 'tc')->fields('tc')->orderBy('tc.id', 'ASC')->execute();
+  
+  drupal_set_message(t('Creating an array of @num operations', array('@num' => $num_operations)));
+  $operations = array();
+  $i = 0;
+  while ($data = $tids->fetchAssoc()) {
+    $operations[] = array('import_fdata_op_4', array($data, t('(Operation @operation)', array('@operation' => $i))));
+    $i++;
+  }
+  $batch = array(
+    'operations' => $operations,
+    'finished' => 'import_data_finished',
+  );
+  return $batch;
+}
+
+/*
+ * Implemtent the function for import all term into dupral batch function.
+ */
+function import_fdata_op_4() {
+  $context['message'] = t('Loading tags "@title"', array('@title' => $term->name)) . ' ' . $operation_details;
+}
+
+/*
+ * Implemtent the function for import all term into dupral.
+ */
+function import_data_d_batch_5() {
+  
+  $num_operations = db_select('ds2_gmc.gmc_user', 'ibf')->fields('ibf')->execute()->rowCount();
+  $uids = db_select('ds2_gmc.gmc_user', 'tc')->fields('tc')->orderBy('tc.id', 'ASC')->execute();
+  
+  drupal_set_message(t('Creating an array of @num operations', array('@num' => $num_operations)));
+  $operations = array();
+  $i = 0;
+  while ($data = $uids->fetchAssoc()) {
+    $operations[] = array('import_fdata_op_5', array($data, t('(Operation @operation)', array('@operation' => $i))));
+    $i++;
+  }
+  $batch = array(
+    'operations' => $operations,
+    'finished' => 'import_data_finished',
+  );
+  return $batch;
+
+}
+/*
+ * Implemtent the function for import all forum data into dupral.
+ */
+function import_fdata_op_5($data, $operation_details, &$context) {
+  $result = db_select('users', 'u')
+    ->fields('u')
+    ->condition('mail', $data['email'])
+    ->execute()
+    ->fetchAssoc();
+  if ($result) {
+    $uid = $result['uid'];
+    db_merge('gmc_users')
+      ->key(array('uid' => $uid))
+      ->fields(array(
+          'uid' => $uid,
+          'juid'  => $data['id'],
+          'password'  => $data['pass_hash'],
+          'converted' => 0,
+          'email'  => $data['email'],
+          'created'  => strtotime($data['creation_date']),
+        ))  
+    ->execute();
+  }
+  $context['message'] = t('Loading tags "@title"', array('@title' => $data->name)) . ' ' . $operation_details;
+}
+
+/*
+ * Implemtent the function for import all forum tpics data into dupral.
+ */
+function import_data_d_batch_6() {
+  $maxuid = db_query('SELECT juid FROM gmc_users ORDER BY juid DESC   LIMIT 0 , 1')->fetchObject();
+  
+  
+  $num_operations = db_select('ds2_gmc.gmc_user', 'ibf')->fields('ibf')->condition('ibf.id', $maxuid->juid, '>=')->execute()->rowCount();
+  $uids = db_select('ds2_gmc.gmc_user', 'tc')->fields('tc')->condition('tc.id', $maxuid->juid, '>=')->orderBy('tc.id', 'ASC')->execute();
+  
+  
+  drupal_set_message(t('Creating an array of @num operations', array('@num' => $num_operations)));
+  $operations = array();
+  $i = 0;
+  
+  while ($data = $uids->fetchAssoc()) {
+    $operations[] = array('import_fdata_op_6', array($data, t('(Operation @operation)', array('@operation' => $i))));
+    $i++;
+  }
+  $batch = array(
+    'operations' => $operations,
+    'finished' => 'import_data_finished',
+  );
+  
+  return $batch;
+}
+
+/*
+ * Implemtent the function for import all forum tpics data into dupral.
+ */
+function import_fdata_op_6($datan, $operation_details, &$context) {
+  $new_user = new stdClass();
+  $ddsd = $datan['creation_date'];
+  $cre = strtotime($ddsd);
+  $vs = user_load_by_mail($datan['email']);
+  if ($vs) {
+    $uid = $vs->uid;
+  } else {
+    $new_user->name = $datan['email'];
+    $new_user->pass = NULL; // plain text, hashed later
+    $new_user->mail = $datan['email'];
+    $new_user->init = $datan['email'];
+    $new_user->created = $cre;
+    // $new_user->field_first_name['und'][0]['value'] = $fname;
+    // $new_user->field_last_name['und'][0]['value'] = $lname;
+    $new_user->status = 1; 
+    $new_user->roles = array(2 => true, 5 => true);
+    if ($datan['last_login'] > 0) {
+        $llog = $datan['last_login'];
+        $are = strtotime($llog);
+        $new_user->access = $are;
+    }
+    if (valid_email_address($new_user->mail) ){
+      user_save($new_user);
+      $uid = $new_user->uid;
+    }
+      
+  }
+  if (valid_email_address($new_user->mail) ){
+    db_merge('gmc_users')
+      ->key(array('uid' => $uid))
+      ->fields(array(
+          'uid' => $uid,
+          'juid'  => $datan['id'],
+          'password'  => $datan['pass_hash'],
+          'converted' => 0,
+          'email'  => $datan['email'],
+          'created'  => $cre,
+        ))  
+      ->execute();
+  }
+  $context['message'] = t('Loading user "@user"', array('@user' => $datan['email'])) . ' Importing';
+}
+
+/*
+ * Implemtent the function for import all forum tpics data into dupral batch.
+ */
+function import_data_d_batch_7() {
+  $terms = db_select('taxonomy_term_data', 'ti')
+              ->fields('ti')
+              ->condition('ti.vid', 6)
+              ->execute();
+  
+  while ($term = $terms->fetchAssoc()) {
+   // if ($term['tid'] != 42 && $term['tid'] != 231 && $term['tid'] != 151 && $term['tid'] != 231) {
+      $refdata = db_select('field_data_field_import_id', 'rf')
+                    ->fields('rf')
+                    ->condition('rf.field_import_id_value', $term['tid'])
+                    ->execute()->fetchAssoc();
+       
+      $term['import_id_value'] = $refdata['field_import_id_value'];
+      $operations[] = array('import_fdata_op_7', array($term, t('(Operation @operation)', array('@operation' => $i))));
+      $i++;
+   // }
+  }
+  print '<pre>';
+  print_r($operations); exit;
+  $batch = array(
+    'operations' => $operations,
+    'finished' => 'import_data_finished',
+  );
+  return $batch;
+}
+
+/*
+ * Implemtent the function for import all forum tpics data into dupral.
+ */
+function import_fdata_op_7($datan, $operation_details, &$context) { 
+
+  $topics = db_query('Select * from {ds2_gmc.ibf_topics} ibft Left join {ds2_gmc.gmc_user} gu on gu.ipb_id = ibft.starter_id where ibft.forum_id = :fid order by tid ASC',array(':fid'=>$datan['import_id_value']));
+  
+  foreach($topics as $k => $t) {
+    $checkimpn = db_select('import_topics_comment', 'itc')
+        ->fields('itc', array('live_topic_id', 'topic_id'))
+        ->condition('live_topic_id', $t->tid, '=')
+        ->execute()
+        ->fetchAssoc();
+    print_r();
+    if(empty($checkimpn['live_topic_id']) && !isset($checkimpn['live_topic_id'])) {
+        print $checkimpn['live_topic_id'].'-dd-'.$t->tid;
+       //print '<pre>'; print  $t->tid; print_r($t);print_r($node);
+      
+      if (empty($t->email)) { 
+        $emalnew = db_select('ds2_gmc.gmc_user', 'gu')
+                    ->fields('gu', array('email'))  
+                    ->condition('id', $t->starter_id, '=')
+                    ->execute()
+                    ->fetchAssoc();
+           $t->email = $emalnew['email'];
+        }
+         $names = '';
+      if (valid_email_address($t->email)) {
+        $useridnew = db_select('users', 'u')
+                    ->fields('u', array('uid'))
+                    ->condition('mail', $t->email)
+                    ->execute()
+                    ->fetchAssoc();
+        
+        //print 'name22';
+        if (empty($useridnew['uid'])) {
+            if (valid_email_address($t->email) ){
+             $vs = user_load_by_mail($t->email);
+                if ($vs) {
+                  
+                } else {
+                  $new_user->name = $t->email;
+                  $new_user->pass = NULL; // plain text, hashed later
+                  $new_user->mail = $t->email;
+                  $new_user->init = $t->email;
+                  $new_user->created = $cre;
+                  // $new_user->field_first_name['und'][0]['value'] = $fname;
+                  // $new_user->field_last_name['und'][0]['value'] = $lname;
+                  $new_user->status = 1; 
+                  $new_user->roles = array(2 => true, 5 => true);
+                  if ($t->last_login > 0) {
+                      $llog = $t->last_login;
+                      $are = strtotime($llog);
+                      $new_user->access = $are;
+                  }
+                  if (valid_email_address($new_user->mail) ){
+                    user_save($new_user);
+                    $uid = $new_user->uid;
+                  }
+                    
+                }
+                if (valid_email_address($new_user->mail) ){
+                  db_merge('gmc_users')
+                    ->key(array('uid' => $uid))
+                    ->fields(array(
+                        'uid' => $uid,
+                        'juid'  => $datan['id'],
+                        'password'  => $datan['pass_hash'],
+                        'converted' => 0,
+                        'email'  => $datan['email'],
+                        'created'  => $cre,
+                      ))  
+                    ->execute();
+                }
+            } 
+        }
+         if (valid_email_address($t->email) ){
+          $useridnew = db_select('users', 'u')
+                      ->fields('u', array('uid'))
+                      ->condition('mail', $t->email)
+                      ->execute()
+                      ->fetchAssoc();
+          $names = explode(" ",$t->starter_name);
+        }
+        if (!empty($names[0])) {
+          print 'name'.$useridnew['uid'].'--'.$t->email.'--';
+          $user_account = user_load($useridnew['uid']);  
+          $user_account->field_first_name['und'][0]['value'] = $names[0];
+          if (!empty($names[1])) {
+            $user_account->field_last_name['und'][0]['value'] = $names[1];
+          }
+          //print 'name2';
+          //print_r($user_account);
+          user_save((object) array('uid' => $user_account->uid), (array) $user_account);
+          //print 'name22222';
+        } 
+        
+        if (!empty($useridnew['uid'])) {
+          $uid = $useridnew['uid'];
+        } else {
+           $uid = 0;
+        }
+        //print 'name3';
+        $node = new stdClass();
+        $node->title = $t->title;
+        $t->description = str_replace('style_emoticons/<#EMO_DIR#>', '../sites/all/themes/gmc_v2/images/smile', $t->description);
+        $t->description = str_replace('<img border="0" alt="smile.gif" emoid=":)" style="vertical-align:middle" src="style_emoticons/&lt;#EMO_DIR#&gt;/smile.gif">', '*smile*', $t->description);
+        $node->body['und'][0]['value'] = $t->description;
+        $node->type = 'forum';
+        $node->created = $t->start_date;
+        $node->changed = $t->last_post;
+        $node->status = 1;
+        $node->sticky = 0;
+        $node->body['und'][0]['format'] = 'full_html'; 
+        $node->uid = $uid;
+        if ($t->state == 'open') {
+       	  $node->comment = 2;
+        }
+        else {
+	        $node->comment = 1;	
+        }
+        //print 'name4';
+        $node->language = 'en';
+        // $node->comment_body['und'][0]['format'] = 'filtered_html'; 
+        // If known, the taxonomy TID values can be added as an array.
+        $node->taxonomy_forums['und'][0]['tid'] = $datan['tid'];
+
+        node_save($node);
+        //print 'name5';
+        db_merge('import_topics_comment')
+          ->key(array('live_topic_id' => $t->tid))
+          ->fields(array(
+              'topic_id'  => $node->nid,
+              'live_topic_id' => $t->tid,
+              'forum_id'  => $t->forum_id,
+              'other' => $t->views,
+            ))  
+        ->execute();
+        //print 'name6';
+      }
+    } else {
+        $node = node_load($checkimpn['topic_id']);
+    }
+    //import_comment_per_topics($node, $t->tid);
+    
+   
+  }
+  
+  $context['message'] = t('Loading forum "@forum"', array('@forum' => $datan['import_id_value'])) . ' Importing';
+}
+
+/*
+ * Implemtent the function for import comment or reply for forum tpics data into dupral.
+ */
+function import_comment_per_topics($node, $topicID) {
+  print $topicID;
+  print_r($node);
+	if ($topicID == 0) return;
+	$ins = db_query('SELECT * from {ds2_gmc.ibf_posts} ibft Left join {ds2_gmc.gmc_user} gu on gu.ipb_id = ibft.author_id where topic_id = :id order by post_date ASC',array(':id'=> $topicID))->fetchAll();
+  print 'com---'.$topicID.'--@';	
+	if (empty($ins)) return;
+  print 'com---2';
+	foreach($ins as $key => $c) {
+    print 'com---3';
+    $checkimpc = db_select('import_topics_comment_reply', 'itcr')
+      ->fields('itcr', array('pid', 'cid'))
+      ->condition('pid', $c->pid, '=')
+      ->execute()
+      ->fetchAssoc();
+    if (empty($checkimpc['cid'])) {
+      if (empty($c->email)) {
+        $emalnew = db_select('ds2_gmc.gmc_user', 'gu')
+                  ->fields('gu', array('email'))
+                  ->condition('id', $c->author_id, '=')
+                  ->execute()
+                  ->fetchAssoc();
+         $c->email = $emalnew['email'];
+      }	
+      $useridnew = db_select('users', 'u')
+                ->fields('u', array('uid'))
+                ->condition('mail', $c->email)
+                ->execute()
+                ->fetchAssoc();
+      
+      if (!empty($useridnew['uid'])) {
+        $uid = $useridnew['uid'];
+      } else {
+        $uid = 0;
+      }
+      print 'com---4';
+	    $comment = new stdClass();
+	    $comment->nid = $node->nid; 
+	    $comment->status = COMMENT_PUBLISHED;
+	    $comment->is_anonymous = 0;
+	    $comment->subject = substr($node->title,0,30);
+	    $comment->created = $c->post_date;
+	    $comment->changed = $comment->created;
+	    $comment->uid = $uid;
+      $c->post = str_replace('style_emoticons/<#EMO_DIR#>', '../sites/all/themes/gmc_v2/images/smile', $c->post);
+      $c->post = str_replace('<img border="0" alt="smile.gif" emoid=":)" style="vertical-align:middle" src="style_emoticons/&lt;#EMO_DIR#&gt;/smile.gif">', '*smile*', $c->post);
+	    $comment->comment_body['und'][0]['value'] = $c->post;
+	    $comment->comment_body['und'][0]['format'] = 'full_html'; 
+	    comment_submit($comment); // saving a comment
+	    $comment->created = $c->post_date;
+	    $comment->changed = $comment->created;
+      print 'com---5';
+      print '<pre>';
+      print_r( $comment);
+	    comment_save($comment);
+      print 'com---6';
+      db_merge('import_topics_comment_reply')
+        ->key(array('cid' => $comment->cid))
+        ->fields(array(
+            'cid'  => $comment->cid,
+            'pid' => $c->pid,
+            'nid'  => $node->nid,
+            'tid'  => $topicID,
+            'other' => $c->author_id,
+          ))  
+      ->execute();
+       print 'com---7';
+
+    }
+	}
+}
+
+/*
+ * Implemtent the function for test function.
+ */	
+
+
+function import_data_d_batch_8() {
+  $tree = taxonomy_get_tree(6);
+  foreach($tree as $key => $val){
+    //taxonomy_term_delete($val->tid);
+  }
+ /* $updateuser = db_query("Select u.uid, u.name, u.mail, im.name as livename, im.email from {users} u Left join {ds2_gmc.ibf_  s} im on u.name != im.name ")->fetchAll();
+  $data = array();
+  $data[] = 'UserId--EmailID--LiveEmailid--Liveusername';
+  print '<pre>';
+  foreach ($updateuser as $mem) {
+    $checkimpc = db_select('ds2_gmc.ibf_members', 'itcr')
+      ->fields('itcr', array('members_l_username', 'email'))
+      ->condition('members_l_username', '%'.$mem->name.'%', 'LIKE' )
+      ->execute()
+      ->fetchAssoc();
+    if (!empty($checkimpc['members_l_username'])) {
+      $data[] = $mem->uid .'--'. $checkimpc['members_l_username'].'-->>>>>>>>>>>>'.$checkimpc['email'].'>>>>>>>>>>--'.$mem->name .'--'. $mem->mail .'--'. $mem->livename .'--'. $mem->email.'------------------------'.$checkimpc['email'];
+      /* $num_deleted = db_delete('users')
+          ->condition('mail', $checkimpc['members_l_username'])
+          ->execute();
+      $userload = user_load($mem->uid);
+      // print_r($userload);
+      //$userload->name = $checkimpc['members_l_username'];
+      $userload->mail = $checkimpc['email'];
+      // user_save($userload);
+      //exit;
+    }
+  }
+  */
+  //print_r($data);
+  /* $updateuser = db_query('Select gu.uid, gu.mail, ibfm.email, ibfm.members_l_username, gu.name from {ds2_gmc.ibf_members} ibfm Left join {users} gu on gu.name = ibfm.email where (gu.name = ibfm.email) AND (gu.name NOT LIKE ibfm.members_l_username)')->fetchAll();	
+  $data = array();
+  $dfd = array();
+  foreach ($updateuser as $mem) {
+      $emalnew = db_select('users', 'u')
+                  ->fields('u')
+                  ->condition('name', $mem->members_l_username)
+                  ->execute()
+                  ->fetchAssoc();
+      //$data[] = $emalnew;
+      if (empty($emalnew['uid'])) {
+        if(!empty($mem->members_l_username)) {
+          $userload = user_load($mem->uid);
+          $userload->name = $mem->members_l_username;
+          $userload->mail = $mem->email;
+          user_save($userload);
+         $data[$mem->uid][0] = $emalnew;
+         $data[$mem->uid][1] = $mem;
+        }
+        
+      } else {
+      //  $userload = user_load($emalnew['uid']);
+       // $userload->mail = $mem->mail;
+       // $userload->name = $mem->members_l_username;
+        //user_save($userload);
+       // user_delete($mem->uid);
+       //   $data[$mem->uid][0] = $emalnew;
+       //   $data[$mem->uid][1] = $mem;
+         // $dfd[] = $data;
+      }
+       
+     // $data[] = $mem;
+   }
+    print '<pre>';
+    print_r($data);*/
+}
+
+function import_data_d_batch_11() {
+  /*$terms = $topics = db_query('Select * from {ds2_gmc.ibf_topics} ibft Left join {ds2_gmc.ibf_members} gu on gu.id = ibft.starter_id order by tid ASC LIMIT 0, 5');
+  foreach($topics as $topics) {
+     $term['import_id_value'] = $refdata['field_import_id_value'];
+      $operations[] = array('import_fdata_op_9', array($topics, t('(Operation @operation)', array('@operation' => $i))));
+      $i++;
+  }*/
+  $tree = taxonomy_get_tree(6);
+//  print_r($tree); exit;
+  foreach($tree as $val){
+    $operations[] = array('import_fdata_op_11', array($val, t('(Operation @operation)', array('@operation' => $i))));
+      $i++;
+  }
+  $batch = array(
+    'operations' => $operations,
+    'finished' => 'import_data_finished',
+  );
+  return $batch;
+}
+
+function import_fdata_op_11($val, $operation_details, &$context) { 
+  //taxonomy_term_delete($val->tid);
+   
+}
+
+
+function import_data_d_batch_9() {
+  $lasttid = db_query('SELECT * FROM {import_topics_comment} ORDER BY live_topic_id DESC LIMIT 0 , 1')->fetchAll();
+  $lasttopics = $lasttid[0]->live_topic_id;
+  $terms = db_query('Select *, ibft.title as tt from {ds2_gmc.ibf_topics} ibft Left join {ds2_gmc.ibf_members} gu on gu.id = ibft.starter_id WHERE ibft.tid > :id order by tid ASC LIMIT 0, 5000', array(':id'=> $lasttopics))->fetchAll();
+  /*$terms = db_query('Select *, ibft.title as tt from {ds2_gmc.ibf_topics} ibft Left join {ds2_gmc.ibf_members} gu on gu.id = ibft.starter_id order by tid ASC LIMIT 0, 5000')->fetchAll();*/
+  //print_r($terms); exit;
+  $i = 1;
+  foreach($terms as $topics) {
+      $refdata = db_select('field_data_field_import_id', 'rf')
+                  ->fields('rf')
+                  ->condition('rf.field_import_id_value', $topics->forum_id)
+                  ->execute()->fetchAssoc();
+      
+      $topics->import_id_value = $refdata['entity_id'];  
+      $operations[] = array('import_fdata_op_9', array($topics, t('(Operation @operation)', array('@operation' => $i))));
+      $i++;
+  }
+  $batch = array(
+    'operations' => $operations,
+    'finished' => 'import_data_finished',
+  );
+  
+  return $batch;
+}
+
+/*
+ * Implemtent the function for import all forum tpics data into dupral.
+ */
+function import_fdata_op_9($t, $operation_details, &$context) { 
+  $checkimpn = db_select('import_topics_comment', 'itc')
+        ->fields('itc', array('live_topic_id', 'topic_id'))
+        ->condition('live_topic_id', $t->tid, '=')
+        ->execute()
+        ->fetchAssoc();
+    
+    if(empty($checkimpn['live_topic_id']) && !isset($checkimpn['live_topic_id'])) {
+       // print $checkimpn['live_topic_id'].'-dd-'.$t->tid;
+     //  print '<pre>'; print  $t->tid; print_r($t);print_r($node);
+      
+      if (empty($t->email)) { 
+        $emalnew = db_select('ds2_gmc.gmc_user', 'gu')
+                    ->fields('gu', array('email'))  
+                    ->condition('id', $t->starter_id, '=')
+                    ->execute()
+                    ->fetchAssoc();
+        $t->email = $emalnew['email'];
+        }
+         $names = '';
+      if (valid_email_address($t->email)) {
+        $useridnew = db_select('users', 'u')
+                    ->fields('u', array('uid'))
+                    ->condition('mail', $t->email)
+                    ->execute()
+                    ->fetchAssoc();
+        
+       // print 'name22';
+        if (empty($useridnew['uid'])) {
+            if (valid_email_address($t->email) ){
+             $vs = user_load_by_mail($t->email);
+                if ($vs) {
+                  
+                } else {
+                 $datanewuser = db_select('ds2_gmc.ibf_members', 'gu')
+                    ->fields('gu')  
+                    ->condition('id', $t->starter_id, '=')
+                    ->execute()
+                    ->fetchAssoc();
+                  
+                  $new_user->name = $datanewuser['name'];
+                  $new_user->pass = NULL; // plain text, hashed later
+                  $new_user->mail = $datanewuser['email'];
+                  $new_user->init = $datanewuser['email'];
+                  $new_user->created = $datanewuser['joined'];
+                   $new_user->field_first_name['und'][0]['value'] = $fname;
+                   $new_user->field_last_name['und'][0]['value'] = $lname;
+                  $new_user->status = 1; 
+                  $new_user->roles = array(2 => true, 5 => true);
+                  if ($t->last_login > 0) {
+                      $llog = $t->last_login;
+                      $are = strtotime($llog);
+                      $new_user->access = $are;
+                  }
+                  if (valid_email_address($new_user->mail) ){
+                    user_save($new_user);
+                    $uid = $new_user->uid;
+                  }
+                  if (valid_email_address($new_user->mail) ){
+                    db_merge('gmc_users')
+                      ->key(array('uid' => $uid))
+                      ->fields(array(
+                          'uid' => $uid,
+                          'juid'  => $t->id,
+                          'password'  => 0,
+                          'converted' => 0,
+                          'email'  => $new_user->mail,
+                          'created'  => $new_user->created,
+                        ))  
+                      ->execute();
+                  }                    
+                }
+
+            } 
+        }
+         if (valid_email_address($t->email) ){
+          $useridnew = db_select('users', 'u')
+                      ->fields('u', array('uid'))
+                      ->condition('mail', $t->email)
+                      ->execute()
+                      ->fetchAssoc();
+          $names = explode(" ",$t->starter_name);
+        }
+        if (!empty($names[0])) {
+       //   print 'name'.$useridnew['uid'].'--'.$t->email.'--';
+          $user_account = user_load($useridnew['uid']);  
+         // $user_account->field_first_name['und'][0]['value'] = $names[0];
+         // if (!empty($names[1])) {
+         //   $user_account->field_last_name['und'][0]['value'] = $names[1];
+         // }
+          //print 'name2';
+          //print_r($user_account);
+         // user_save((object) array('uid' => $user_account->uid), (array) $user_account);
+          //print 'name22222';
+        } 
+        
+        if (!empty($useridnew['uid'])) {
+          $uid = $useridnew['uid'];
+        } else {
+           $uid = 0;
+        }
+       // print 'name3';
+        $node = new stdClass();
+        $node->title = $t->tt;
+        $t->description = str_replace('style_emoticons/<#EMO_DIR#>', '../sites/all/themes/gmc_v2/images/smile', $t->description);
+        $t->description = str_replace('<img border="0" alt="smile.gif" emoid=":)" style="vertical-align:middle" src="style_emoticons/&lt;#EMO_DIR#&gt;/smile.gif">', '*smile*', $t->description);
+        $node->body['und'][0]['value'] = $t->description;
+        $node->type = 'forum';
+        $node->created = $t->start_date;
+        $node->changed = $t->start_date;
+        $node->status = 1;
+        $node->sticky = 0;
+        $node->body['und'][0]['format'] = 'full_html'; 
+        $node->uid = $uid;
+        if ($t->state == 'open') {
+       	  $node->comment = 2;
+        }
+        else {
+	        $node->comment = 1;	
+        }
+       // print 'name4';
+        $node->language = 'en';
+        // $node->comment_body['und'][0]['format'] = 'filtered_html'; 
+        // If known, the taxonomy TID values can be added as an array.
+        $node->taxonomy_forums['und'][0]['tid'] = $t->import_id_value;
+     //  print_r($node);
+        if(!empty($t->forum_id)) {
+        node_save($node);
+     //   print 'name5';
+        db_merge('import_topics_comment')
+          ->key(array('live_topic_id' => $t->tid))
+          ->fields(array(
+              'topic_id'  => $node->nid,
+              'live_topic_id' => $t->tid,
+              'forum_id'  => $t->forum_id,
+              'other' => ($t->views) ? $t->views : 0,
+            ))  
+        ->execute();
+        } else {
+           print $t->forum_id; exit;
+        }
+       // print 'name6';
+      }
+    } else {
+        $node = node_load($checkimpn['topic_id']);
+    }
+}
+
+/*
+ * implement a fuction for forum tpics repaly import.
+ */
+function import_data_d_batch_12() {
+  $lasttid = db_query('SELECT * FROM {import_topics_comment_reply} ORDER BY pid DESC LIMIT 0 , 1')->fetchAll();
+  $lasttopics = $lasttid[0]->pid;
+  $getdata = db_query('Select *, ibft.post as tt from {ds2_gmc.ibf_posts} ibft Left join {ds2_gmc.ibf_members} gu on gu.id = ibft.author_id WHERE ibft.pid > :id order by pid ASC LIMIT 0, 5000', array(':id'=> $lasttopics))->fetchAll();
+ // print_r($getdata); exit;
+  $operations = array();
+  foreach($getdata as $repaly) {
+     /* $refdata = db_select('field_data_field_import_id', 'rf')
+                  ->fields('rf')
+                  ->condition('rf.field_import_id_value', $topics->forum_id)
+                  ->execute()->fetchAssoc();
+      $topics->import_id_value = $refdata['entity_id'];  */
+     // print_r($topics); exit;
+      $operations[] = array('import_fdata_op_12', array($repaly, t('(Operation @operation)', array('@operation' => $i))));
+      $i++;
+  }
+  $batch = array(
+    'operations' => $operations,
+    'finished' => 'import_data_finished',
+  );
+  return $batch;
+}
+
+/*
+ * Implemtent the function for import all forum tpics repaly data into dupral.
+ */
+function import_fdata_op_12($t, $operation_details, &$context) { 
+ 
+  $getnid = db_select('import_topics_comment', 'rf')
+                ->fields('rf')
+                ->condition('rf.live_topic_id', $t->topic_id, '=')
+                ->execute()->fetchAssoc();
+  if (!empty($getnid['topic_id'])) {
+    if (!empty($t->email)) {
+      if (valid_email_address($t->email)) {
+        $useridnew = db_select('users', 'u')
+                    ->fields('u', array('uid'))
+                    ->condition('mail', $t->email)
+                    ->execute()
+                    ->fetchAssoc();
+        $uid = $useridnew['uid'];
+        if(empty($uid)) {
+          $useridnew = db_select('gmc_users', 'u')
+                          ->fields('u', array('uid'))
+                          ->condition('juid', $t->author_id)
+                          ->execute()
+                          ->fetchAssoc();
+          $uid = $useridnew['uid'];
+        }
+      } else {
+        $uid = 0;
+      }
+    } else {
+      $uid = 0;
+    }
+
+    if ($t->pid != 0) {
+       $parentid = db_query('SELECT * FROM {import_topics_comment_reply} WHERE cid = :cid ORDER BY pid DESC LIMIT 0 , 1', array(':cid' => $t->pid))->fetchAll();
+       $parentiddata = $parentid[0]->cid;
+    } else {
+       $parentiddata = 0;
+    }
+      
+    //print 'hygfh222'; 
+    $comment = new stdClass();
+    $comment->nid = $getnid['topic_id']; 
+    $comment->status = COMMENT_PUBLISHED;
+    $comment->pid = 0; 
+    $comment->is_anonymous = 0;
+    $comment->subject = strip_tags($t->post_title);
+    $comment->created = $t->post_date;
+    $comment->changed = $t->post_date;
+    $comment->uid = $uid;
+    $comment->comment_body['und'][0]['value'] = $t->post; // Everything here is pretty much like with a node
+    $comment->comment_body['und'][0]['format'] = 'full_html'; 
+    comment_submit($comment); // saving a comment
+    $comment->created = $t->post_date;
+    $comment->changed = $t->post_date;
+    comment_save($comment);
+   // print 'hygfh222'; 
+   
+    db_merge('import_topics_comment_reply')
+          ->key(array('cid' => $comment->cid))
+          ->fields(array(
+              'cid'  => $comment->cid,
+              'pid'  => $t->pid,
+              'nid'  => $getnid['topic_id'],
+              'tid'  => $t->topic_id,
+              'other' => $uid,
+            ))  
+        ->execute();
+  }
+  //print 'hgh';
+}
+
+/*
+ * Implemtent the function for import all user comment into dupral.
+ */
+function import_data_d_batch_13() { 
+  $comments = db_query('SELECT * FROM {ds2_gmc.ibf_profile_comments} ORDER BY comment_date ASC')->fetchAll();
+  foreach($comments as $comment) {
+    $operations[] = array('import_fdata_op_13', array($comment, t('(Operation @operation)', array('@operation' => $i))));
+    $i++;
+  }
+  $batch = array(
+    'operations' => $operations,
+    'finished' => 'import_data_finished',
+  );
+  return $batch;
+}
+
+function import_fdata_op_13($t, $operation_details, &$context) { 
+  $emailidfor = db_query('SELECT * FROM {ds2_gmc.ibf_members} im Left Join users u on u.mail = im.email Where im.id = :id', array(':id' => $t->comment_for_member_id ))->fetchAll();
+  if (empty($emailidfor[0]->uid)) {
+    $new_user->name = $emailidfor[0]->email;
+    $new_user->pass = NULL; // plain text, hashed later
+    $new_user->mail = $emailidfor[0]->email;
+    $new_user->init = $emailidfor[0]->email;
+    $new_user->created = $cre;
+    // $new_user->field_first_name['und'][0]['value'] = $fname;
+    // $new_user->field_last_name['und'][0]['value'] = $lname;
+    $new_user->status = 1; 
+    $new_user->roles = array(2 => true, 5 => true);
+    if ($emailidfor[0]->last_login > 0) {
+        $llog = $emailidfor[0]->last_login;
+        $are = strtotime($llog);
+        $new_user->access = $are;
+    }
+    if (valid_email_address($new_user->mail) ){
+      user_save($new_user);
+      $emailidfor[0]->uid = $new_user->uid;
+      db_merge('gmc_users')
+        ->key(array('uid' =>  $emailidfor[0]->uid))
+        ->fields(array(
+            'uid' =>  $emailidfor[0]->uid,
+            'juid'  =>  $emailidfor[0]->id,
+            'password'  =>  $emailidfor[0]->pass_hash,
+            'converted' => 0,
+            'email'  =>  $emailidfor[0]->email,
+            'created'  => $emailidfor[0]->joined,
+          ))  
+        ->execute();   
+    }
+  }
+  $emailidby = db_query('SELECT * FROM {ds2_gmc.ibf_members} im Left Join users u on u.mail = im.email Where im.id = :id', array(':id' => $t->comment_by_member_id ))->fetchAll();
+  if (empty($emailidby[0]->uid)) {
+    $new_user->name = $emailidby[0]->email;
+    $new_user->pass = NULL; // plain text, hashed later
+    $new_user->mail = $emailidby[0]->email;
+    $new_user->init = $emailidby[0]->email;
+    $new_user->created = $cre;
+    // $new_user->field_first_name['und'][0]['value'] = $fname;
+    // $new_user->field_last_name['und'][0]['value'] = $lname;
+    $new_user->status = 1; 
+    $new_user->roles = array(2 => true, 5 => true);
+    if ($t->last_login > 0) {
+        $llog = $emailidby[0]->last_login;
+        $are = strtotime($llog);
+        $new_user->access = $are;
+    }
+    if (valid_email_address($new_user->mail) ){
+      user_save($new_user);
+      $emailidby[0]->uid = $new_user->uid;
+      db_merge('gmc_users')
+        ->key(array('uid' =>  $emailidby[0]->uid))
+        ->fields(array(
+            'uid' =>  $emailidby[0]->uid,
+            'juid'  =>  $emailidby[0]->id,
+            'password'  =>  $emailidby[0]->pass_hash,
+            'converted' => 0,
+            'email'  =>  $emailidby[0]->email,
+            'created'  => $emailidby[0]->joined,
+          ))  
+        ->execute();
+    }
+     
+  }
+
+  //print_r($emailidfor);print_r($emailidby);print_r($t);
+  if (!empty($emailidfor[0]->uid) && !empty($emailidby[0]->uid)) {
+  db_merge('user_comment')
+    ->key(array('comment_id' => $t->comment_id))
+    ->fields(array(
+        'comment_for_member_id'  => $emailidfor[0]->uid,
+        'comment_by_member_id'  => $emailidby[0]->uid,
+        'comment_content'  => $t->comment_content,
+        'comment_ip_address'  => $t->comment_ip_address,
+        'comment_date'  => $t->comment_date,
+        'comment_approved'  => $t->comment_approved,
+      ))  
+    ->execute();
+  }
+}
+
+/*
+ * Implemtent the function for update user profile into dupral.
+ */
+function import_data_d_batch_14() { 
+  $comments = db_query('SELECT * FROM {ds2_gmc.ibf_profile_portal} ipp LEFT JOIN {ds2_gmc.ibf_member_extra} ime on ime.id=ipp.pp_member_id LEFT JOIN {ds2_gmc.ibf_members} im on ipp.pp_member_id=im.id Left Join {dev_syn_drupal.users} u on u.mail = im.email ORDER BY ipp.pp_member_id ASC')->fetchAll();
+  foreach($comments as $comment) {
+    $operations[] = array('import_fdata_op_14', array($comment, t('(Operation @operation)', array('@operation' => $i))));
+    $i++;
+  }
+  $batch = array(
+    'operations' => $operations,
+    'finished' => 'import_data_finished',
+  );
+  return $batch;
+}
+
+
+function import_fdata_op_14($pro, $operation_details, &$context) {  
+ if ($pro->uid > 0) {
+    $account = user_load($pro->uid);
+   //print_r($account);exit;
+    $account->field_your_interests['und'][0]['value'] = $pro->interests;
+    //$account->field_paypal_email_address['und'][0]['value'] = 'No data';
+    $account->field_personal_statement['und'][0]['value'] = $pro->bio;
+    $account->field_your_website_url['und'][0]['value'] = $pro->website;
+    $account->field_your_icq_uin['und'][0]['value'] = $pro->icq_number;
+   // $account->field_your_aol_identity['und'][0]['value'] = 'No data';
+    $account->field_your_yahoo_identity['und'][0]['value'] = $pro->yahoo;
+    $account->field_your_msn_messenger_identit['und'][0]['value'] = $pro->msnname;
+    //$account->field_currently_practicing['und'][0]['value'] = 'No data';
+   // $account->field_paypal_email_address['und'][0]['value'] = 'No data';
+    $account->signature = $pro->signature;  
+    $account->signature_format = 'full_html';
+    $account->field_address['und'][0]['value'] = $pro->location;
+    $account->field_gender['und'][0]['value'] = $pro->pp_gender;
+    user_save((object) array('uid' => $account->uid), (array) $account);
+  }
+}
+
+
+
+/**
+ * Implements hook_cron_queue_info()
+ */
+function import_data_forum_cron_queue_info() {
+  $queues['my_queue'] = array(
+    'worker callback' => 'import_fdata_queue_6',
+    'time' => 300,
+  );
+  $queues['my_queue1'] = array(
+    'worker callback' => 'import_fdata_queue_9',
+    'time' => 300,
+  );
+  $queues['my_queue2'] = array(
+    'worker callback' => 'import_fdata_queue_12',
+    'time' => 300,
+  );
+  $queues['my_queue3'] = array(
+    'worker callback' => 'import_fdata_queue_13',
+    'time' => 300,
+  );
+  $queues['my_queue4'] = array(
+    'worker callback' => 'import_fdata_queue_14',
+    'time' => 300,
+  );
+  return $queues;
+}
+
+/**
+ * Implements hook_cron()
+ */
+function import_data_forum_cron() {
+
+  $my_queue = DrupalQueue::get('my_queue');
+  $items = array();
+  $maxuid = db_query('SELECT juid FROM gmc_users ORDER BY juid DESC   LIMIT 0 , 1')->fetchObject();
+  $num_operations = db_select('ds2_gmc.gmc_user', 'ibf')->fields('ibf')->condition('ibf.id', $maxuid->juid, '>')->execute()->rowCount();
+  $items = db_select('ds2_gmc.gmc_user', 'tc')->fields('tc')->condition('tc.id', $maxuid->juid, '>=')->orderBy('tc.id', 'ASC')->execute();
+  while ($item = $items->fetchAssoc()) {
+    $my_queue->createItem($item);
+  }
+
+  $my_queue = DrupalQueue::get('my_queue1');
+  $lasttid = db_query('SELECT * FROM {import_topics_comment} ORDER BY live_topic_id DESC LIMIT 0 , 1')->fetchAll();
+  $lasttopics = $lasttid[0]->live_topic_id;
+  $terms = db_query('Select *, ibft.title as tt from {ds2_gmc.ibf_topics} ibft Left join {ds2_gmc.ibf_members} gu on gu.id = ibft.starter_id WHERE ibft.tid > :id order by tid ASC LIMIT 0, 5000', array(':id'=> $lasttopics))->fetchAll();
+  $i = 1;
+  foreach($terms as $topics) {
+      $refdata = db_select('field_data_field_import_id', 'rf')
+                  ->fields('rf')
+                  ->condition('rf.field_import_id_value', $topics->forum_id)
+                  ->execute()->fetchAssoc();
+      
+    $topics->import_id_value = $refdata['entity_id'];  
+    $my_queue->createItem($topics);
+  }
+
+
+
+
+
+  $my_queue = DrupalQueue::get('my_queue2');
+  $lasttid = db_query('SELECT * FROM {import_topics_comment_reply} ORDER BY pid DESC LIMIT 0 , 1')->fetchAll();
+  $lasttopics = $lasttid[0]->pid;
+  $getdata = db_query('Select *, ibft.post as tt from {ds2_gmc.ibf_posts} ibft Left join {ds2_gmc.ibf_members} gu on gu.id = ibft.author_id WHERE ibft.pid > :id order by pid ASC LIMIT 0, 5000', array(':id'=> $lasttopics))->fetchAll();
+  foreach($getdata as $repaly) {
+      $my_queue->createItem($repaly);
+  }
+
+  
+  $my_queue = DrupalQueue::get('my_queue3');
+  $comments = db_query('SELECT * FROM {ds2_gmc.ibf_profile_comments} ORDER BY comment_date ASC')->fetchAll();
+  foreach($comments as $comment) {
+       $my_queue->createItem($comment);
+  }
+
+  $my_queue = DrupalQueue::get('my_queue4');
+  $comments = db_query('SELECT * FROM {ds2_gmc.ibf_profile_portal} ipp LEFT JOIN {ds2_gmc.ibf_member_extra} ime on ime.id=ipp.pp_member_id LEFT JOIN {ds2_gmc.ibf_members} im on ipp.pp_member_id=im.id Left Join {dev_syn_drupal.users} u on u.mail = im.email ORDER BY ipp.pp_member_id ASC')->fetchAll();
+  foreach($comments as $comment) {
+    $my_queue->createItem($comment);
+  }
+}
+
+/**
+ * Worker callback defined in hook_cron_queue_info()
+ */
+function my_queue_process($item) {
+   	watchdog('dilip', 'my cron');
+}
+
+
+/*
+ * Implemtent the function for import all forum tpics data into dupral.
+ */
+function import_fdata_queue_6($datan) {
+  $new_user = new stdClass();
+  $ddsd = $datan['creation_date'];
+  $cre = strtotime($ddsd);
+  $vs = user_load_by_mail($datan['email']);
+  if ($vs) {
+    $uid = $vs->uid;
+  } else {
+    $new_user->name = $datan['email'];
+    $new_user->pass = NULL; // plain text, hashed later
+    $new_user->mail = $datan['email'];
+    $new_user->init = $datan['email'];
+    $new_user->created = $cre;
+    // $new_user->field_first_name['und'][0]['value'] = $fname;
+    // $new_user->field_last_name['und'][0]['value'] = $lname;
+    $new_user->status = 1; 
+    $new_user->roles = array(2 => true, 5 => true);
+    if ($datan['last_login'] > 0) {
+        $llog = $datan['last_login'];
+        $are = strtotime($llog);
+        $new_user->access = $are;
+    }
+    if (valid_email_address($new_user->mail) ){
+      user_save($new_user);
+      $uid = $new_user->uid;
+    }
+      
+  }
+  if (valid_email_address($new_user->mail) ){
+    db_merge('gmc_users')
+      ->key(array('uid' => $uid))
+      ->fields(array(
+          'uid' => $uid,
+          'juid'  => $datan['id'],
+          'password'  => $datan['pass_hash'],
+          'converted' => 0,
+          'email'  => $datan['email'],
+          'created'  => $cre,
+        ))  
+      ->execute();
+  }
+  $context['message'] = t('Loading user "@user"', array('@user' => $datan['email'])) . ' Importing';
+}
+
+
+function import_fdata_queue_14($pro) {  
+ if ($pro->uid > 0) {
+    $account = user_load($pro->uid);
+   //print_r($account);exit;
+    $account->field_your_interests['und'][0]['value'] = $pro->interests;
+    //$account->field_paypal_email_address['und'][0]['value'] = 'No data';
+    $account->field_personal_statement['und'][0]['value'] = $pro->bio;
+    $account->field_your_website_url['und'][0]['value'] = $pro->website;
+    $account->field_your_icq_uin['und'][0]['value'] = $pro->icq_number;
+   // $account->field_your_aol_identity['und'][0]['value'] = 'No data';
+    $account->field_your_yahoo_identity['und'][0]['value'] = $pro->yahoo;
+    $account->field_your_msn_messenger_identit['und'][0]['value'] = $pro->msnname;
+    //$account->field_currently_practicing['und'][0]['value'] = 'No data';
+   // $account->field_paypal_email_address['und'][0]['value'] = 'No data';
+    $account->signature = $pro->signature;  
+    $account->signature_format = 'full_html';
+    $account->field_address['und'][0]['value'] = $pro->location;
+    $account->field_gender['und'][0]['value'] = $pro->pp_gender;
+    user_save((object) array('uid' => $account->uid), (array) $account);
+  }
+}
+
+/*
+ * Implemtent the function for import all forum tpics repaly data into dupral.
+ */
+function import_fdata_queue_12($t) { 
+ 
+  $getnid = db_select('import_topics_comment', 'rf')
+                ->fields('rf')
+                ->condition('rf.live_topic_id', $t->topic_id, '=')
+                ->execute()->fetchAssoc();
+  if (!empty($getnid['topic_id'])) {
+    if (!empty($t->email)) {
+      if (valid_email_address($t->email)) {
+        $useridnew = db_select('users', 'u')
+                    ->fields('u', array('uid'))
+                    ->condition('mail', $t->email)
+                    ->execute()
+                    ->fetchAssoc();
+        $uid = $useridnew['uid'];
+        if(empty($uid)) {
+          $useridnew = db_select('gmc_users', 'u')
+                          ->fields('u', array('uid'))
+                          ->condition('juid', $t->author_id)
+                          ->execute()
+                          ->fetchAssoc();
+          $uid = $useridnew['uid'];
+        }
+      } else {
+        $uid = 0;
+      }
+    } else {
+      $uid = 0;
+    }
+
+    if ($t->pid != 0) {
+       $parentid = db_query('SELECT * FROM {import_topics_comment_reply} WHERE cid = :cid ORDER BY pid DESC LIMIT 0 , 1', array(':cid' => $t->pid))->fetchAll();
+       $parentiddata = $parentid[0]->cid;
+    } else {
+       $parentiddata = 0;
+    }
+      
+    //print 'hygfh222'; 
+    $comment = new stdClass();
+    $comment->nid = $getnid['topic_id']; 
+    $comment->status = COMMENT_PUBLISHED;
+    $comment->pid = 0; 
+    $comment->is_anonymous = 0;
+    $comment->subject = strip_tags($t->post_title);
+    $comment->created = $t->post_date;
+    $comment->changed = $t->post_date;
+    $comment->uid = $uid;
+    $comment->comment_body['und'][0]['value'] = $t->post; // Everything here is pretty much like with a node
+    $comment->comment_body['und'][0]['format'] = 'full_html'; 
+    comment_submit($comment); // saving a comment
+    $comment->created = $t->post_date;
+    $comment->changed = $t->post_date;
+    comment_save($comment);
+   // print 'hygfh222'; 
+   
+    db_merge('import_topics_comment_reply')
+          ->key(array('cid' => $comment->cid))
+          ->fields(array(
+              'cid'  => $comment->cid,
+              'pid'  => $t->pid,
+              'nid'  => $getnid['topic_id'],
+              'tid'  => $t->topic_id,
+              'other' => $uid,
+            ))  
+        ->execute();
+  }
+  //print 'hgh';
+}
+
+function import_fdata_queue_13($t) { 
+  $emailidfor = db_query('SELECT * FROM {ds2_gmc.ibf_members} im Left Join users u on u.mail = im.email Where im.id = :id', array(':id' => $t->comment_for_member_id ))->fetchAll();
+  if (empty($emailidfor[0]->uid)) {
+    $new_user->name = $emailidfor[0]->email;
+    $new_user->pass = NULL; // plain text, hashed later
+    $new_user->mail = $emailidfor[0]->email;
+    $new_user->init = $emailidfor[0]->email;
+    $new_user->created = $cre;
+    // $new_user->field_first_name['und'][0]['value'] = $fname;
+    // $new_user->field_last_name['und'][0]['value'] = $lname;
+    $new_user->status = 1; 
+    $new_user->roles = array(2 => true, 5 => true);
+    if ($emailidfor[0]->last_login > 0) {
+        $llog = $emailidfor[0]->last_login;
+        $are = strtotime($llog);
+        $new_user->access = $are;
+    }
+    if (valid_email_address($new_user->mail) ){
+      user_save($new_user);
+      $emailidfor[0]->uid = $new_user->uid;
+      db_merge('gmc_users')
+        ->key(array('uid' =>  $emailidfor[0]->uid))
+        ->fields(array(
+            'uid' =>  $emailidfor[0]->uid,
+            'juid'  =>  $emailidfor[0]->id,
+            'password'  =>  $emailidfor[0]->pass_hash,
+            'converted' => 0,
+            'email'  =>  $emailidfor[0]->email,
+            'created'  => $emailidfor[0]->joined,
+          ))  
+        ->execute();   
+    }
+  }
+  $emailidby = db_query('SELECT * FROM {ds2_gmc.ibf_members} im Left Join users u on u.mail = im.email Where im.id = :id', array(':id' => $t->comment_by_member_id ))->fetchAll();
+  if (empty($emailidby[0]->uid)) {
+    $new_user->name = $emailidby[0]->email;
+    $new_user->pass = NULL; // plain text, hashed later
+    $new_user->mail = $emailidby[0]->email;
+    $new_user->init = $emailidby[0]->email;
+    $new_user->created = $cre;
+    // $new_user->field_first_name['und'][0]['value'] = $fname;
+    // $new_user->field_last_name['und'][0]['value'] = $lname;
+    $new_user->status = 1; 
+    $new_user->roles = array(2 => true, 5 => true);
+    if ($t->last_login > 0) {
+        $llog = $emailidby[0]->last_login;
+        $are = strtotime($llog);
+        $new_user->access = $are;
+    }
+    if (valid_email_address($new_user->mail) ){
+      user_save($new_user);
+      $emailidby[0]->uid = $new_user->uid;
+      db_merge('gmc_users')
+        ->key(array('uid' =>  $emailidby[0]->uid))
+        ->fields(array(
+            'uid' =>  $emailidby[0]->uid,
+            'juid'  =>  $emailidby[0]->id,
+            'password'  =>  $emailidby[0]->pass_hash,
+            'converted' => 0,
+            'email'  =>  $emailidby[0]->email,
+            'created'  => $emailidby[0]->joined,
+          ))  
+        ->execute();
+    }
+     
+  }
+
+  //print_r($emailidfor);print_r($emailidby);print_r($t);
+  if (!empty($emailidfor[0]->uid) && !empty($emailidby[0]->uid)) {
+  db_merge('user_comment')
+    ->key(array('comment_id' => $t->comment_id))
+    ->fields(array(
+        'comment_for_member_id'  => $emailidfor[0]->uid,
+        'comment_by_member_id'  => $emailidby[0]->uid,
+        'comment_content'  => $t->comment_content,
+        'comment_ip_address'  => $t->comment_ip_address,
+        'comment_date'  => $t->comment_date,
+        'comment_approved'  => $t->comment_approved,
+      ))  
+    ->execute();
+  }
+}
+
+
+function import_fdata_queue_9($t) { 
+  $checkimpn = db_select('import_topics_comment', 'itc')
+        ->fields('itc', array('live_topic_id', 'topic_id'))
+        ->condition('live_topic_id', $t->tid, '=')
+        ->execute()
+        ->fetchAssoc();
+    
+    if(empty($checkimpn['live_topic_id']) && !isset($checkimpn['live_topic_id'])) {
+       // print $checkimpn['live_topic_id'].'-dd-'.$t->tid;
+     //  print '<pre>'; print  $t->tid; print_r($t);print_r($node);
+      
+      if (empty($t->email)) { 
+        $emalnew = db_select('ds2_gmc.gmc_user', 'gu')
+                    ->fields('gu', array('email'))  
+                    ->condition('id', $t->starter_id, '=')
+                    ->execute()
+                    ->fetchAssoc();
+        $t->email = $emalnew['email'];
+        }
+         $names = '';
+      if (valid_email_address($t->email)) {
+        $useridnew = db_select('users', 'u')
+                    ->fields('u', array('uid'))
+                    ->condition('mail', $t->email)
+                    ->execute()
+                    ->fetchAssoc();
+        
+       // print 'name22';
+        if (empty($useridnew['uid'])) {
+            if (valid_email_address($t->email) ){
+             $vs = user_load_by_mail($t->email);
+                if ($vs) {
+                  
+                } else {
+                 $datanewuser = db_select('ds2_gmc.ibf_members', 'gu')
+                    ->fields('gu')  
+                    ->condition('id', $t->starter_id, '=')
+                    ->execute()
+                    ->fetchAssoc();
+                  
+                  $new_user->name = $datanewuser['name'];
+                  $new_user->pass = NULL; // plain text, hashed later
+                  $new_user->mail = $datanewuser['email'];
+                  $new_user->init = $datanewuser['email'];
+                  $new_user->created = $datanewuser['joined'];
+                   $new_user->field_first_name['und'][0]['value'] = $fname;
+                   $new_user->field_last_name['und'][0]['value'] = $lname;
+                  $new_user->status = 1; 
+                  $new_user->roles = array(2 => true, 5 => true);
+                  if ($t->last_login > 0) {
+                      $llog = $t->last_login;
+                      $are = strtotime($llog);
+                      $new_user->access = $are;
+                  }
+                  if (valid_email_address($new_user->mail) ){
+                    user_save($new_user);
+                    $uid = $new_user->uid;
+                  }
+                  if (valid_email_address($new_user->mail) ){
+                    db_merge('gmc_users')
+                      ->key(array('uid' => $uid))
+                      ->fields(array(
+                          'uid' => $uid,
+                          'juid'  => $t->id,
+                          'password'  => 0,
+                          'converted' => 0,
+                          'email'  => $new_user->mail,
+                          'created'  => $new_user->created,
+                        ))  
+                      ->execute();
+                  }                    
+                }
+
+            } 
+        }
+         if (valid_email_address($t->email) ){
+          $useridnew = db_select('users', 'u')
+                      ->fields('u', array('uid'))
+                      ->condition('mail', $t->email)
+                      ->execute()
+                      ->fetchAssoc();
+          $names = explode(" ",$t->starter_name);
+        }
+        if (!empty($names[0])) {
+       //   print 'name'.$useridnew['uid'].'--'.$t->email.'--';
+          $user_account = user_load($useridnew['uid']);  
+         // $user_account->field_first_name['und'][0]['value'] = $names[0];
+         // if (!empty($names[1])) {
+         //   $user_account->field_last_name['und'][0]['value'] = $names[1];
+         // }
+          //print 'name2';
+          //print_r($user_account);
+         // user_save((object) array('uid' => $user_account->uid), (array) $user_account);
+          //print 'name22222';
+        } 
+        
+        if (!empty($useridnew['uid'])) {
+          $uid = $useridnew['uid'];
+        } else {
+           $uid = 0;
+        }
+       // print 'name3';
+        $node = new stdClass();
+        $node->title = $t->tt;
+        $t->description = str_replace('style_emoticons/<#EMO_DIR#>', '../sites/all/themes/gmc_v2/images/smile', $t->description);
+        $t->description = str_replace('<img border="0" alt="smile.gif" emoid=":)" style="vertical-align:middle" src="style_emoticons/&lt;#EMO_DIR#&gt;/smile.gif">', '*smile*', $t->description);
+        $node->body['und'][0]['value'] = $t->description;
+        $node->type = 'forum';
+        $node->created = $t->start_date;
+        $node->changed = $t->start_date;
+        $node->status = 1;
+        $node->sticky = 0;
+        $node->body['und'][0]['format'] = 'full_html'; 
+        $node->uid = $uid;
+        if ($t->state == 'open') {
+       	  $node->comment = 2;
+        }
+        else {
+	        $node->comment = 1;	
+        }
+       // print 'name4';
+        $node->language = 'en';
+        // $node->comment_body['und'][0]['format'] = 'filtered_html'; 
+        // If known, the taxonomy TID values can be added as an array.
+        $node->taxonomy_forums['und'][0]['tid'] = $t->import_id_value;
+     //  print_r($node);
+        if(!empty($t->forum_id)) {
+        node_save($node);
+     //   print 'name5';
+        db_merge('import_topics_comment')
+          ->key(array('live_topic_id' => $t->tid))
+          ->fields(array(
+              'topic_id'  => $node->nid,
+              'live_topic_id' => $t->tid,
+              'forum_id'  => $t->forum_id,
+              'other' => ($t->views) ? $t->views : 0,
+            ))  
+        ->execute();
+        } else {
+           print $t->forum_id; exit;
+        }
+       // print 'name6';
+      }
+    } else {
+        $node = node_load($checkimpn['topic_id']);
+    }
+}

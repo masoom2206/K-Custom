@@ -1,0 +1,9 @@
+name = Lesson Support
+description = Lesson Support module for Lesson detail page.
+package = Custom
+version = VERSION
+core = 7.x
+files[] = lesson_support.module
+; Information added by drupal.org packaging script on 2013-02-20
+version = "7.custom"
+project = support

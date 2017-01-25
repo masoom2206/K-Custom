@@ -1,0 +1,118 @@
+<?php
+
+/**
+ * @file username_case.module
+ *
+ * Implements all the hooks for the module
+ */
+
+
+/**
+ * Implements hook_help().
+ */
+function username_case_help($path, $arg) {
+  switch ($path) {
+    case 'admin/help#username_case':
+      if (file_exists($file = drupal_get_path('module', 'username_case') . '/README.txt')) {
+        return '<pre>' . implode("\n", array_slice(explode("\n", @file_get_contents($file)), 2)) . '</pre>';
+      }
+      break;
+  }
+}
+
+/**
+ * Alters the user form to add a tickbox for case sensitivity
+ */
+function username_case_form_user_admin_settings_alter(&$form, &$form_state, $form_id) {
+  // work out if this is MySQL, so that the checkbox can be enabled selectively
+  $disabled = TRUE;
+  $default_value = 0;
+  switch (db_driver()) {
+    case 'mysql':
+    case 'mysqli':
+      $disabled = FALSE;
+      $default_value = (username_case_work_out_current_type() == 'case-sensitive') ? 1 : 0; 
+      break;
+  }
+  // the checkbox
+  $form['registration_cancellation']['username_case'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Case sensitive usernames for all users'),
+    '#default_value' => $default_value,
+    '#disabled' => $disabled,
+    '#description' => t("If usernames are case sensitive, this means if you can have a user with the name 'admin' and 'AdMiN' and they will be treated as seperate users. It also means you will need to tell your uses that they must login with their exact username."),
+  );
+
+  // custom submit handler to change the collation if neccessary
+  $form['#submit'][] = 'username_case_form_user_admin_settings_submit';
+}
+
+/**
+ * Alter the collation if neccessary
+ *
+ * N.B. http://api.drupal.org/api/drupal/includes!database!database.inc/function/db_change_field/7
+ * cannote be used due to there being no binary attribute available in the
+ * database abstraction layer in Drupal 7 (maybe in Drupal 8)
+ */
+function username_case_form_user_admin_settings_submit($form, &$form_state) {
+  
+  $values = $form_state['values']; 
+  $current_type = username_case_work_out_current_type();
+
+  // the collation needs to be changed to be case sensitive
+  if ($values['username_case'] == 1 && $current_type == 'case-insensitive') {
+    $txn = db_transaction();
+    try {
+      $result = db_query("ALTER TABLE {users} CHANGE name name VARCHAR(60) CHARACTER SET BINARY NOT NULL DEFAULT :default COMMENT :comment", array(':default' => '', ':comment' => 'Unique user name.'));
+      $rows_changed = $result->rowCount();
+      if ($rows_changed > 0) {
+        drupal_set_message(t('Usernames are now case sensitive.'));
+        variable_set('username_case', 1);
+      }
+    }
+    catch (Exception $e) {
+      $txn->rollback();
+      drupal_set_message(t('Unable to change the username case sensitivity, refer to the !log for more information.', array('!log' => l(t('log'), 'admin/reports/dblog'))));
+      watchdog_exception('username_case', $e);
+    }
+  }
+
+  // the collation may need to be reverted to be case in-sensitive
+  else if ($values['username_case'] == 0 && $current_type == 'case-sensitive') {
+    $txn = db_transaction();
+    try {
+      $result = db_query("ALTER TABLE {users} CHANGE name name VARCHAR(60) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL  DEFAULT :default COMMENT :comment", array(':default' => '', ':comment' => 'Simple user name.'));
+      $rows_changed = $result->rowCount();
+      if ($rows_changed > 0) {
+        drupal_set_message(t('Usernames are now case insensitive.'));
+        variable_set('username_case', 0);
+      }
+    }
+    catch (Exception $e) {
+      // this will execute if you are moving from a case-sensitive collation to
+      // a case-insensitive collation and there is a integrity constraint
+      // violation. E.g. 'Admin' and 'admin' users
+      $txn->rollback();
+      drupal_set_message(t('Unable to change the username case sensitivity, refer to the !log for more information.', array('!log' => l(t('log'), 'admin/reports/dblog'))));
+      watchdog_exception('username_case', $e);
+    }
+  }
+}
+
+/**
+ * Helper function to work out the current type or collation of the 'name'
+ * column in the users table
+ *
+ * @todo MySQL specific syntax here
+ */
+function username_case_work_out_current_type() {
+  $result = db_query('SHOW FULL COLUMNS FROM {users} WHERE field = :field', array(':field' => 'name'));
+  $record = $result->fetchObject();
+  if (substr($record->Type, 0, 7) == 'varchar' || $record->Collation == 'utf8_general_ci') {
+    return 'case-insensitive';
+  }
+  else if (substr($record->Type, 0, 9) == 'varbinary') {
+    return 'case-sensitive';
+  }
+  return FALSE;
+}

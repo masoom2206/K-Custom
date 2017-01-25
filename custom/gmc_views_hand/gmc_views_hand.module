@@ -1,0 +1,12 @@
+<?php
+/**
+  * Implement a views handaler for reduce the load of php from views.
+  *
+  */
+// hook_views_api().
+function gmc_views_hand_views_api() {
+  return array(
+    'api' => 3,
+    'path' => drupal_get_path('module', 'gmc_views_hand') . '/includes/views',
+  );
+}

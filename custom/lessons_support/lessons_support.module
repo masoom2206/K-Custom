@@ -1,0 +1,929 @@
+<?php
+/**
+* Implementation of hook_menu
+*/
+function lessons_support_menu() {
+  $items = array();
+  //Menu for add comment from lesson detail page.
+  $items['lessons/addcomment'] = array(
+    'title' => 'Comment Post For Lesson',
+    'description' => 'Comment Post For Lesson',
+	'page callback' => 'lessons_addcomment',
+    'access callback' => TRUE,
+  );
+
+  //Menu for Add/Update Notes For Lesson.
+  $items['update-mynotes'] = array(
+    'title' => 'Add/Update Notes For Lesson',
+    'description' => 'Add/Update Notes For Lesson',
+	'page callback' => 'update_mynotes',
+    'access callback' => TRUE,
+  );
+  
+  //Menu for Add/Update Notes For Lesson.
+  $items['lesson/notes/description'] = array(
+    'title' => 'Lesson Notes Description of video file',
+    'description' => 'Lesson Notes Description of video file',
+	  'page callback' => 'lesson_notes_description',
+    'access callback' => TRUE,
+  );
+  
+  //Menu for lession comment list at lession detail page
+  $items['lession/comment/list'] = array(
+    'title' => 'Lesson Notes Description of video file',
+    'description' => 'Lesson Notes Description of video file',
+	'page callback' => 'lession_comment_list',
+    'access callback' => TRUE,
+  );
+
+  //Menu for display/copied lesson body image.
+  $items['lesson_image/%/%'] = array(
+    'title' => 'Lesson Image',
+    'description' => 'Display lesson image at lesson detail page',
+	 'page callback' => 'lesson_image',
+	 'access callback' => TRUE,
+	 'page arguments' => array(1,2),
+	 'file' => 'includes/lesson_image.inc',
+ );
+
+  //Menu to display help text at Tab Legent popup.
+  $items['key_word/%'] = array(
+    'title' => 'Keywords',
+    'description' => 'Help Key words',
+	'page callback' => 'key_word',
+	'access callback' => TRUE,
+	'page arguments' => array(1),
+ );
+
+  //Menu to display Bookmarks title after search.
+  $items['search-bookmarks'] = array(
+    'title' => 'Search Bookmarks Title',
+    'description' => 'Search Bookmarks Title',
+	'page callback' => 'search_bookmarks',
+	'access callback' => TRUE,
+ );
+
+  //Refresh Bookmark list.
+  $items['refresh-bookmarks'] = array(
+    'title' => 'Refresh Bookmarks Title',
+    'description' => 'Refresh Bookmarks Title',
+	'page callback' => 'refresh_bookmarks',
+	'access callback' => TRUE,
+ );
+  //Menu for display/add keywords.
+  $items['lessons/keywords'] = array(
+    'title' => 'Lessons Keywords',
+    'description' => 'Lessons Keywords Page',
+	'page callback' => 'gmc_lessons_keywords',
+    //'access callback' => TRUE,
+    'access arguments' => array('access administration pages'),
+  );
+  //Menu for Delete keywords.
+  $items['lessons/delete/keywords'] = array(
+    'title' => 'Lessons Keywords Delete',
+    'description' => 'Lessons Keywords Delete',
+	'page callback' => 'lessons_delete_keywords',
+    //'access callback' => TRUE,
+    'access arguments' => array('access administration pages'),
+  );
+
+ return $items;
+}
+/**
+ * Implements hook_init()
+ */
+function lessons_support_init(){
+  drupal_add_js(drupal_get_path('module', 'lessons_support') . '/js/keyword.js');
+	if(arg(0) == 'node' && is_numeric(arg(1))) {
+		$node_data = node_load(arg(1));
+		if(!empty($node_data)) {
+			if($node_data->type == "lessons") {
+				drupal_add_js(drupal_get_path('module', 'lessons_support') . '/js/lesson.js');
+				drupal_add_js(drupal_get_path('module', 'lessons_support') . '/js/facebox.js');
+				
+			}
+		}
+	}
+}
+
+/**
+ * Implementation of hook_views_query_alter
+ * @param type $view
+ * @param type $query 
+ */
+function lessons_support_views_query_alter(&$view, &$query) {
+	if ($view->name == 'related_lessons' && $view->current_display == 'block_1') {
+		$menu_node = menu_get_object();
+		if(is_object($menu_node)) {
+			module_load_include("module","apachesolr_search","apachesolr_search");
+			$settings = apachesolr_search_mlt_block_load('mlt-002');
+			$lessons_nids = apachesolr_search_mlt_suggestions($settings, apachesolr_document_id($menu_node->nid), $solr = NULL);
+			$nids = array();
+      if(isset($lessons_nids)) {
+			  foreach($lessons_nids as $lessons_nid) {
+				  $nids[] = $lessons_nid->entity_id;
+			  }
+      }
+			foreach($query->where[1]['conditions'] as $key => $conditions) {
+				if($conditions['field'] == 'node.nid') {
+					$query->where[1]['conditions'][$key]['field'] = 'node.nid';
+					$query->where[1]['conditions'][$key]['value'] = $nids;
+					$query->where[1]['conditions'][$key]['operator'] = 'IN';
+				}
+			}
+		}
+	} else if ($view->name == 'related_lessons' && $view->current_display == 'block') { 
+    $query->where[0]['type'] = 'OR';
+  }
+}
+
+
+function lessons_support_views_post_execute(&$view) {
+  $used_nids = array();
+  
+  if ($view->name == 'related_lessons') {
+    if ($view->current_display == 'block') {
+      $arg = arg(1);
+      $i = 1;
+      foreach ($view->result as $row) {
+      
+        if (!in_array($row->nid, $used_nids)) {
+          if ($row->nid != $arg ) {
+            $row->counter = $i;
+            $new_view_result[] = $row;
+            $used_nids[] = $row->nid;
+          }
+          $i++;
+        }
+      }
+      if (!empty($new_view_result)) {
+        $view->result = $new_view_result;
+      } else {
+        $view->result = '';
+      }
+        
+    }
+  }
+}
+
+/**
+ * Callback function for comment posting of lesson node
+ * @return true/false;
+ */
+function lessons_addcomment(){
+	global $user;
+	$nid = $_POST['nid'];
+	$message = $_POST['message'];
+	$comment = (object) array(
+		'nid' => $nid,
+		'cid' => 0,
+		'pid' => 0,
+		'uid' => $user->uid,
+		'mail' => '', 
+		'is_anonymous' => 0,
+		'homepage' => '',
+		'status' => COMMENT_PUBLISHED,
+		'subject' => 'Lesson Comment',
+		'language' => LANGUAGE_NONE,
+		'comment_body' => array(
+		  LANGUAGE_NONE => array(
+			0 => array (
+			  'value' => $message,
+			  'format' => 'filtered_html'
+			)
+		  )
+		),
+	  );
+	  comment_submit($comment);
+	  comment_save($comment);
+	if($comment->cid != 0){
+		print 'true';
+	}
+	else {
+		print 'fasle';
+	}
+}
+/**
+ * Callback function for Add/Update Notes For Lesson
+ * @return '';
+ */
+function update_mynotes() {
+	global $user;
+	$nid = $_POST['nid'];
+	$notes = $_POST['notes'];
+	$query = db_select('gmc_usernotes', 'un');
+	$query->fields('un', array('id'))
+		->condition( 'lesson_nid', $nid)
+		->condition( 'uid', $user->uid);
+	$count = $query->execute()->rowCount();
+	if($count != 0) {
+		$notes_updated = db_update('gmc_usernotes')
+			->fields(array(
+				'notes' => $notes,
+			))
+			->condition('lesson_nid', $nid, '=')
+			->condition('uid', $user->uid, '=')
+			->execute();
+		print 'OK';
+	}
+	else {
+		db_insert('gmc_usernotes')
+			->fields(array('uid' => $user->uid, 'lesson_nid' => $nid, 'notes' => $notes))
+			->execute();
+		print 'OK';
+	}
+}
+/**
+ * Callback function for Display User Notes For Lesson detail page.
+ * @return $notes;
+ */
+function user_lesson_notes($nid) {
+	global $user;
+	$query = db_select('gmc_usernotes', 'un');
+	$query->fields('un', array('notes'))
+		->condition( 'lesson_nid', $nid)
+		->condition( 'uid', $user->uid);
+	$result = $query->execute()->fetchAssoc();
+	if($result) {
+		$notes = $result['notes'];
+	}
+	else {
+		$notes = '';
+	}
+	return $notes;
+}
+
+/**
+ * Callback function for Display lessontext Lesson detail page.
+ * @return $result;
+ */
+function lesson_notes_description() {
+	global $base_url, $user;
+	$notes_description = '';
+	if($user->uid > 0 || $_POST['type'] == 'free') {
+		$nid = $_POST['nid'];
+		$fid = $_POST['fid'];
+    $revdata = $_POST['revision'];
+    $revistion = _get_review_status_fid($fid);
+    if ($revistion == 0) {
+      $dbname = 'lesson_files';
+    } else {
+      if ($revdata == 0) {
+        $dbname = 'lesson_files';
+      } else { 
+        $dbname = 'gmc_files_review';
+      }
+    }
+    $lpartid = $_POST['lpartid'];
+    $lastpart = $_SESSION['Lpartcount'];
+    $counter = arg(6);
+		$node_data = node_load($nid);
+		$query = db_select($dbname, 'lf');
+		$query->fields('lf', array('notes', 'description'))
+			->condition( 'nid', $nid)
+			->condition( 'fid', $fid)
+      ->condition( 'publish', 1);
+		$result = $query->execute()->fetchAssoc();
+    if (strlen(str_replace(' ', '', $result['notes'])) > 0) {
+		  $notes_description = '<pre>'.$result['notes'].'</pre>';
+		  if($result['notes'] != '' && $node_data->field_is_cover_lesson['und'][0]['value'] == 0) {
+        // onclick="tab_legend()"
+			  $notes_description .= '<br/><a href="#tab-legend" id="tab-legend-trigger" class="tab-legend" rel="facebox">Tab Legend</a><br/><br/>';
+      }
+		}
+    
+
+    // Note our use of ===.  Simply == would not work as expected
+    // because the position of 'a' was the 0th (first) character.
+    
+		$description = bbcodeHtml(str_replace("../../lessonviewer","",$result['description']));
+    $pos = strpos($description, '<p>');
+    if ($pos === false) {
+	  $description = str_replace("<br />", "" ,$description);
+      $description = nl2br($description);
+    }
+		$description = str_replace("/view_image.php?id=",$base_url."/lesson_image/".$nid."/",$description);
+		$description = str_replace("http://gmc.getonit.tk","",$description);
+		//replace live scale image URL to Drupal image URL
+		$description = str_replace("http://www.guitarmasterclass.net/scalegenerator","/scalegenerator",$description);
+		$description = str_replace("http://www.guitarmasterclass.net/images/scales/gmcscale","/sites/default/files/generatescaleimage/scales/gmcscale",$description);
+		//$notes_description .= bbcodeHtml(nl2br(strip_tags($description,'<br><a><img><p>')));
+		$notes_description .= '<span class="lessontext">'.strip_tags($description,'<em><i><style><div><span><b><strong><br><a><img><p><br/><br /><pre>').'</span>';
+    if ($lpartid == 0) {
+		  print get_tags_list($node_data).$notes_description.views_embed_view('related_lessons','block', $nid);
+    } else if($lastpart == $lpartid) {
+       print $notes_description.views_embed_view('related_lessons','block', $nid); 
+    } else {
+      print $notes_description;
+    }
+	}
+	else {
+		print '';
+	}
+}
+
+
+/** Implement function for find out the Tags details.
+  * @$node node details 
+  */
+function get_tags_list($node) {
+				$tag = '';
+				if ( count($node->field_tags) > 0 )  { 
+          $nodefield_tags = taxonomy_term_load_multiple($node->field_tags['und']);
+					foreach($nodefield_tags as $key => $v) {
+            $tag .= l($v->name, 'gmc-search', array('query' => array('title' => $v->name, 'field_tags_tid' => $v->name, 'uid' => ''))).", ";
+					}
+				}
+				$tag = substr($tag,0,strlen($tag)-2);
+				
+        return '<ul>
+				  <li class="lesson-notes" style="list-style: none outside none;">
+					  <span class="tags"> Tags:&nbsp;
+						  '. $tag .'
+					  </span>
+					</li>
+				</ul>
+				<br/>';
+}
+
+
+
+/**
+ * Callback function for Lesson comment list at detail page.
+ * @return $output;
+ */
+function lession_comment_list() {
+	$nid = $_POST['nid'];
+	$output = '';
+	$node_date = node_load($nid);
+	$output .= '<ul>';
+	foreach(loadComments($nid) as $key => $v) {
+		$us = user_load($v->uid);
+		if (substr($v->comment_body_value,0,1) == "-" || substr($v->comment_body_value,0,1) == "." || empty($v->comment_body_value)) continue;
+		if ($node_date->uid == $us->uid ) {
+			$class = 'isInstructor';
+		}
+		$output .= '<li class="'.$class.'">';
+		$pic = file_load($us->picture->fid);
+		$picture = file_create_url($pic->uri);
+		if (!$pic->uid) {
+			$output .= '<img src="'. $u .'/images/pp-blank-small.gif" alt="" />';
+		} else {
+			$output .= '<img src="'. $picture .'" alt="" />';
+		}
+		if (in_array('instructor',$us->roles)) {
+			$instructor = file_create_url('instructor/'.$us->name);
+		} else {
+			$instructor = './user/'. $v->uid;
+		}
+		if (empty($us->field_first_name['und'][0]['value'])) {
+			$name = $us->name;
+		} else {
+			$name = $us->field_first_name['und'][0]['value']." ".$us->field_last_name['und'][0]['value'];
+		}
+		$output .= '<a href="'.$instructor.'">'.$name.'</a>';
+		$output .= '<span class="date">'. date('d F, Y',$v->created) .'</span><span class="title">'. $v->subject .'</span><p>'. str_replace("/guitar_forum","",str_replace("<#EMO_DIR#>","default",str_replace("http://www.guitarmasterclass.net/guitar_forum/style_emoticons/<#EMO_DIR#>/",file_create_url('/style_emoticons/default/'),$v->comment_body_value))).'</p></li>';
+	}
+	$output .= '</ul>';
+	print $output;
+}
+
+/**
+ * Callback function for Lesson key word popup at lesson detail page.
+ * @return $json_encode;
+ */
+function key_word($w) {
+	//$w = $_POST['word']
+	$q = db_select('keywords', 'k')
+		->fields('k', array('description'));
+	$q->condition('title',$w);
+  $word = $q->execute();
+  $count = $word->rowCount();
+  if($count == 0) {
+		$w = gmc_depluralize($w);
+		$q = db_select('keywords', 'k')
+			->fields('k', array('description'))
+			->condition('title',$w);
+		$word = $q->execute();
+		foreach($word as $key => $w) {
+			$description = $w->description;
+		}
+	}
+	else {
+		foreach($word as $key => $w) {
+			$description = $w->description;
+		}
+	}
+	$ret['msg'] = $description;
+	echo json_encode($ret);
+	exit;
+}
+
+/**
+ * Callback gmc_depluralize()
+ * to make plural to singular
+ **/
+
+function gmc_depluralize($word){
+    $rules = array( 
+        'ss' => false, 
+        'os' => 'o', 
+        'ies' => 'y', 
+        'xes' => 'x', 
+        'oes' => 'o', 
+        'ies' => 'y', 
+        'ves' => 'f', 
+        's' => '');
+    foreach(array_keys($rules) as $key){
+        if(substr($word, (strlen($key) * -1)) != $key) 
+            continue;
+        if($key === false) 
+            return $word;
+        return substr($word, 0, strlen($word) - strlen($key)) . $rules[$key]; 
+    }
+    return $word;
+}
+
+
+
+/**
+ * Callback function for Bookmarks Search.
+ * @return $output;
+ */
+function search_bookmarks() {
+	$word = $_POST['word'];
+	global $user;
+	$output = '<tbody class="result-search-bookmarks">';
+	$parent_num = 0;
+	$query = db_select('bookmarkorganizer_item', 'bi');
+	$query->fields('bi', array('id', 'label', 'content_id', 'parent', 'type'))
+		->condition('bi.label', db_like($word) . '%', 'LIKE')
+		->orderBy('bi.parent', 'ASC')
+		->condition('bi.uid', $user->uid, '=');
+
+	$result = $query->execute();
+	$record_count = $result->rowcount();
+	if($word != ''){
+		if($record_count == 0) {
+			$output .= '<tr class="draggable row item-0 node even"><td class="row-label indentation-1" style="margin-top: 10px; margin-left: 10px;"><strong>No Match Found</strong></td></tr>';
+		}
+		else {
+			foreach($result as $data) {
+				if($data->parent != 0 && $data->type != 'folder') {
+					if($data->parent != $parent_num) {
+						$parent_num = $data->parent;
+						$query_parent = db_select('bookmarkorganizer_item', 'bi');
+						$query_parent->fields('bi', array('label'))
+							->condition('bi.id', $data->parent, '=');
+						$parent = $query_parent->execute()->fetchField();
+						$output .= '<tr class="draggable row item-'.$data->id.' folder open odd"><td class="row-label indentation-0">
+									<a href="#" class="tabledrag-handle" title="Drag to re-order">
+										<div class="handle">&nbsp;</div>
+									</a>
+									<div class="folder-link"></div>
+									<span id="label-'.$data->id.'" class="label">'.$parent.'</span>
+								</td></tr>';
+					}
+					$output .= '<tr class="draggable row item-'.$data->id.' node even"><td class="row-label indentation-1">
+									<div class="indentation">&nbsp;</div>
+									<a href="#" class="tabledrag-handle" title="Drag to re-order">
+										<div class="handle">&nbsp;</div>
+									</a>
+									<a href="/node/'.$data->content_id.'" id="label-'.$data->id.'" class="label">'.$data->label.'</a>
+								</td></tr>';
+				}
+				else if($data->type != 'folder'){
+					$output .= '<tr class="draggable row item-'.$data->id.' node odd"><td class="row-label indentation-0">
+								<div class="indentation">&nbsp;</div>
+								<a href="#" class="tabledrag-handle" title="Drag to re-order">
+									<div class="handle">&nbsp;</div>
+								</a>
+								<a href="/node/'.$data->content_id.'" id="label-'.$data->id.'" class="label">'.$data->label.'</a>
+							</td></tr>';
+				}
+				else {
+					$output .= '<tr class="draggable row item-0 node even"><td class="row-label indentation-1" style="margin-top: 10px; margin-left: 10px;"><strong>No Match Found</strong></td></tr>';
+				}
+			}
+		}
+	}
+	$output .= '</tbody>';
+	print $output;//exit;
+}
+
+/**
+ * Callback function for Refresh Bookmarks list.
+ * @return $output;
+ */
+function refresh_bookmarks() {
+	/*global $user;
+	module_load_include('inc', 'bookmarkorganizer', 'bookmarkorganizer');
+	$bookmarks = bookmarkorganizer_main_view($user, $item_id = NULL);
+	unset($bookmarks['preview']);
+	$refresh = drupal_render($bookmarks);
+	$lesson_flag = 'no-data';
+	$output = '<div class="bookmark-detail">
+			<ul class="add-folder-link">
+				<li class="first last">
+					<a href="/bookmarkorganizer/add/folder/'.$user->uid.'" class="action action-addfolder">Add folder</a>
+				</li>
+			</ul>
+			'.$refresh.'
+		</div>';
+	print $output;*/
+
+  // Run the block_view hook from the block module
+  /*$block = module_invoke('block', 'block_view', '4');
+  // Print out the content of the proceeding call
+  if (is_array($block['content'])) {
+     print render($block['content']);
+  } else {
+     print $block['content'];
+  }*/  
+}
+
+/**
+  * Functin for chnage all [] with actual link.
+  **/
+function change_attacment_to_link($html) {
+  //-----------------------------------------
+  // Parse HTML blocks for attach ids
+  // [attachment=32:attachFail.gif]
+  //-----------------------------------------
+
+  preg_match_all( "#\[attachment=(\d+?)\:(?:[^\]]+?)\]#is", $html, $match );
+	
+  if ( is_array( $match[0] ) and count( $match[0] ) ) {
+	  for ( $i = 0 ; $i < count( $match[0] ) ; $i++ ) {
+             $html = $match[0];
+              
+     }
+  }
+  return $html;
+}
+
+
+
+
+function lessons_support_views_pre_render(&$view) {
+  if ($view->name == 'gmc_forum_topic_page') {
+      //Add code to manipulate the view 
+    foreach ($view->result as $r => $result) {
+      if ($result->_field_data['cid']['entity']->comment_body['und'][0]['value']) { 
+        $result->_field_data['cid']['entity']->comment_body['und'][0]['value']= change_attacment_to_link($result->_field_data['cid']['entity']->comment_body['und'][0]['value']);
+      }
+    }
+  }
+}
+
+/**
+* Callback function gmc_lessons_keywords
+* for create/display Lessons Keywords
+* @return $output;
+*/
+function gmc_lessons_keywords() {
+	global $user;
+	$output = '';
+	if(!empty($_REQUEST['keyword_id'])){
+		//Spelling add form
+		$output .= '<span class="update-new-keyword"><h2>Update keyword</h2></span>';
+		$form = drupal_get_form('lessons_keywords_form');
+		$output .= '<div class="keywords-update-form">'.drupal_render($form).'</div>';
+	}
+	else{
+		//Spelling add form
+		$output .= '<div class="add-new-keywords"><a href="#">New keyword</a></div>';
+		$form = drupal_get_form('lessons_keywords_form');
+		$output .= '<div class="keywords-insert-form">'.drupal_render($form).'</div>';
+	}
+	//Table header	
+	$header = array(
+		array('data' => t('Keyword ID'),'field'=>'id', 'sort'=>'asc'),
+		array('data' => t('Title'),'field'=>'title', 'sort'=>'asc'),
+		array('data' => t('Description')),
+		array('data' => t('Action')),
+	);
+	//fetch data from pm_draft table
+	$sql_query = db_select('keywords', 'k');
+	$sql_query->fields('k');
+	$sql_query = $sql_query->extend('TableSort')->extend('PagerDefault')->limit(30);
+	$result = $sql_query->orderByHeader($header)->execute();
+	foreach($result as $data){
+		$rows[] = array(
+			$data->id,
+			$data->title,
+			$data->description,
+			l('Edit', 'lessons/keywords', array('attributes' => array('class' => array('keysop')),'query' => array('keyword_id' => $data->id))).'<br/>'.l('Delete', 'lessons/delete/keywords', array('attributes' => array('class' => array('keysop'),'id' => array('delop'),'onclick' => array('if(!confirm("Really Delete?")){return false;}')),'query' => array('keyword_id' => $data->id))),
+		);
+	}
+	$output .= theme('table', array('header' => $header, 'rows' => $rows, 'attributes' => array('id' => 'gmc-keywords-table')));
+	$output .= theme('pager');
+	return $output;
+}
+
+/**
+* Implements form API
+* Callback function gmc_keywords_form
+* to save keywords
+* @return $form
+*/
+function lessons_keywords_form() {
+	if(!empty($_REQUEST['keyword_id'])){
+		$kid =	$_REQUEST['keyword_id'];
+		$result = db_select('keywords', 'k')
+					->fields('k')
+					->condition('id', $kid)
+					->execute()
+					->fetchObject();
+		$key_title = $result->title;
+		$key_body = $result->description; 
+		$submit_text = t('Update');
+	}
+	else{
+		$key_title 	= '';
+		$key_body  	= ''; 
+		$submit_text = t('Save');
+	}
+	$form['keyword_title'] = array(
+		'#type'  => 'textfield', 
+		'#title' => t('Title'),
+		'#value' => $key_title ,
+	);
+	$form['keyword_body'] = array(
+		'#type' => 'textarea', 
+		'#title' => t('Body'),
+		'#value' => $key_body ,
+	);
+	$form['submit'] = array(
+		'#type' => 'submit',
+		'#value' => $submit_text,
+	);
+	return $form;
+}
+/**
+ * hook_submit for save spell correction.
+ * @return '';
+ */
+function lessons_keywords_form_submit(&$form, &$form_state) {
+	if(!empty($_REQUEST['keyword_id'])){
+		$num_updated = db_update('keywords') 
+						  ->fields(array(
+								'title' => $form_state['input']['keyword_title'],
+								'description' => $form_state['input']['keyword_body']
+						  ))
+					  ->condition('id', $_REQUEST['keyword_id'], '=')
+					  ->execute();
+		drupal_set_message("Keyword Updated successfully!", "status");
+		drupal_goto('lessons/keywords');
+	}
+	else{
+		global $user;
+		db_insert('keywords')
+			->fields(array(
+				'title' => $form_state['input']['keyword_title'],
+				'description' => $form_state['input']['keyword_body'],
+				)
+			)
+			->execute();
+		drupal_set_message("Keywords inserted successfully!", "status");
+	}
+}
+
+/**
+* Callback function lessons_delete_keywords
+* for delete lessons  keywords
+* @return '';
+*/
+function lessons_delete_keywords() {
+	$keyword_id = $_GET['keyword_id'];
+	db_delete('keywords')
+	  ->condition('id', $keyword_id)
+	  ->execute();
+	drupal_set_message("Keywords deleted successfully!", "status");
+	drupal_goto('lessons/keywords');
+}
+
+
+function lessons_support_preprocess_videojs(&$vars) {
+    $vars['nid'] = $vars['node']->nid;
+    $vars['field_is_cover_lesson'] = $vars['node']->field_is_cover_lesson['und'][0]['value'];
+    $GuitarPro = 0;
+    $PDF = 0;
+    $pdf_icon  ='';
+    $tab_icon='';
+    $guitarPro_icon ='';
+    $nid = $vars['node']->nid;
+    foreach(load_files($nid) as $key => $v) {
+      $f = file_load($v->fid);
+      if (isset($f->filemime)) {
+        $ex = explode("/",$f->filemime);		 
+      } 
+      if ($key == 0) {
+        $data1 = '<a name="Tabs" href="'.file_create_url('lesson/tabs/'.$nid).'" target="_blank"><img src="/sites/all/themes/gmc_v2/images/tabs.jpg" /></a>';
+      }
+      if ( strtolower($ex[1]) == 'octet-stream' && $GuitarPro == 0) { 
+        $gpro = file_create_url($f->uri); 
+        $GuitarPro = 1;
+        $data2 = '<a name="Gpf" href="'.$gpro.'" target="_blank"><img src="/all/themes/gmc_v2/images/gp.jpg" /></a>';
+      }  else {
+        $data2 = '';
+      }
+     if (isset($f->filemime)) {
+       if ($f->filemime == 'application/pdf' && $PDF == 0) { 
+          $pdf = file_create_url($f->uri); 
+          $PDF = 1;
+          $data3 ='<a name="PDF" href="'.$pdf.'" target="_blank"><img src="/sites/all/themes/gmc_v2/images/pdf.jpg" /></a>';
+       }  else {
+          $data3 = '';
+       }
+     }
+   }
+   $data = $data1.$data2.$data3;
+   $vars['tools']  = $data;
+    if(empty($vars['node']->field_downloadable_backing['und'][0]['value'])) {
+      $k = 0;
+    } else {
+      $k = 1;
+    }
+    $mp3 = '';
+  foreach(load_files_mp3($nid) as $key => $v) {
+    if (!empty($vars['node']->field_downloadable_backing['und'][0]['value']) && $vars['node']->field_downloadable_backing['und'][0]['value'] == $v->fid) {
+      $kk = 0;
+    } else {
+      $kk = $k;
+    }
+    $f = file_load($v->fid);
+    if ($f->filemime == 'audio/mpeg') {
+      $item['title'] = $f->filename;
+      $item['title'] = str_replace(".mp3","",$item['title']);
+		  $item['title'] = str_replace("_"," ",$item['title']);
+		  if(strlen($item['title']) > 20) {
+		    $item['title'] = substr($item['title'],0,12) . ' ' . substr($item['title'],-8);
+      }
+        $url = file_create_url($f->uri);
+       $mp3 .= '<a style="color:#fff; padding: 0px 17px; font-size:11px;" href="javascript:void(0);" onClick="auidoinit(\'' . $url . '\')" >0'.$k.'&nbsp;&nbsp;&nbsp;&nbsp;'.$item['title'].'</a>';
+        $k++;
+	    }
+       
+    }
+   $vars['mp3'] = $mp3;
+}
+
+function lessons_support_preprocess_node(&$vars) {
+  if ($vars['type'] == 'lessons') {
+    global $base_url ,$user;
+    $vars['u'] = $base_url."/".path_to_theme()."/css";
+    $vars['node_user'] = user_load($vars['node']->uid);
+    $vars['node_user_image'] = file_create_url($vars['node_user']->picture->uri);
+    if(isset($vars['node']->field_free_parts['und']['0']['value']))  {
+      $vars['free'] = $vars['node']->field_free_parts['und']['0']['value'];
+    }
+    if (arg(0) == 'revisionlesson') {
+      $vars['revision'] = 1;
+      $vars['lxml'] = 'lessonrevision';
+      $revision = 1;
+    } else {
+      $vars['revision'] = 0;
+      $vars['lxml'] = 'lesson';
+      $revision = 0;
+    }
+    $detect = mobile_detect_get_object();
+    $vars['isAndroidOS'] = $detect->isAndroidOS();
+    $vars['is_mobile'] = $detect->isMobile();
+    $vars['is_tablet'] = $detect->isTablet();
+    $vars['is_AndroidOS'] = $detect->isAndroidOS();
+    if (!empty($vars['is_mobile'])) {
+      if (!empty($vars['is_tablet'])){
+         $vars['chkclass'] = 'toolstable';
+         $vars['chkclassply'] = 'toolstableply';
+         $vars['chkclassplymp'] = '';
+      } else {
+         $vars['chkclass'] = 'toolsmob';
+         $vars['chkclassply'] = 'chkclassply';
+         $vars['chkclassplymp'] = 'chkclassplymp';
+       }
+    } else {
+       $vars['chkclass'] = '';
+       $vars['chkclassply'] = '';
+       $vars['chkclassplymp'] = '';
+    }
+		unset($vars['content']['comments']['comment_form']);
+    $comments = ''; 
+		foreach(loadComments($vars['node']->nid) as $key => $v) {
+		  $us = user_load($v->uid);
+		  if (substr($v->comment_body_value,0,1) == "-" || substr($v->comment_body_value,0,1) == "." || empty($v->comment_body_value)) continue;
+	    if ( $vars['node']->uid == $us->uid ) { $isInstructor = 'isInstructor'; } else { $isInstructor = ''; }
+      $pic = array();
+      $picture = '';
+      if(isset($us->picture->fid)) {
+        $pic = file_load($us->picture->fid);
+        $picture = file_create_url($pic->uri);
+      }
+      if (!isset($pic->uid)) {
+	      $imgsrc = $vars['u'].'/images/pp-blank-small.gif';
+      } else {
+		     $imgsrc =  $picture;
+      }
+      if ( in_array('instructor',$us->roles) ) {
+        $usernameurl = file_create_url('instructor/'.$us->name); 
+      } else {
+         $usernameurl =  '/user/'.$v->uid; 
+      }
+      if (isset($us->field_first_name['und'][0]['value']) && isset($us->field_last_name['und'][0]['value'])) {
+			  $username = trim($us->field_first_name['und'][0]['value'])." ".trim($us->field_last_name['und'][0]['value']);
+		  } else {
+			  $username = $us->name; 
+		   }
+		  $comments .= '<li class="' . $isInstructor . ' "><img src="' . $imgsrc . '" alt="" /><a href="' . $usernameurl . '">' . $username . '<a></a>
+         <span class="date">' . date('d F, Y',$v->created) . '</span>
+         <span class="title">' . $v->subject . '</span>
+		     <p>' . str_replace("<{POST_SNAPBACK}>", "", str_replace("/guitar_forum","",str_replace("<#EMO_DIR#>","default", str_replace("style_emoticons/<#EMO_DIR#>", "/style_emoticons/default", str_replace("http://www.guitarmasterclass.net/guitar_forum/style_emoticons/<#EMO_DIR#>/",file_create_url('/style_emoticons/default/'),$v->comment_body_value))))) . ' </p>
+		  </li>';
+    } 
+    $vars['feedbacks'] = $comments;
+		$rec_lessons = drupal_get_form('rec_lessons_form');
+		$vars['rec_lessons_form'] = drupal_render($rec_lessons);
+    if (isset($vars['node']->field_free_parts_al)) {
+      $laccess = $vars['node']->field_free_parts_al['und'][0]['value'];
+      $laccess = str_replace(' ' ,'', $laccess);
+      $vars['lesacc'] = explode(',', $laccess);
+      $lesacc = $vars['lesacc'];
+    }
+    if (arg(0) == 'revisionlesson' && arg(1) == 'preview') {
+      $loadfiles = load_revison_files($vars['node']->nid);
+    } else {
+      $loadfiles = load_files($vars['node']->nid);
+    }
+		foreach( $loadfiles as $key => $v) {
+			$f = file_load($v->fid);
+			if ($key == 0) {
+				$vars['videoThumb'] = file_create_url(file_build_uri("uploads/".$vars['node']->nid."/big_".$vars['node']->nid.".jpg"));
+        $ds = str_replace("mp4","flv",$f->uri);
+        if (file_exists(drupal_realpath($ds)))  {
+				  $vars['videoUrl'] = file_create_url(drupal_realpath($ds));
+        } else {
+          $vars['videoUrl'] = file_create_url($f->uri);
+        }
+        
+        $vars['items'][$key] = array( 'uri' => $vars['videoUrl'], 'filemime' => $f->filemime );
+			}
+      if (isset($f->filemime)) {
+			  if ($f->filemime == 'video/mp4' || $f->filemime == 'video/x-flv' || $f->filemime == 'video/quicktime' || $f->filemime == 'video/mov' || $f->filemime == 'video/x-ms-wmv') { 
+          $f->url = file_create_url($f->uri);
+          if (isset($v->status))
+				    $f->st = $v->status;
+          if (isset($v->notes))
+				    $f->notes = $v->notes;
+          if(isset($v->description))
+				    $f->description = $v->description;
+				  $files[] = $f;	
+			  }
+      }
+		}
+    $vars['files'] = $files;
+    $_SESSION['Fpart'] = $files[0]->fid;
+    $_SESSION['Lpart'] = $files[(count($files)-1)]->fid;
+    $_SESSION['Lpartcount'] = count($files)-1; 
+    $videolistplay = '';
+		foreach($files as $key => $v) {
+			if ($key == 0) {
+        $vars['notes'] = $v->notes; 
+        $vars['description'] = $v->description; 
+        $vars['fname'] = $v->fid;
+        
+      }
+      if ($vars['is_mobile']) {
+         $mod = 'data-loc="'.$v->url .'" data-type="'.$v->filemime.'"';
+         $modc = 'mobile';
+         $chkclass = 'toolsmob';
+      } else {
+         $mod = '';
+         $modc = '';
+         $chkclass = 'toolsx';
+      }
+       
+      if (!$v->st || (in_array('administrator',$user->roles) || in_array('instructor',$user->roles) || in_array('paid user',$user->roles) || $vars['node']->field_free_parts['und'][0]['value'] == 1 || in_array($key, $lesacc))) { 
+          $st1 = 'free'; 
+       } else {
+         $st1 = ''; 
+       }
+      if ( !$v->st || (in_array('administrator',$user->roles) && in_array('instructor',$user->roles) && in_array('paid user',$user->roles) ) ) { 
+         $st2= 'true,'; 
+      } else { 
+         $st2= 'false,'; 
+      }
+      $st3 = ($key == 0) ? " current":'';
+			if ($v->st && (!in_array('administrator',$user->roles) && !in_array('instructor',$user->roles) && !in_array('paid user',$user->roles) && !in_array($key, $lesacc) && $vars['node']->field_free_parts['und'][0]['value'] != 1)) { 
+				$st4 = '<span class="tooltip">Members only</span>';
+        $mod = 'data-loc="" data-type="'.$v->filemime.'"';
+			} else {
+        $st4 = '';
+      }
+      $st5 = ($key == 0) ? "Main":$key;
+
+			$videolistplay .= '<li '.$mod.' class="part-'.$key .' '.$modc.' '.$st1.' {free: '.$st2.' partId: '. $v->fid .'} '.$st3.'" partId="'. $v->fid .'" revision="'. $revision .'" lpartid="'.$key.'" >'.$st4 .''.$st5.' </li>';
+      }
+
+   $vars['videolistplay'] = $videolistplay;
+  }
+} 

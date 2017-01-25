@@ -1,0 +1,17 @@
+name = "GMC Views Handaler"
+description = "Views Handaler Support"
+core = 7.x
+version = "7.x-1.0"
+files[] = includes/views/gmc_views_hand_handler_handlername.inc
+files[] = includes/views/gmc_views_hand_handler_handlernametwo.inc
+files[] = includes/views/gmc_views_hand_handler_freeparts.inc
+files[] = includes/views/gmc_views_hand_handler_loginstatus.inc
+files[] = includes/views/gmc_views_hand_handler_editcomment.inc
+files[] = includes/views/gmc_views_hand_handler_commentalleditlinks.inc
+files[] = includes/views/gmc_views_hand_handler_commentbody.inc
+files[] = includes/views/gmc_views_hand_handler_commentpostlink.inc
+files[] = includes/views/gmc_views_hand_handler_userpictured.inc
+files[] = includes/views/gmc_views_hand_handler_postdetails.inc
+files[] = includes/views/gmc_views_hand_handler_userrole.inc
+files[] = includes/views/gmc_views_hand_handler_usersignature.inc
+files[] = includes/views/gmc_views_hand_handler_commentreplyusername.inc

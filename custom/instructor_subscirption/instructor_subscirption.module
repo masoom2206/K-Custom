@@ -1,0 +1,19 @@
+<?php 
+/*
+ * Implement the user hook_menu for instructor_subscription
+ */
+function instructor_subscription_menu() {
+  $items['ins/subscription/rec'] = array(
+    'title' => 'Instructor Lesson Subscription',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('ins_subscription_rec'),
+    'type' => MENU_NORMAL_ITEM,
+    'access arguments' => array('access content'),
+  );
+  return $items;
+}
+
+function ins_subscription_rec() {
+  
+
+}

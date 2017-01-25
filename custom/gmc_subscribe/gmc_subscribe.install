@@ -1,0 +1,183 @@
+<?php
+
+/**
+ * @file Rules - Installation file.
+ */
+
+/**
+ * Implements hook_schema().
+ */
+function gmc_subscribe_schema() {
+	//Save subscribe user/instructor detail
+  $schema['gmc_user_subscribe'] = array(
+    'fields' => array(
+      'subscribe_id' => array(
+        'type' => 'serial',
+        'not null' => TRUE,
+        'description' => 'Subscription ID',
+      ),
+      'uid' => array(
+        'description'   => 'UID of the subscriber',
+        'type'          => 'int',
+        'not null'      => TRUE,
+      ),
+      'entity_id' => array(
+        'description'   => 'Subscribe id of Instructor uid, tid amd nid',
+        'type'          => 'int',
+        'not null'      => TRUE,
+      ),
+      'type' => array(
+        'description'   => 'Subscribe id type uid/tid/nid',
+        'type'          => 'varchar',
+        'length'        => 255,
+        'not null'      => TRUE,
+      ),
+      'notification_method' => array(
+        'description'   => 'Notification Method to send mail like daily or immediate',
+        'type'          => 'varchar',
+        'length'        => 255,
+        'not null'      => TRUE,
+      ),	  
+      'email' => array(
+        'description'   => 'Email of the subscriber',
+        'type'          => 'varchar',
+        'length'        => 255,
+        'not null'      => TRUE,
+      ),
+      'subscribe_date'     => array(
+        'description'   => 'Lesson Subscribe date',
+        'type'          => 'int',
+        'not null'      => TRUE,
+      ),
+    ),
+    'primary key' => array('subscribe_id'),
+    'indexes' => array(
+       'subscribe_id' => array('subscribe_id'),
+       'subscribe_date' => array('subscribe_date'),
+    ),
+  );
+	//Save subscribe node id
+  $schema['gmc_subscribe_node'] = array(
+    'fields' => array(
+      'serl_no' => array(
+        'type' => 'serial',
+        'not null' => TRUE,
+        'description' => 'Serial no of subscribe node',
+      ),
+      'entity_id' => array(
+        'description'   => 'Subscribe id of Instructor uid, tid amd nid',
+        'type'          => 'int',
+        'not null'      => TRUE,
+      ),
+      'type' => array(
+        'description'   => 'Subscribe id type uid/tid/nid',
+        'type'          => 'varchar',
+        'length'        => 255,
+        'not null'      => TRUE,
+      ),
+      'nid' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'description' => 'Subscribe node id',
+      ),
+    ),
+	'primary key' => array('serl_no'),
+    'indexes' => array(
+       'serl_no' => array('serl_no'),
+    ),
+  );
+
+  //Subscribe Mail Template
+  $schema['gmc_subscribe_mail_template'] = array(
+    'fields' => array(
+      'serl_no' => array(
+        'type' => 'serial',
+        'not null' => TRUE,
+        'description' => 'Serial no of mail template',
+      ),
+      'title' => array(
+        'description'   => 'Mail template title',
+        'type'          => 'varchar',
+        'length'        => 255,
+        'not null'      => TRUE,
+      ),
+      'mail_type' => array(
+        'description'   => 'Subscribe id type uid/tid/nid',
+        'type'          => 'varchar',
+        'length'        => 255,
+        'not null'      => TRUE,
+      ),
+      'notification_method' => array(
+        'description'   => 'Notification Method to send mail like daily or immediate',
+        'type'          => 'varchar',
+        'length'        => 255,
+        'not null'      => TRUE,
+      ),
+      'mail_subject' => array(
+        'description'   => 'Mail subject',
+        'type'          => 'varchar',
+        'length'        => 255,
+        'not null'      => TRUE,
+      ),
+      'mail_message' => array(
+        'description'   => 'Mail message',
+        'type'          => 'text',
+        'size'          => 'big',
+        'not null'      => TRUE,
+      ),
+    ),
+	'primary key' => array('serl_no'),
+    'indexes' => array(
+       'serl_no' => array('serl_no'),
+    ),
+  );
+  
+  return $schema;
+}
+/**
+ * Implements hook_install().
+ **/
+function gmc_subscribe_install() {
+	$query = db_insert('gmc_subscribe_mail_template')->fields(array('title', 'mail_type', 'notification_method', 'mail_subject', 'mail_message'));
+	//forum template
+	$query->values(array(
+		'title' => t('GMC immediate forum template'),
+		'mail_type' => t('tid'),
+		'notification_method' => t('immediate'),
+		'mail_subject' => t('New forum topic posted in [forumboard]'),
+		'mail_message' => t('Hi [usernameto],<br/><br/>A new forum topic titled "[forumtopic]" has just been posted in the [forumboard] part of the forum.<br/><br/>Click <a href="[forumtopicurl]" target="_blank">here</a> to check it out: <a href="[forumtopicurl]" target="_blank">[forumtopicurl]</a><br/><br/>Regards,<br/>GMC Team<br/><br/><br/><span style="font-size: 10px; color: #808080; line-height: 105%;">This email was sent to [useremailto] per your request. If you don\'t want to receive notification emails about new topics posted in the [forumboard], please unsubscribe <a href="[unsubscribe]">here</a>.</span>'),
+	));
+	//Topic Template
+	$query->values(array(
+		'title' => t('GMC immediate topic template'),
+		'mail_type' => t('cid'),
+		'notification_method' => t('immediate'),
+		'mail_subject' => t('New forum topic reply posted in [forumtopic]'),
+		'mail_message' => t('Hi [usernameto],<br/><br/>A new reply in the "[forumtopic]" topic has just been posted.<br/><br/>Click <a href="[forumtopicreplyurl]" target="_blank">here</a> to check it out: <a href="[forumtopicreplyurl]" target="_blank">[forumtopicreplyurl]</a><br/><br/>Regards,<br/>GMC Team<br/><br/><br/><span style="font-size: 10px; color: #808080; line-height: 105%;">This email was sent to [useremailto] per your request. If you don\'t want to receive notification emails about new replies posted in the [forumtopic], please unsubscribe <a href="[unsubscribe]">here</a>.</span>'),
+	));
+	//Instructor Template for lessons post
+	$query->values(array(
+		'title' => t('GMC immediate instructor template'),
+		'mail_type' => t('uid'),
+		'notification_method' => t('immediate'),
+		'mail_subject' => t('New Lesson from [instructorname] - [lessonstitle]'),
+		'mail_message' => t('We just published a new lesson by [instructorname] called [lessonstitle].<br/><br/>Click [lessonsurl] to check it out!<br/><br/><br/>If you no longer want to receive notifications about new lessons from [instructorname] you can click <a href="[unsubscribe]">here</a>..'),
+	));
+	$query->values(array(
+		'title' => t('New User Welcome Message'),
+		'mail_type' => t('new-user'),
+		'notification_method' => t('One Time'),
+		'mail_subject' => t('Even more great stuff at GMC!'),
+		'mail_message' => t('Hello GMCer,<br/><br/>Hope you\'re having a great time at GMC!<br/><br/>We would like to invite you to join our community and hang out in the <a href="[forumpagelink]">forum</a> with fellow musicians and instructors. GMC forum has some very interesting activities and you are invited to take part.<br/><br/>Here is a check list for you to follow so that you can use GMC to its full potential and make fast progress:<br/><br/><a href="[introduce_yourself_link]"><u><b>Introduce yourself</b></u></a><br/><br/>The best way for you to start is to go to the forum and write a short introduction thread. It would be awesome if you could write something about yourself (your gear, styles you would like to learn, how long have you been playing...). We know for the fact that the instructors and students would love to meet you!<br/><br/><a href="[rec_program_link]"><u><b>REC Program</b></u></a><br/><br/>The REC program is designed to push you towards excellence. Recording your playing (audio/video) and getting direct feedback from instructors is the best way to go forward. Watching your playing on video will give you both an objective perspective on your playing and serve as a clear indicator of how much your playing skills have developed if you compare the videos through time.<br/><br/><a href="[collaborations_link]"><u><b>Collaborations</b></u></a><br/><br/>A collaboration is an activity initiated by instructors on their personal forum boards in which you are provided with a music backing track for you to play over. Each collaboration is unique - your goal is to improvise over the backing track following tips given by instructor. Some collaborations are rhythm guitar based, some are focused on a lead guitar. If you don\'t have an ability to record video - its OK since we have monthly collaborations in audio only format and you are free to drop in. Collaborations are for fun and it doesn\'t matter which level of your playing is. Taking part in GMC collaborations is very similar to playing in a band. The coolest collabs done in the video format get featured on GMC homepage and receive over 70 000+ views on YouTube which is almost like playing in front of a concert stadium audience!<br/><br/><a href="[video_chats_link]"><u><b>GMC Video Chats</b></u></a><br/><br/>Instructor hosted video chats are being held on GMC daily. Feel free to enter the GMC video chat room any time you see a session in progress. You can ask an instructor any questions you might have and you\'ll get a direct answer. You can also just observe and stay silent while playing along. Video chats are basically live guitar/music lessons. This is the place to meet the instructors personally and get to know other students better.<br/><br/><hr/><br/><br/>How to find your way around the GMC lessons archive? There are several ways to approach this.<br/><br/>Follow the main page for updates and bookmark lessons that you like. Always choose a lesson which sounds cool to you and doable. You can also tackle hard lessons - just play them on a slower tempo. Most important is to find the material which inspires you and seems fun to play! Consult instructors for lesson suggestions via forum, their <a href="[personal_boards_link]"><u>personal boards</u></a> or just send them a private message! The best way is to start an open topic in the "<a href="[practice_room_post_link]"><u>Practice Room</u></a>" part of the forum so both instructors and students can share suggestions.<br/><br/>Browse our archive by genres/levels/etc. GMC has a rich <a href="[lessons_archive_link]"><u>lessons archive</u></a>. Digging through the lessons can be fun - don\'t forget to bookmark the ones you like.<br/><br/>Search tool. GMC has an advanced <a href="[search_page]"><u>search tool</u></a>. If you wish to work on your vibrato or bending, just type in the keywords and hit the search button. It will take you to the most relevant lessons. That is the easiest way to find lessons that cover specific techniques, topics etc.<br/><br/>Stumble upon random lessons. On the <a href="[search_page]"><u>search page</u></a> you can find the button that says : "Don\'t know what to search for? Stumble instead.". This is great if you are not looking for anything specific as its a very fast way to see some interesting lessons which you would have missed otherwise. Since it\'s completely random - you never know where it\'s going to take you!<br/><br/>Hope you\'ll find these tips useful and inspiring.<br/><br/>If you need anything or have any questions - please email us at : <a href="mailto:support@guitarmasterclass.net">support@guitarmasterclass.net</a><br/><br/>Keep rocking,<br/>GMC Team'),
+	));
+	$query->execute();
+}
+
+
+
+
+
+
+
+
+

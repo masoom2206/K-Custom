@@ -1,0 +1,66 @@
+<?php
+
+/**
+ * @file
+ * GMC Lessons Visits - displays a list of users who recently visited lessons.
+ */
+
+/**
+ * Implements of hook_node_view().
+ */
+function gmc_lessons_visits_node_view($node, $view_mode, $langcode) {
+	global $user;
+	if ($node->type == 'lessons' && $user->uid != 0 && array_key_exists(5, $user->roles)) {
+		gmc_lessons_visits_save($node->nid, $user->uid);
+	}
+}
+
+/**
+ * Callback function gmc_lessons_visits_save.
+ * To save Lessons Visitors
+ */
+function gmc_lessons_visits_save($nid, $uid) {
+	$visit_id = db_select('gmc_lessons_visits', 'glv')
+	  ->fields('glv', array('visit_id'))
+	  ->condition('nid', $nid)
+	  ->condition('uid', $uid)
+	  ->execute();
+	$count = $visit_id->rowCount();
+	if($count == 0) {
+		$query = db_insert('gmc_lessons_visits')
+		  ->fields(array(
+		  'nid' => $nid,
+		  'uid' => $uid,
+		  'visit' => REQUEST_TIME,
+		  ))
+		->execute();
+	}
+	else {
+		$visit_id = db_update('gmc_lessons_visits')
+		  ->fields(array(
+			'visit' => REQUEST_TIME,
+		  ))
+		  ->condition('nid', $nid)
+		  ->condition('uid', $uid)
+		->execute();
+	}
+  //return $query;
+  return '';
+}
+/**
+ * Callback function gmc_lessons_visits_list.
+ * To display Lessons Visitors
+ */
+function gmc_lessons_visits_list($nid) {
+	$visitors = db_query("SELECT u.name, u.uid FROM users u Left JOIN gmc_lessons_visits glv on glv.uid = u.uid WHERE glv.nid = :nid ORDER BY visit DESC", array(':nid' => $nid));
+	$count = $visitors->rowCount();
+	$members = '';
+	if($count != 0) {
+		/*foreach($visitors as $visitor) {
+			$members[][''] = 
+		}*/
+		$members = $visitors->fetchAll();
+	}
+	return $members;
+}
+

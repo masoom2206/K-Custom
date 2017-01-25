@@ -1,0 +1,213 @@
+<?php
+/**
+* Implementation of hook_init
+*/
+function gmc_html5_player_init() {
+  $detect = mobile_detect_get_object();
+  $ismobile = $detect->isMobile();
+  if ($ismobile) {
+    drupal_add_js(drupal_get_path('module', 'gmc_html5_player') .'/includes/gmc.js', array('scope' => 'footer'));
+	drupal_add_css(drupal_get_path('module', 'gmc_html5_player') .'/includes/gmc_html.css');
+  }
+  //drupal_add_js(drupal_get_path('module', 'gmc_html5_player') .'/includes/gmc.js', array('scope' => 'footer'));
+  //drupal_add_css(drupal_get_path('module', 'gmc_html5_player') .'/includes/gmc_html.css');
+}
+
+/* 
+ * Implement hook_menu()
+ * for creating custom page for import process.
+ */
+
+function gmc_html5_player_menu() {
+  $items = array();
+  $items['browser/player/test'] = array(
+    'title' => 'Video Example',
+    'page callback' => 'browser_player_test',
+    'type' => MENU_NORMAL_ITEM,
+    'access arguments' => array('access content'),
+    'file' => 'includes/class.inc'
+  );
+  $items['actions/getlesson/partslist/%'] = array(
+    'title' => '',
+    'page callback' => 'browser_actions_getlessonpartslist',
+    'type' => MENU_NORMAL_ITEM,
+    'access arguments' => array('access content'),
+    'file' => 'includes/actions_getlessonpartslist.inc'
+  );
+  $items['gmc_html5/test'] = array(
+    'title' => '',
+    'page callback' => 'ipad_html5_player',
+    'type' => MENU_NORMAL_ITEM,
+    'access arguments' => array('access content'),
+  );
+  return $items;
+}
+
+function browser_player_test() {
+ // $browser    = App::request_browser( true ) ;
+	$empty = array("Spoken Video Example");
+	return theme('mobile_html5player2', $empty);
+}
+
+/**
+ * Implements hook_theme()
+ * @return $themes
+ */
+function gmc_html5_player_theme($existing, $type, $theme, $path) {
+	$themes = array (
+		'mobile_html5player2' => array(
+			'template' => 'template/mobile_html5player2',
+		),
+	);
+	return $themes;	
+}
+
+
+/**
+ * Callback function ipad_html5_player()
+ * @return $output
+ */
+function ipad_html5_player() {
+	$output = '';
+
+	$file = DRUPAL_ROOT . '/' . drupal_get_path('module', 'gmc_html5_player') . "/includes/class.inc"; 
+	require_once $file;
+	$browser = App::request_browser( true ) ;
+	$browser['lesson_id'] = 3353 ;
+	$browser['lesson_lotd'] = 0 ;
+	$browser['player_debug'] = 0 ;
+	$browser['player_static_tools'] = 0 ;
+	$getid = arg(1);
+	if( isset($getid) ) {
+		$browser['lesson_id'] = (int) $getid;
+	}
+	$nodes = node_load($browser['lesson_id']);
+	if ($nodes->type == 'lessons') {
+		$lesson_url = '/actions/getlesson/partslist/' . $browser['lesson_id'] . '/?jsonp=App.lesson_data' ;
+	}
+	else {
+		$lesson_url = '/actions/getlesson/partslist/' . $browser['lesson_id'] . '/?jsonp=App.lesson_data' ;
+	}
+	if( isset($_GET['lotd']) ) {
+		$browser['lesson_lotd'] = 1 ;
+		$lesson_url .= '&lotd=1' ;
+	}
+	$app_class	= array() ;
+	$app_class[]	= 'app_' . $browser['name'] ;
+	$app_class[]	= 'app_' . $browser['name'] . $browser['version'] ;
+	$app_class[]	= 'app_' . $browser['os'] ;
+	$app_class[]	= 'app_' . $browser['os'] . $browser['os_version'] ;
+	if( $browser['mobile'] ) {
+		$app_class[]	= 'app_mobile';
+	}
+	if( $browser['is_debug'] ) {
+		$app_class[]	= 'app_debug' ;
+		$browser['player_debug'] = 1 ;
+	}
+	if( $browser['is_iphone'] || $browser['is_ipod'] ||  $browser['is_android']) {
+		if($browser['android_tablet']) {
+			$app_class[]	= 'app_static_tab_tools' ;			
+		}
+		else {
+			$app_class[]	= 'app_static_tools' ;
+		}
+		$browser['player_static_tools'] = 1 ;
+	}
+	if( $browser['lesson_lotd'] ) {
+		$app_class[]	= 'app_lesson_lotd' ;
+	}
+	if( isset($_GET['app_admin']) ) {
+		$app_class[]	= 'app_admin' ;
+	}
+	$app_class_implode = '';
+	//print "<pre>";print_r($app_class);exit;
+	if(!empty($app_class)) {
+		$app_class_implode =  implode(" ", $app_class);
+	}
+	$output .= '<script type="text/javascript">var App = '.json_encode($browser).'</script><script type="text/javascript" src="'.$lesson_url.'"></script>';
+	$output .= '<div id="videoPlayer" class="'.$app_class_implode.'">
+	<div class="app_mobile">'.$browser['app_version'].'
+		<div id="player_box">
+
+			<div id="player">
+				<div>
+					<video preload="auto" id="mp4_player" poster="/sites/all/themes/gmc_v2/html5player2/images/LH2-Play-icon.png" autoplay></video>
+				</div>
+			</div>
+			<div id="player_mask">
+				<div>
+					<a href="/signup" target="_blank">
+						<img src="/sites/all/themes/gmc_v2/images/members-only-message.png" />
+					</a>
+				</div>
+			</div>
+
+			<div id="tools">
+				<div>
+					<!-- arrow -->
+					<p><a></a><a></a></p>
+					<div>
+						<!-- tools top padding -->
+						<div id="tools_title"></div>
+						<div id="tools_items"></div>
+						<div id="tools_songs"></div>
+					</div>
+				</div>
+				<div id="gmc_html5player_member_only" class="HideClassName">
+					<div></div>
+					<div style="border: 1px solid rgb(0, 0, 0); ">
+						<div id="gmc_html5player_member_only_text">
+							To access member content login or <a href="/signup/" target="_blank"><u>sign up</u></a>
+						</div>
+						<div class="tap-to-close-popup">tap to close</div>
+					</div>
+					<div></div>
+				</div>
+			</div>
+
+			<div id="controlls">
+				<div id="mp4_box">
+					<div>
+						<p class="controlls_title">VIDEO PLAYER</p>
+						<div class="progress_time">00:00 / 00:00</div>
+						<div class="play_or_pause"><p></p><div></div></div>
+						<div class="progress_box">
+							<div class="progress_bar_box">
+								<div class="progress_bg_bar"></div>
+								<div class="progress_buffer_bar"></div>
+								<div class="progress_bar"></div>
+								<div class="progress_position"></div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div id="mp3_box">
+					<audio preload="metadata" id="metronome_player" loop="loop"></audio>
+					<audio preload="metadata" id="mp3_player" src=""></audio>
+					<div>
+						<p class="controlls_title">BACKING TRACKS</p>
+						<div class="progress_time">00:00 / 00:00</div>
+						<div class="play_or_pause"><p></p><div></div></div>
+
+						<div class="progress_box">
+							<div class="progress_bar_box">
+								<div class="progress_bg_bar"></div>
+								<div class="progress_buffer_bar"></div>
+								<div class="progress_bar"></div>
+								<div class="progress_position"></div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div id="quality_box">
+					<div id="quality_btn"><a></a><span>HQ</span></div>
+				</div>
+			</div>
+		</div>
+
+		<div id="full_screen"></div>
+		<div id="portrait_orientation"><p>Please turn your device to landscape orientation - for a better viewing experience</p></div>
+	</div></div>';
+	return $output;
+}
+

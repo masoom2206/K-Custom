@@ -1,0 +1,61 @@
+<?php
+
+/**
+ * @file Rules - Installation file.
+ */
+
+/**
+ * Implements hook_schema().
+ */
+function gmc_forum_count_schema() {
+	//Save subscribe user/instructor detail
+  $schema['gmc_forum_count'] = array(
+    'fields' => array(
+      'id' => array(
+        'type' => 'serial',
+        'not null' => TRUE,
+        'description' => 'Forum count ID',
+      ),
+      'nid' => array(
+        'description'   => 'NID of the forum node viewed by user at live site',
+        'type'          => 'int',
+        'not null'      => TRUE,
+      ),
+      'view_count' => array(
+        'description'   => 'Total view count of nid which has viewed by user at live site',
+        'type'          => 'int',
+        'not null'      => TRUE,
+      ),
+    ),
+    'primary key' => array('id'),
+    'indexes' => array(
+       'id' => array('id'),
+       'nid' => array('nid'),
+    ),
+  );
+  $schema['gmc_user_view_count'] = array(
+    'fields' => array(
+      'id' => array(
+        'type' => 'serial',
+        'not null' => TRUE,
+        'description' => 'User view count ID',
+      ),
+      'uid' => array(
+        'description'   => 'UID of the user viewed by user at live site',
+        'type'          => 'int',
+        'not null'      => TRUE,
+      ),
+      'view_count' => array(
+        'description'   => 'Total view count of UID which has viewed by user at live site',
+        'type'          => 'int',
+        'not null'      => TRUE,
+      ),
+    ),
+    'primary key' => array('id'),
+    'indexes' => array(
+       'id' => array('id'),
+       'nid' => array('uid'),
+    ),
+  );
+  return $schema;
+}
